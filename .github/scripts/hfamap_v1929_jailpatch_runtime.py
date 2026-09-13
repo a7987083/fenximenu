@@ -16,6 +16,13 @@ def replace_once(text, old, new, label):
     return text.replace(old, new, 1)
 
 
+def replace_exact(text, old, new, expected, label):
+    count = text.count(old)
+    if count != expected:
+        raise SystemExit(f"{label}: expected {expected} matches, got {count}")
+    return text.replace(old, new)
+
+
 # v1.9.29 JailpatchRuntimeProfiler
 # - preserve v1.9.28 legacy AP resolver and v1.9.27 exporters
 # - profile the 5 MB jailpatch family from runtime structure, not obfuscated names
@@ -43,10 +50,11 @@ l = replace_once(
     'update dual mode marker',
 )
 
-g = replace_once(
+g = replace_exact(
     g,
     'HFAMap v1.9.28 GenericMenuResolver',
     'HFAMap v1.9.29 JailpatchRuntimeProfiler',
+    2,
     'update generic resolver version',
 )
 g = replace_once(g, '@"1.9.28"', '@"1.9.29"', 'update generic json version')
