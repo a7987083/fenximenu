@@ -2,35 +2,48 @@
 
 ## Current phase
 
-v1.9.28 GenericMenuResolver — device validation
+v1.9.29 JailpatchRuntimeProfiler — 5 MB device validation
 
-## Goal
+## Completed milestone: legacy AP / ~15 MB
 
-Build a framework-level resolver for the legacy iOSGods/AP menu family without relying on obfuscated class names, ivar names, game labels, or sample RVAs.
+The v1.9.28 GenericMenuResolver has now been validated on-device for the legacy AP/IGSecret family. The supplied runtime evidence produced 12 mapped features, real UnityFramework RVAs, original/enabled bytes, action IMP metadata, and a successful `.hfapatch.json` export.
 
-## v1.9.28 completed scope
+This establishes the legacy ~15 MB resolver as runtime-confirmed for the tested architecture, while keeping the formal regression baseline at `build/hfamap-v1.4.4-20260901`.
 
-- Detect the legacy AP/IGSecret family with `APPatchItem`, selector fingerprints, Objective-C ivar type encodings, and Mach-O cstring evidence.
-- Enumerate and classify APPatchItem implementations (switch/button/slider/group/item).
-- Observe live menu objects during UI traversal and control actions.
-- Resolve action IMP image/RVA and patch-descriptor component types.
-- Emit human-readable `Documents/HFAMap_Learn.log` plus machine-readable `Documents/HFAMap_MenuMap.jsonl`.
-- Detect the newer jailpatch metadata family as `probe-only`; do not claim record/table resolution yet.
-- Preserve v1.9.27 target-chain and existing package exporters.
-- Compile, link, sign, hash-check, and publish the arm64 dylib as a GitHub Actions artifact.
+## Current milestone: jailpatch-v2 / ~5 MB
+
+Device logs from v1.9.28 established that the newer family has:
+
+- a feature-definition array made of dictionaries with stable semantic keys such as `label` and `identifier`;
+- per-feature collections of custom runtime-record objects;
+- stripped Objective-C object type encodings (`@"?"`) on the important nested record fields;
+- live menu controls and action/state methods whose IMPs reside in the target dylib.
+
+Because the type metadata is stripped, v1.9.29 profiles runtime records structurally rather than matching `IGSecret*` type names.
+
+## v1.9.29 scope
+
+- Locate menu feature arrays semantically, without obfuscated ivar names.
+- Locate per-feature runtime-record collections without hardcoding their dictionary key.
+- Profile object ivars, primitive ivars/raw bytes, nested custom objects, methods/IMP RVAs, and block invoke RVAs.
+- Emit `Documents/HFAMap_JailpatchMap.jsonl` beside existing logs.
+- Preserve v1.9.28 legacy resolver behavior and v1.9.27 exporters.
+- Reject current sample labels/classes/modules/RVAs in CI to enforce generic implementation.
 
 ## Build checkpoint
 
-- CI run: `34781824064` — success.
-- Build commit: `e2054a2196f6650e2a345ae90d46cd139daf40ba`.
-- Binary SHA256: `9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a`.
-- Runtime/device validation: pending.
+- Branch: `feature/hfamap-v1929-jailpatch-runtime-profiler`.
+- Build-tested commit: `c6293b4b1aba7b5000d7e8dd6d20785121679588`.
+- CI run: `34783065857` — success.
+- Artifact ID: `10325960671`.
+- Binary SHA256: `8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e`.
 
-## Regression baseline
+## Regression baselines
 
-- Stable formal baseline: `build/hfamap-v1.4.4-20260901`.
-- Immediate development baseline: `feature/hfamap-v1927-target-chain-resolver` at `d7d00e8a97698e8c0545390903e082dd83676166`.
+- Formal stable baseline: `build/hfamap-v1.4.4-20260901` @ `7bd19ba08a647104d230a2da299bcdd232687abf`.
+- Legacy runtime checkpoint: v1.9.28 device log with successful 12-feature package export.
+- Immediate code baseline: v1.9.29 build-tested commit above.
 
 ## Next task
 
-Run v1.9.28 on one legacy AP/IGSecret (~15 MB family) sample and collect `HFAMap_Learn.log` + `HFAMap_MenuMap.jsonl`; then run it on one jailpatch-v2 (~5 MB family) sample to recover the runtime metadata/table layout for the next resolver revision.
+Run v1.9.29 on the same ~5 MB family, open the menu, scan, exercise its visible controls, and collect `HFAMap_Learn.log`, `HFAMap_MenuMap.jsonl`, and `HFAMap_JailpatchMap.jsonl`. Use those records to identify stable table/record semantics and only then implement the next resolver stage.
