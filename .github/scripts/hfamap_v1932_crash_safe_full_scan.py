@@ -132,6 +132,16 @@ old_igmm_super = '        const char*kcn=class_getName(k);unsigned int count=0;I
 new_igmm_super = '        const char*kcn=class_getName(k);if(igmm_skip_custom(kcn))break;unsigned int count=0;Ivar*ivars=class_copyIvarList(k,&count);if(count>64)count=64;'
 l = replace_once(l, old_igmm_super, new_igmm_super, 'bound legacy iGMM superclass scan')
 
+# The old deep-probe implementation is kept for historical/diagnostic reference,
+# but it must not be reintroduced into Auto Detect. Mark it unused so -Werror
+# does not turn its intentional inactivity into a build failure.
+l = replace_once(
+    l,
+    'static void igmm_probe_target(id o){',
+    'static void __attribute__((unused)) igmm_probe_target(id o){',
+    'mark inactive historical deep probe unused',
+)
+
 # Add the semantic predicate declaration next to the profiler bridge.
 l = replace_once(
     l,
