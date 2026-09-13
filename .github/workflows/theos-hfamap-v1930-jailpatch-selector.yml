@@ -1,0 +1,197 @@
+name: HFAMapUniversal v1.9.30 JailpatchSelectorResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v1930-jailpatch-selector-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v189_patch.py'
+      - '.github/scripts/hfamap_v192_patch.py'
+      - '.github/scripts/hfamap_v193_patch.py'
+      - '.github/scripts/hfamap_v194_patch.py'
+      - '.github/scripts/hfamap_v195_patch.py'
+      - '.github/scripts/hfamap_v196_patch.py'
+      - '.github/scripts/hfamap_v197_patch.py'
+      - '.github/scripts/hfamap_v198_patch.py'
+      - '.github/scripts/hfamap_v199_patch.py'
+      - '.github/scripts/hfamap_v1910_patch.py'
+      - '.github/scripts/hfamap_v1911_patch.py'
+      - '.github/scripts/hfamap_v1912_patch.py'
+      - '.github/scripts/hfamap_v1913_patch.py'
+      - '.github/scripts/hfamap_v1914_patch.py'
+      - '.github/scripts/hfamap_v1924_dual_iosgods_probe.py'
+      - '.github/scripts/hfamap_v1925_dual_json_export.py'
+      - '.github/scripts/hfamap_v1926_igmm_implementation.py'
+      - '.github/scripts/hfamap_v1927_target_chain.py'
+      - '.github/scripts/hfamap_v1928_generic_menu.py'
+      - '.github/scripts/hfamap_v1929_jailpatch_runtime.py'
+      - '.github/scripts/hfamap_v1930_jailpatch_selector.py'
+      - '.github/workflows/theos-hfamap-v1930-jailpatch-selector.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Apply v1.9.30 JailpatchSelectorResolver
+        run: |
+          python3 .github/scripts/hfamap_v189_patch.py
+          python3 .github/scripts/hfamap_v192_patch.py
+          python3 .github/scripts/hfamap_v193_patch.py
+          python3 .github/scripts/hfamap_v194_patch.py
+          python3 .github/scripts/hfamap_v195_patch.py
+          python3 .github/scripts/hfamap_v196_patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
+          s=p.read_text()
+          old_feature='''        snprintf(definition->type, sizeof(definition->type), "%s", type);\n        HFAResolveDynamicRegistrationCandidates(identifier, type);\n        return;\n'''
+          new_feature='''        snprintf(definition->type, sizeof(definition->type), "%s", type);\n        return;\n'''
+          if s.count(old_feature)!=1: raise SystemExit(f'normalize feature type expected 1, got {s.count(old_feature)}')
+          s=s.replace(old_feature,new_feature,1)
+          old_ctor='''__attribute__((constructor)) static void HFAInit(void) {\n    HFALog("[HFALearn v1.9.6 CustomSwitchBuiltinDispatchProbe] loaded\\n");\n    HFAInstallDynamicRegistrationHooks();\n}\n'''
+          new_ctor='''__attribute__((constructor)) static void HFAInit(void) {\n    HFALog("[HFALearn v1.9.6 CustomSwitchBuiltinDispatchProbe] loaded\\n");\n}\n'''
+          if s.count(old_ctor)!=1: raise SystemExit(f'normalize constructor expected 1, got {s.count(old_ctor)}')
+          p.write_text(s.replace(old_ctor,new_ctor,1))
+          PY
+          python3 .github/scripts/hfamap_v197_patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
+          s=p.read_text()
+          old_feature='''        snprintf(definition->type, sizeof(definition->type), "%s", type);\n        if (strcmp(type, "customSwitch") == 0)\n            HFAAssociateNativeHookWithCustomSwitch(identifier);\n        return;\n'''
+          new_feature='''        snprintf(definition->type, sizeof(definition->type), "%s", type);\n        HFAResolveDynamicRegistrationCandidates(identifier, type);\n        if (strcmp(type, "customSwitch") == 0)\n            HFAAssociateNativeHookWithCustomSwitch(identifier);\n        return;\n'''
+          if s.count(old_feature)!=1: raise SystemExit(f'restore feature type expected 1, got {s.count(old_feature)}')
+          s=s.replace(old_feature,new_feature,1)
+          old_ctor='''__attribute__((constructor)) static void HFAInit(void) {\n    HFALog("[HFALearn v1.9.7 CustomSwitchNativeHookProbe] loaded\\n");\n    _dyld_register_func_for_add_image(HFANativeImageAdded);\n}\n'''
+          new_ctor='''__attribute__((constructor)) static void HFAInit(void) {\n    HFALog("[HFALearn v1.9.7 CustomSwitchNativeHookProbe] loaded\\n");\n    _dyld_register_func_for_add_image(HFANativeImageAdded);\n    HFAInstallDynamicRegistrationHooks();\n}\n'''
+          if s.count(old_ctor)!=1: raise SystemExit(f'restore constructor expected 1, got {s.count(old_ctor)}')
+          p.write_text(s.replace(old_ctor,new_ctor,1))
+          PY
+          python3 .github/scripts/hfamap_v198_patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
+          s=p.read_text()
+          anchor='''static int64_t HFAStaticSignExtend(uint64_t value, unsigned bits) {\n'''
+          prototypes='''static int HFAReadable(uintptr_t address, size_t length);\nstatic uintptr_t HFAStripCodePointer(uintptr_t value);\nstatic uintptr_t HFAResolveTrampoline(uintptr_t original);\n\n'''
+          if s.count(anchor)!=1: raise SystemExit(f'prototype anchor expected 1, got {s.count(anchor)}')
+          p.write_text(s.replace(anchor,prototypes+anchor,1))
+          PY
+          python3 .github/scripts/hfamap_v199_patch.py
+          python3 .github/scripts/hfamap_v1910_patch.py
+          python3 .github/scripts/hfamap_v1911_patch.py
+          python3 .github/scripts/hfamap_v1912_patch.py
+          python3 .github/scripts/hfamap_v1913_patch.py
+          python3 .github/scripts/hfamap_v1914_patch.py
+          python3 .github/scripts/hfamap_v1924_dual_iosgods_probe.py
+          python3 .github/scripts/hfamap_v1925_dual_json_export.py
+          python3 .github/scripts/hfamap_v1926_igmm_implementation.py
+          python3 .github/scripts/hfamap_v1927_target_chain.py
+          python3 .github/scripts/hfamap_v1928_generic_menu.py
+          python3 .github/scripts/hfamap_v1929_jailpatch_runtime.py
+          cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/HFAMapPatchExecutionTrace.before1930.m
+          cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.before1930.m
+          cp hfamap/src/HFAMapGenericMenuResolver.m /tmp/HFAMapGenericMenuResolver.before1930.m
+          cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/HFAMapJailpatchRuntimeProfiler.before1930.m
+          python3 .github/scripts/hfamap_v1930_jailpatch_selector.py
+          git diff --check -- hfamap/src/HFAMapPatchExecutionTrace.m hfamap/src/HFAMapLegacy.m hfamap/src/HFAMapGenericMenuResolver.m hfamap/src/HFAMapJailpatchRuntimeProfiler.m hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify previous behavior remains intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          def extract_function(text, signature):
+              start=text.index(signature)
+              brace=text.index('{', start)
+              depth=0
+              for i in range(brace, len(text)):
+                  if text[i]=='{': depth+=1
+                  elif text[i]=='}':
+                      depth-=1
+                      if depth==0: return text[start:i+1]
+              raise RuntimeError(signature)
+          before=Path('/tmp/HFAMapPatchExecutionTrace.before1930.m').read_text()
+          after=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          for sig in (
+              'static void HFAWritePatchPackage(NSArray *features, NSDictionary *targets)',
+              'static void HFAWriteIGMMPackage(id menuTarget, NSArray *rawFeatures)',
+          ):
+              if extract_function(before,sig) != extract_function(after,sig):
+                  raise SystemExit(f'exporter changed: {sig}')
+          print('previous exporters are byte-identical')
+          PY
+          grep -q '\[FULL-MAPPING\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[IGMM-PACKAGE-EXPORT\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[GENERIC-MENU-ITEM\]' hfamap/src/HFAMapGenericMenuResolver.m
+          grep -q '\[JAILPATCH-RECORD\]' hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+
+      - name: Verify JailpatchSelectorResolver invariants
+        run: |
+          grep -q 'HFALearn v1.9.30 JailpatchSelectorResolver' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFALearn UI v1.9.30 JailpatchSelectorResolver' hfamap/src/HFAMapLegacy.m
+          grep -q '\[DUAL-IOSGODS-MODE\].*jailpatch=selector-resolver' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAJailpatchResolveRecord(record, identifier.UTF8String, label.UTF8String)' hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          for sel in identifier type architecture active offset signature range searchDirection 'setActive:' secret; do
+            grep -q "\"$sel\"" hfamap/src/HFAMapJailpatchSelectorResolver.m
+          done
+          grep -q 'HFARegisterPatchSecret(record, offsetWrapper, "IGSecretInt")' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'HFARegisterPatchSecret(record, patchCandidate, "IGSecretData")' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'patchCandidateCount == 1' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q '\[JAILPATCH-SELECTOR-DESCRIPTOR\]' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'jailpatch-selector-descriptor' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          for forbidden in 'Freeze Currencies' 'Free Purchase' 'Free Subscriptions' 'Damage Multiplier' 'God Mode' 'SqblAE' 'NiGyvZ' 'ptYowqx' 'CDfKrxTiWivH' 'kOYOjVAxiGP' 'YpcUWSkGnguMnao' 'libRiseofBerk' 'libpathofkings' '0x349128' '0x3692FC' '0x4B6848' '0x543CB8'; do
+            if grep -q "$forbidden" .github/scripts/hfamap_v1930_jailpatch_selector.py hfamap/src/HFAMapJailpatchSelectorResolver.m; then
+              echo "hardcoded sample token: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Build and verify HFAMapUniversal v1.9.30
+        run: |
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAMapUniversal_v1.9.30_JailpatchSelectorResolver.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.30.txt
+          strings "$out" | grep -q "HFALearn v1.9.30 JailpatchSelectorResolver"
+          strings "$out" | grep -q "HFALearn UI v1.9.30 JailpatchSelectorResolver"
+          strings "$out" | grep -q "HFAMap v1.9.30 JailpatchSelectorResolver"
+          strings "$out" | grep -q "\[JAILPATCH-SELECTOR-DESCRIPTOR\]"
+          strings "$out" | grep -q "jailpatch-selector-descriptor"
+          strings "$out" | grep -q "\[JAILPATCH-TARGET\]"
+          strings "$out" | grep -q "HFAMap_JailpatchMap.jsonl"
+          strings "$out" | grep -q "\[FULL-MAPPING\]"
+          strings "$out" | grep -q "\[IGMM-PACKAGE-EXPORT\]"
+          ls -lh "$out"
+
+      - name: Verify distributable files
+        run: |
+          cd hfamap
+          test -f dist/HFAMapUniversal_v1.9.30_JailpatchSelectorResolver.dylib
+          test -f dist/SHA256_v1.9.30.txt
+          shasum -a 256 -c dist/SHA256_v1.9.30.txt
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.30-JailpatchSelectorResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.30_JailpatchSelectorResolver.dylib
+            hfamap/dist/SHA256_v1.9.30.txt
+          if-no-files-found: error
