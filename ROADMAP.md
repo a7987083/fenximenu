@@ -2,48 +2,66 @@
 
 ## Current phase
 
-v1.9.29 JailpatchRuntimeProfiler — 5 MB device validation
+v1.9.30 JailpatchSelectorResolver — 5 MB selector-bridge device validation
 
 ## Completed milestone: legacy AP / ~15 MB
 
-The v1.9.28 GenericMenuResolver has now been validated on-device for the legacy AP/IGSecret family. The supplied runtime evidence produced 12 mapped features, real UnityFramework RVAs, original/enabled bytes, action IMP metadata, and a successful `.hfapatch.json` export.
+The v1.9.28 GenericMenuResolver is runtime-confirmed on the tested legacy AP/IGSecret architecture. Device evidence produced 12 valid patch mappings, UnityFramework RVAs, original/enabled bytes, action IMP metadata, and successful `.hfapatch.json` export.
 
-This establishes the legacy ~15 MB resolver as runtime-confirmed for the tested architecture, while keeping the formal regression baseline at `build/hfamap-v1.4.4-20260901`.
+Formal regression baseline remains:
 
-## Current milestone: jailpatch-v2 / ~5 MB
+`build/hfamap-v1.4.4-20260901 @ 7bd19ba08a647104d230a2da299bcdd232687abf`
 
-Device logs from v1.9.28 established that the newer family has:
+## Completed milestone: jailpatch runtime profiling / ~5 MB
 
-- a feature-definition array made of dictionaries with stable semantic keys such as `label` and `identifier`;
-- per-feature collections of custom runtime-record objects;
-- stripped Objective-C object type encodings (`@"?"`) on the important nested record fields;
-- live menu controls and action/state methods whose IMPs reside in the target dylib.
+v1.9.29 device logs established that the newer runtime-record family preserves stable semantic behavior despite randomized names and stripped declared object types:
 
-Because the type metadata is stripped, v1.9.29 profiles runtime records structurally rather than matching `IGSecret*` type names.
+- feature dictionaries with stable `label` and `identifier` semantics;
+- per-feature custom runtime-record collections;
+- descriptor-like records exposing `identifier`, `type`, `architecture`, `active`, `offset`, `signature`, `range`, `searchDirection`, and `setActive:`;
+- secret-wrapper objects exposing the stable `secret` interface;
+- record strings that include feature keys/identifiers and module text;
+- compatible semantic property/selector fingerprints across both supplied ~5 MB dylibs.
 
-## v1.9.29 scope
+A second ~5 MB path also produced a valid WayOfKings patch package via the already-existing iGMM path, which remains a required regression path.
 
-- Locate menu feature arrays semantically, without obfuscated ivar names.
-- Locate per-feature runtime-record collections without hardcoding their dictionary key.
-- Profile object ivars, primitive ivars/raw bytes, nested custom objects, methods/IMP RVAs, and block invoke RVAs.
-- Emit `Documents/HFAMap_JailpatchMap.jsonl` beside existing logs.
-- Preserve v1.9.28 legacy resolver behavior and v1.9.27 exporters.
-- Reject current sample labels/classes/modules/RVAs in CI to enforce generic implementation.
+## Current milestone: v1.9.30 selector resolver
+
+v1.9.30 promotes the runtime profiler evidence into a generic resolver without relying on obfuscated class/ivar names, current feature labels, sample module names, or sample RVAs.
+
+Resolver policy:
+
+- Require the stable descriptor selector fingerprint.
+- Reuse semantic getters rather than field-name guesses.
+- Discover `secret` wrappers through runtime behavior even when ObjC type metadata is `@"?"`.
+- Register `offset` through the existing offset-wrapper path.
+- Exclude `offset` and `signature` from patch-data candidates.
+- Only auto-register patch data when exactly one remaining secret-wrapper candidate exists.
+- Fall back to evidence-only mode on ambiguity.
+- Reuse the mature v1.9.27 mapping/decrypt/group/full-export pipeline rather than adding a second decrypt implementation.
 
 ## Build checkpoint
 
-- Branch: `feature/hfamap-v1929-jailpatch-runtime-profiler`.
-- Build-tested commit: `c6293b4b1aba7b5000d7e8dd6d20785121679588`.
-- CI run: `34783065857` — success.
-- Artifact ID: `10325960671`.
-- Binary SHA256: `8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e`.
+- Branch: `feature/hfamap-v1930-jailpatch-selector-resolver`.
+- Base: `feature/hfamap-v1929-jailpatch-runtime-profiler` @ `0ddbac96ddae0a0162711ce4d7e979d7d1b95438`.
+- Build-tested code commit: `786a26eb66a3aa22d1f1c1ef7a94910e7f8b6f42`.
+- CI run: `34785200383` — success.
+- Artifact ID: `10326735655`.
+- Binary SHA256: `6c716180e7e5a2659cfb538e6ca6ee217773a0ce583741f9d1e43f0f140f9d14`.
+- Previous exporter byte-identity/regression checks: passed.
+- Sample-specific hardcode checks: passed.
+- v1.9.30 device validation: pending.
 
-## Regression baselines
+## Regression checkpoints
 
-- Formal stable baseline: `build/hfamap-v1.4.4-20260901` @ `7bd19ba08a647104d230a2da299bcdd232687abf`.
-- Legacy runtime checkpoint: v1.9.28 device log with successful 12-feature package export.
-- Immediate code baseline: v1.9.29 build-tested commit above.
+- Formal stable baseline: v1.4.4 exact branch/SHA above.
+- Legacy runtime checkpoint: v1.9.28 15 MB, 12-feature successful package export.
+- Jailpatch profiling checkpoint: v1.9.29 5 MB runtime records/selectors confirmed.
+- iGMM checkpoint: WayOfKings-style ~5 MB package export remains functional.
+- Immediate code checkpoint: v1.9.30 build-tested commit above.
 
 ## Next task
 
-Run v1.9.29 on the same ~5 MB family, open the menu, scan, exercise its visible controls, and collect `HFAMap_Learn.log`, `HFAMap_MenuMap.jsonl`, and `HFAMap_JailpatchMap.jsonl`. Use those records to identify stable table/record semantics and only then implement the next resolver stage.
+Run v1.9.30 on the runtime-record style ~5 MB sample, open its original menu, run `Auto Detect / Full Scan`, exercise all visible controls, and collect `HFAMap_Learn.log`, `HFAMap_MenuMap.jsonl`, `HFAMap_JailpatchMap.jsonl`, plus any generated `.hfapatch.json`.
+
+Promote v1.9.30 to runtime-confirmed only if the evidence chain reaches valid `[MAP-DECRYPT]` and `[MAPPING]`/`[FULL-MAPPING]` output (or package export). If the bridge remains ambiguous, refine the discriminator from cross-sample runtime evidence rather than hardcoding names or offsets.
