@@ -1,48 +1,66 @@
 # Known Issues
 
-## v1.9.30 JailpatchSelectorResolver
+## v1.9.31 GenericSecretDecryptResolver
 
-### Selector bridge is not yet device-confirmed
+### Generic 5 MB decrypt resolution is not yet device-confirmed
 
 Status: open / current validation target.
 
-v1.9.29 device logs and cross-sample static metadata establish a stable descriptor selector/property fingerprint for the runtime-record style ~5 MB family. v1.9.30 bridges that fingerprint into the existing offset/patch mapping pipeline, but the new bridge itself has not yet been run on-device. CI success must not be reported as runtime mapping success.
+v1.9.30 device evidence confirms the selector descriptor and secret-wrapper association, but its inherited fixed decrypt locator failed. v1.9.31 replaces that locator with an image-local `__TEXT,__text` fingerprint scan. CI proves the implementation compiles and preserves prior paths; it does not prove that the scanned function decrypts the live 5 MB secret successfully. Require device evidence showing `[MAP-DECRYPT-RESOLVE] mode=text-fingerprint matches=1` followed by `[MAP-DECRYPT] rc=0` before marking this resolved.
 
-### Patch-data candidate inference requires uniqueness
+### v1.9.30 fixed decrypt locator fails on runtime-record 5 MB
 
-Status: intentionally conservative.
+Status: understood / superseded by v1.9.31.
 
-The descriptor exposes `offset` and `signature` getters plus additional secret-wrapper objects. v1.9.30 excludes the getter-resolved `offset` and `signature` wrappers, then registers patch data only when exactly one other object implementing `secret` remains. If zero or multiple candidates remain, the resolver reports evidence-only instead of guessing. Device evidence may require a stronger generic discriminator in a later revision.
+The v1.9.30 selector bridge itself is device-confirmed. It associated `offset` and the unique remaining patch-data secret-wrapper and reached the mature `[MAPPING]` path. The failure was the legacy assumption that the decrypt routine resides at `secret getter + 0xD00`. The tested 5 MB candidate at that location did not match HFAMap's established decrypt instruction fingerprint, so decrypted offset/patch data remained unavailable and mapping validity stayed false.
+
+### Cross-sample decrypt fingerprint uniqueness is static evidence, not runtime proof
+
+Status: understood.
+
+Both supplied ~5 MB dylibs contain exactly one `__TEXT,__text` function matching the same three-instruction fingerprint used to validate the legacy decrypt routine. Observed decrypt RVAs are `0x2123D4` and `0x2129A4`; the observed getter-to-decrypt delta is `0x1204` in both files. v1.9.31 intentionally does not hardcode those RVAs or that delta. A future build must continue to reject ambiguous scans rather than selecting the nearest match.
+
+### Patch-data candidate inference still requires uniqueness
+
+Status: intentionally conservative / runtime-confirmed for the tested records.
+
+The selector resolver excludes the getter-resolved `offset` and `signature` wrappers and registers patch data only when exactly one other object implementing `secret` remains. The v1.9.30 runtime capture satisfied this rule for the observed runtime records. New samples with zero or multiple remaining candidates will still fall back to evidence-only mode instead of guessing.
 
 ### Important jailpatch object ivars use stripped type metadata
 
 Status: understood / handled.
 
-Relevant object ivars can be declared as `@"?"`; therefore class-name/type-encoding matching is not considered a stable discriminator. v1.9.30 relies on selector semantics, live object behavior, and the `secret` interface instead.
+Relevant object ivars can be declared as `@"?"`; class-name/type-encoding matching is therefore not considered a stable discriminator. The current resolver uses selector semantics, live object behavior, and the `secret` interface.
 
-### Two ~5 MB menu paths exist in the supplied evidence
+### Two ~5 MB menu paths remain supported
 
 Status: understood / regression requirement.
 
-One supplied sample exposes populated per-feature runtime-record arrays and is the target of the new selector resolver. Another supplied sample reached a successful `.hfapatch.json` export through the existing iGMM implementation/target-chain path even though its profiler capture did not expose populated runtime-record arrays. The selector resolver must augment, not replace, the existing iGMM path.
+One supplied sample uses populated per-feature runtime records and is handled by the selector/decrypt path. Another supplied sample has already generated a `.hfapatch.json` package through the pre-existing iGMM implementation/target-chain path. v1.9.31 augments the runtime-record path and must not replace or break the iGMM path.
 
-### v1.9.30 has not been runtime-regression-tested on ~15 MB
+### v1.9.31 has not been runtime-regression-tested on ~15 MB
 
 Status: open / low priority.
 
-CI verifies that previous exporter functions remain byte-identical and the legacy resolver/mapping strings remain present. The ~15 MB architecture was runtime-confirmed under v1.9.28, but v1.9.30 itself has not been re-injected into that target, so a v1.9.30-on-15MB runtime regression must not be claimed.
+The legacy AP/IGSecret architecture was runtime-confirmed under v1.9.28. v1.9.31 keeps the previously validated `getter + 0xD00` candidate as its first fast path and requires the same decrypt instruction fingerprint, while CI verifies previous exporters and mapping paths remain intact. However, v1.9.31 itself has not been re-injected into a 15 MB target, so runtime regression success must not be claimed yet.
 
 ### Menu visibility remains required for live runtime records
 
 Status: design limitation.
 
-Open the original menu before `Auto Detect / Full Scan`, then operate visible controls. Class-level evidence can exist earlier, but populated feature arrays, runtime records, state changes, and mapping hooks require live objects.
+Open the original menu before `Auto Detect / Full Scan`, then operate visible controls. Populated feature arrays, runtime records, state changes, and mapping hooks require live objects.
+
+### Generic `__text` scan cost
+
+Status: monitored.
+
+When the legacy decrypt fast path fails, v1.9.31 scans the loaded image's `__TEXT,__text` section in 4-byte steps for a three-instruction fingerprint. The result is cached per image, so the full scan should occur once per relevant image rather than for every secret wrapper. Device logs should still be checked for startup or scan-time regressions.
 
 ### Profiling logs remain intentionally verbose
 
 Status: monitored.
 
-The v1.9.29 structural profiler is retained beside the v1.9.30 resolver so failed/ambiguous bridges still produce enough evidence to refine generic rules. `HFAMap_JailpatchMap.jsonl` and `HFAMap_Learn.log` can therefore be large during this development phase.
+The structural profiler remains active beside the selector/decrypt resolver so any zero/ambiguous fingerprint or wrapper case retains enough evidence for the next revision. `HFAMap_JailpatchMap.jsonl` and `HFAMap_Learn.log` can be large during this development phase.
 
 ### CI delivery is artifact-only
 
