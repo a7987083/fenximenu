@@ -3,10 +3,12 @@ from pathlib import Path
 patch_path = Path("hfamap/src/HFAMapPatchExecutionTrace.m")
 legacy_path = Path("hfamap/src/HFAMapLegacy.m")
 generic_path = Path("hfamap/src/HFAMapGenericMenuResolver.m")
+profiler_path = Path("hfamap/src/HFAMapJailpatchRuntimeProfiler.m")
 
 s = patch_path.read_text()
 l = legacy_path.read_text()
 g = generic_path.read_text()
+j = profiler_path.read_text()
 
 
 def replace_once(text, old, new, label):
@@ -94,6 +96,16 @@ l = replace_once(
     'update panel help',
 )
 
+# Do not permanently mark a target as profiled before its feature array exists.
+# Some menus create the controller first and populate definitions only when opened.
+j = replace_once(
+    j,
+    '''void HFAJailpatchProfileTarget(id target, const char *context) {\n    if (!target || HFAJPSeenTarget(target)) return;\n    @autoreleasepool {\n        @try {\n            NSString *arrayIvar = nil;\n            NSArray *features = HFAJPFindFeatureArray(target, &arrayIvar);\n            if (!features.count) return;\n''',
+    '''void HFAJailpatchProfileTarget(id target, const char *context) {\n    if (!target) return;\n    @autoreleasepool {\n        @try {\n            NSString *arrayIvar = nil;\n            NSArray *features = HFAJPFindFeatureArray(target, &arrayIvar);\n            if (!features.count) return;\n            if (HFAJPSeenTarget(target)) return;\n''',
+    'defer jailpatch target dedupe until features exist',
+)
+
 patch_path.write_text(s)
 legacy_path.write_text(l)
 generic_path.write_text(g)
+profiler_path.write_text(j)
