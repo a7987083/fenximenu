@@ -182,14 +182,12 @@ jobs:
           strings "$out" | grep -q "\[FULL-MAPPING\]"
           ls -lh "$out"
 
-      - name: Publish raw dylib
+      - name: Verify distributable files
         run: |
-          git checkout -- hfamap/src/HFAMapPatchExecutionTrace.m hfamap/src/HFAMapLegacy.m
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f hfamap/dist/HFAMapUniversal_v1.9.28_GenericMenuResolver.dylib hfamap/dist/SHA256_v1.9.28.txt
-          git commit -m "Publish HFAMapUniversal v1.9.28 dylib [skip ci]" || exit 0
-          git push origin HEAD:feature/hfamap-v1928-generic-menu-resolver
+          cd hfamap
+          test -f dist/HFAMapUniversal_v1.9.28_GenericMenuResolver.dylib
+          test -f dist/SHA256_v1.9.28.txt
+          shasum -a 256 -c dist/SHA256_v1.9.28.txt
 
       - name: Upload build output
         uses: actions/upload-artifact@v4
