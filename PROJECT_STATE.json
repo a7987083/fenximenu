@@ -1,9 +1,10 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.29",
-  "phase": "jailpatch-runtime-record-profiling",
-  "branch": "feature/hfamap-v1929-jailpatch-runtime-profiler",
-  "base_branch": "feature/hfamap-v1928-generic-menu-resolver",
+  "version": "1.9.30",
+  "phase": "jailpatch-selector-resolver-device-validation",
+  "branch": "feature/hfamap-v1930-jailpatch-selector-resolver",
+  "base_branch": "feature/hfamap-v1929-jailpatch-runtime-profiler",
+  "base_commit": "0ddbac96ddae0a0162711ce4d7e979d7d1b95438",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -11,36 +12,53 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34783065857,
-    "build_commit": "c6293b4b1aba7b5000d7e8dd6d20785121679588",
-    "artifact_id": 10325960671,
-    "artifact": "HFAMapUniversal-v1.9.29-JailpatchRuntimeProfiler",
-    "binary": "HFAMapUniversal_v1.9.29_JailpatchRuntimeProfiler.dylib",
+    "run_id": 34785200383,
+    "build_commit": "786a26eb66a3aa22d1f1c1ef7a94910e7f8b6f42",
+    "artifact_id": 10326735655,
+    "artifact": "HFAMapUniversal-v1.9.30-JailpatchSelectorResolver",
+    "binary": "HFAMapUniversal_v1.9.30_JailpatchSelectorResolver.dylib",
     "architecture": "arm64",
-    "sha256": "8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e"
+    "sha256": "6c716180e7e5a2659cfb538e6ca6ee217773a0ce583741f9d1e43f0f140f9d14"
   },
   "verification": {
     "patch_chain": "passed",
-    "v1928_behavior_preserved": true,
+    "previous_behavior_preserved": true,
     "legacy_and_igmm_exporters_byte_identical": true,
-    "jailpatch_profiler_invariants": "passed",
+    "jailpatch_selector_invariants": "passed",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed"
   },
   "runtime": {
-    "v1928_device_tested": true,
-    "legacy_ap": "runtime-confirmed-package-exported-12-features",
-    "jailpatch_v2_v1928": "runtime-structure-confirmed",
-    "jailpatch_v2_v1929": "profiler-built-awaiting-device-log"
+    "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features",
+    "jailpatch_v2_v1929": "device-profiled-runtime-record-structure-confirmed",
+    "jailpatch_v2_wayofkings_igmm": "device-confirmed-package-exported-via-existing-igmm-path",
+    "jailpatch_v2_v1930": "compiled-awaiting-device-validation"
   },
   "runtime_evidence": {
     "legacy_ap": "APPatchItem + descriptors + UnityFramework RVAs + original/enabled bytes + hfapatch export confirmed",
-    "jailpatch_v2": "3 feature dictionaries and per-feature runtime-record arrays confirmed; ObjC descriptor type encodings are stripped to @\"?\" so v1.9.29 profiles record objects structurally"
+    "jailpatch_record_family": "Runtime records expose stable selectors identifier/type/architecture/active/offset/signature/range/searchDirection/setActive: despite randomized class and ivar names. Important object ivars use stripped type metadata @\"?\".",
+    "cross_sample_static": "Both supplied ~5 MB dylibs preserve the same descriptor property/selector fingerprint and compatible secret-wrapper interface even though obfuscated class/ivar names differ.",
+    "wayofkings": "Existing iGMM path exported com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json; v1.9.30 must preserve that path."
+  },
+  "resolver_strategy": {
+    "descriptor_fingerprint": [
+      "identifier",
+      "type",
+      "architecture",
+      "active",
+      "offset",
+      "signature",
+      "range",
+      "searchDirection",
+      "setActive:"
+    ],
+    "bridge": "Reuse existing HFARegisterPatchObject/HFARegisterPatchSecret/HFARegisterPatchString and mature HFAEmitMapping/decrypt/export pipeline.",
+    "safety": "Only auto-assign IGSecretData when exactly one secret-wrapper candidate remains after excluding offset/signature; otherwise evidence-only."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
     "Documents/HFAMap_JailpatchMap.jsonl"
   ],
-  "next_task": "Inject v1.9.29 into the 5 MB jailpatch sample, open the menu, run Auto Detect / Full Scan, exercise the three switches, and collect all three logs. Use the resulting object/method/ivar/block evidence to resolve runtime-table semantics without hardcoded obfuscated names or sample RVAs."
+  "next_task": "Inject v1.9.30 into the runtime-record style ~5 MB sample, open its original menu, run Auto Detect / Full Scan, exercise visible controls, and collect all three logs plus any generated .hfapatch.json. Validate JAILPATCH-SELECTOR-DESCRIPTOR -> MAP-DECRYPT -> MAPPING/GROUP-MAPPING/FULL-MAPPING before calling the 5 MB selector resolver runtime-confirmed."
 }
