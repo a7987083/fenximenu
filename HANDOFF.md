@@ -2,68 +2,70 @@
 
 ## Current branch
 
-`feature/hfamap-v1928-generic-menu-resolver`
+`feature/hfamap-v1929-jailpatch-runtime-profiler`
 
-## Base
+## Current build
 
-`feature/hfamap-v1927-target-chain-resolver`
-HEAD before v1.9.28 work: `d7d00e8a97698e8c0545390903e082dd83676166`
-Build-tested v1.9.28 commit: `e2054a2196f6650e2a345ae90d46cd139daf40ba`
-
-## Build state
-
-- GitHub Actions run: `34781824064` — success.
-- Artifact: `HFAMapUniversal-v1.9.28-GenericMenuResolver` (ID `10324649442`).
-- Binary: `HFAMapUniversal_v1.9.28_GenericMenuResolver.dylib`.
+- Build-tested code commit: `c6293b4b1aba7b5000d7e8dd6d20785121679588`
+- GitHub Actions run: `34783065857` — success.
+- Artifact: `HFAMapUniversal-v1.9.29-JailpatchRuntimeProfiler` (ID `10325960671`).
+- Binary: `HFAMapUniversal_v1.9.29_JailpatchRuntimeProfiler.dylib`.
 - Architecture: arm64 Mach-O dylib.
-- SHA256: `9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a`.
-- v1.9.27 legacy/iGMM exporters verified byte-identical across the v1.9.28 integration patch.
-- Device tested: no.
+- SHA256: `8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e`.
 
-## Architecture
+## Confirmed v1.9.28 device evidence
 
-v1.9.28 adds an independent resolver source instead of rewriting the v1.9.27 implementation resolver. The historical patch stack is still applied during CI, then `.github/scripts/hfamap_v1928_generic_menu.py` updates version markers and bridges the new resolver into the existing runtime UI/action traversal.
+### Legacy AP / ~15 MB
 
-### Legacy AP/IGSecret path
+Runtime-confirmed. The device log produced a `legacy-ap` resolver classification, 12 valid feature mappings, UnityFramework RVAs, original/enabled bytes, action IMP metadata, and a successful `.hfapatch.json` export. This path is no longer merely “compiled-ready”.
 
-Recognition is based on stable runtime structure:
+### Jailpatch-v2 / ~5 MB
 
-`APPatchItem` protocol or `identifier/type/currentState/setCurrentState:` method fingerprint
-→ class hierarchy (UIButton / UISlider / UIControl / container)
-→ ivar type encodings (`IGSecretInt`, `IGSecretData`, `IGSecretString`, `APSubpatchManager`, `IGCodePatch`)
-→ live object/action observation
-→ target method IMP image/RVA
-→ existing HFAMap descriptor/secret registration.
+The v1.9.28 device log confirmed a three-feature definition array and per-feature runtime-record collections. The menu items expose `identifier/type/currentState/setCurrentState:` behavior, but nested descriptor-like ivars have Objective-C type encoding `@"?"`; therefore the legacy `IGSecret*` type-name fingerprint cannot identify the record layout.
 
-No obfuscated class names, ivar names, game feature labels, or sample RVAs are hardcoded in the new resolver.
+## v1.9.29 design
 
-### New jailpatch path
+The new profiler does not depend on obfuscated class names, ivar names, game labels, module names, or sample RVAs.
 
-v1.9.28 only detects marker evidence such as `.app-key-metadata-`, `JailpatchConfigValidator`, `Jailpatch runtime table`, and `jailpatch`. It logs `family=jailpatch-v2 mode=probe-only`; no record/table layout is assumed yet.
+Discovery chain:
+
+`menu target`
+→ find NSArray whose entries are dictionaries with non-empty `label` + `identifier`
+→ for each feature, locate remaining collection containing custom runtime objects
+→ recursively profile runtime records
+→ object ivars / primitive ivars / nested custom objects
+→ class methods + type encodings + IMP image/RVA
+→ block invoke image/RVA
+→ structured JSONL evidence.
+
+The target is marked “already profiled” only after a populated feature array exists, so observing the controller before the menu is populated does not suppress a later real scan.
 
 ## Runtime outputs
 
 - `Documents/HFAMap_Learn.log`
 - `Documents/HFAMap_MenuMap.jsonl`
+- `Documents/HFAMap_JailpatchMap.jsonl`
 
-Expected new tags include:
+Important v1.9.29 tags:
 
-- `[GENERIC-ARCH]`
-- `[GENERIC-ARCH-IMAGE]`
-- `[GENERIC-CLASS]`
-- `[GENERIC-IVAR]`
-- `[GENERIC-MENU-ITEM]`
-- `[GENERIC-DESCRIPTOR]`
-- `[GENERIC-DESCRIPTOR-IVAR]`
-- `[GENERIC-ACTION]`
-- `[GENERIC-CLASS-SCAN]`
+- `[JAILPATCH-TARGET]`
+- `[JAILPATCH-FEATURE]`
+- `[JAILPATCH-RECORD]`
+- `[JAILPATCH-CLASS]`
+- `[JAILPATCH-METHOD]`
+- `[JAILPATCH-IVAR]`
+- `[JAILPATCH-SCALAR]`
+- `[JAILPATCH-STRING]`
+- `[JAILPATCH-BLOCK]`
 
 ## Next validation
 
-1. Inject the v1.9.28 dylib into one legacy AP/IGSecret (~15 MB family) target, open its menu, run `Auto Detect / Full Scan`, and collect both runtime logs.
-2. Repeat with one jailpatch-v2 (~5 MB family) target. The expected result for this family is architecture/probe evidence, not a completed menu-record mapping yet.
-3. Only after the legacy sample produces stable menu/descriptor/action evidence should v1.9.28 be marked runtime-confirmed.
+Inject v1.9.29 into the ~5 MB target, open the original menu, run `Auto Detect / Full Scan`, then operate each visible switch at least once. Collect all three files above. The next engineering step is to identify the stable semantics of the nested runtime-record objects/table from that evidence, not to hardcode the current sample classes or offsets.
 
 ## Verification discipline
 
-Do not call v1.9.28 device-tested until a dylib has actually been injected and the two runtime logs have been collected. CI success means compiled + linked + signed + invariant-tested + artifact-delivered; it does not mean device/runtime validation.
+- v1.9.29 source integrated: yes.
+- v1.9.29 compiled/linked/signed: yes.
+- CI/invariants/SHA256: passed.
+- v1.9.29 5 MB device tested: no.
+- v1.9.28 15 MB device tested: yes.
