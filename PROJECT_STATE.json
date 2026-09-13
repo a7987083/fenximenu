@@ -1,11 +1,9 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.28",
-  "phase": "generic-menu-resolver-device-validation",
-  "branch": "feature/hfamap-v1928-generic-menu-resolver",
-  "base_branch": "feature/hfamap-v1927-target-chain-resolver",
-  "base_commit": "d7d00e8a97698e8c0545390903e082dd83676166",
-  "build_commit": "e2054a2196f6650e2a345ae90d46cd139daf40ba",
+  "version": "1.9.29",
+  "phase": "jailpatch-runtime-record-profiling",
+  "branch": "feature/hfamap-v1929-jailpatch-runtime-profiler",
+  "base_branch": "feature/hfamap-v1928-generic-menu-resolver",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -13,28 +11,36 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34781824064,
-    "artifact_id": 10324649442,
-    "artifact": "HFAMapUniversal-v1.9.28-GenericMenuResolver",
-    "binary": "HFAMapUniversal_v1.9.28_GenericMenuResolver.dylib",
+    "run_id": 34783065857,
+    "build_commit": "c6293b4b1aba7b5000d7e8dd6d20785121679588",
+    "artifact_id": 10325960671,
+    "artifact": "HFAMapUniversal-v1.9.29-JailpatchRuntimeProfiler",
+    "binary": "HFAMapUniversal_v1.9.29_JailpatchRuntimeProfiler.dylib",
     "architecture": "arm64",
-    "sha256": "9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a"
+    "sha256": "8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e"
   },
   "verification": {
     "patch_chain": "passed",
-    "v1927_exporters_byte_identical": true,
-    "generic_invariants": "passed",
+    "v1928_behavior_preserved": true,
+    "legacy_and_igmm_exporters_byte_identical": true,
+    "jailpatch_profiler_invariants": "passed",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed"
   },
   "runtime": {
-    "device_tested": false,
-    "legacy_ap": "compiled-ready-for-device-validation",
-    "jailpatch_v2": "probe-only"
+    "v1928_device_tested": true,
+    "legacy_ap": "runtime-confirmed-package-exported-12-features",
+    "jailpatch_v2_v1928": "runtime-structure-confirmed",
+    "jailpatch_v2_v1929": "profiler-built-awaiting-device-log"
+  },
+  "runtime_evidence": {
+    "legacy_ap": "APPatchItem + descriptors + UnityFramework RVAs + original/enabled bytes + hfapatch export confirmed",
+    "jailpatch_v2": "3 feature dictionaries and per-feature runtime-record arrays confirmed; ObjC descriptor type encodings are stripped to @\"?\" so v1.9.29 profiles record objects structurally"
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
-    "Documents/HFAMap_MenuMap.jsonl"
+    "Documents/HFAMap_MenuMap.jsonl",
+    "Documents/HFAMap_JailpatchMap.jsonl"
   ],
-  "next_task": "Inject v1.9.28 into one legacy AP/IGSecret sample and one jailpatch-v2 sample; collect HFAMap_Learn.log and HFAMap_MenuMap.jsonl for runtime validation."
+  "next_task": "Inject v1.9.29 into the 5 MB jailpatch sample, open the menu, run Auto Detect / Full Scan, exercise the three switches, and collect all three logs. Use the resulting object/method/ivar/block evidence to resolve runtime-table semantics without hardcoded obfuscated names or sample RVAs."
 }
