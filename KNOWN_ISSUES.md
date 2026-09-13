@@ -1,45 +1,51 @@
 # Known Issues
 
-## v1.9.29 JailpatchRuntimeProfiler
+## v1.9.30 JailpatchSelectorResolver
 
-### Jailpatch-v2 table semantics are not yet resolved
+### Selector bridge is not yet device-confirmed
 
-Status: open / expected.
+Status: open / current validation target.
 
-The v1.9.28 device log proved that the ~5 MB family exposes a three-feature definition array and per-feature custom runtime-record collections. v1.9.29 now profiles those records generically, but the semantic roles of the nested custom objects and primitive fields still require one v1.9.29 device capture before offsets/table layout can be promoted to resolver logic.
+v1.9.29 device logs and cross-sample static metadata establish a stable descriptor selector/property fingerprint for the runtime-record style ~5 MB family. v1.9.30 bridges that fingerprint into the existing offset/patch mapping pipeline, but the new bridge itself has not yet been run on-device. CI success must not be reported as runtime mapping success.
 
-### Important object ivars use stripped type metadata
+### Patch-data candidate inference requires uniqueness
 
-Status: understood / handled by profiler.
+Status: intentionally conservative.
 
-The 5 MB sample exposes relevant nested object ivars with Objective-C type encoding `@"?"`. This is why the v1.9.28 `IGSecret*` type-name descriptor fingerprint reported zero descriptors for this family. v1.9.29 enumerates object values, concrete runtime classes, nested graphs, methods/IMP RVAs, and scalar bytes without requiring a declared class type.
+The descriptor exposes `offset` and `signature` getters plus additional secret-wrapper objects. v1.9.30 excludes the getter-resolved `offset` and `signature` wrappers, then registers patch data only when exactly one other object implementing `secret` remains. If zero or multiple candidates remain, the resolver reports evidence-only instead of guessing. Device evidence may require a stronger generic discriminator in a later revision.
 
-### v1.9.29 is not yet device-tested
+### Important jailpatch object ivars use stripped type metadata
 
-Status: open.
+Status: understood / handled.
 
-Run `34783065857` compiled, linked, signed, invariant-tested, hash-verified, and uploaded the v1.9.29 arm64 dylib. The new profiler still requires a real 5 MB runtime capture before it can be called runtime-confirmed.
+Relevant object ivars can be declared as `@"?"`; therefore class-name/type-encoding matching is not considered a stable discriminator. v1.9.30 relies on selector semantics, live object behavior, and the `secret` interface instead.
 
-### Legacy AP / ~15 MB runtime status
+### Two ~5 MB menu paths exist in the supplied evidence
 
-Status: resolved for the tested sample.
+Status: understood / regression requirement.
 
-The v1.9.28 device capture successfully produced 12 patch mappings and a `.hfapatch.json` package with real target RVAs and bytes. This path is runtime-confirmed for the tested architecture. v1.9.29 preserves the v1.9.28 behavior in CI, but a v1.9.29-on-15MB device rerun has not been performed and should not be claimed as a runtime regression test.
+One supplied sample exposes populated per-feature runtime-record arrays and is the target of the new selector resolver. Another supplied sample reached a successful `.hfapatch.json` export through the existing iGMM implementation/target-chain path even though its profiler capture did not expose populated runtime-record arrays. The selector resolver must augment, not replace, the existing iGMM path.
 
-### Live instances still depend on menu visibility
+### v1.9.30 has not been runtime-regression-tested on ~15 MB
+
+Status: open / low priority.
+
+CI verifies that previous exporter functions remain byte-identical and the legacy resolver/mapping strings remain present. The ~15 MB architecture was runtime-confirmed under v1.9.28, but v1.9.30 itself has not been re-injected into that target, so a v1.9.30-on-15MB runtime regression must not be claimed.
+
+### Menu visibility remains required for live runtime records
 
 Status: design limitation.
 
-Open the original menu before `Auto Detect / Full Scan`. v1.9.29 specifically avoids marking a target as already profiled until its populated feature array is present, so observing the controller too early should no longer suppress the later scan.
+Open the original menu before `Auto Detect / Full Scan`, then operate visible controls. Class-level evidence can exist earlier, but populated feature arrays, runtime records, state changes, and mapping hooks require live objects.
 
-### Runtime profiling volume
+### Profiling logs remain intentionally verbose
 
 Status: monitored.
 
-The jailpatch profiler enumerates bounded object graphs, methods, ivars, scalar bytes, and block invoke metadata. It runs when relevant menu targets are observed, not continuously on every UI timer tick. Logs may be significantly larger than v1.9.28; this is intentional for the profiling stage.
+The v1.9.29 structural profiler is retained beside the v1.9.30 resolver so failed/ambiguous bridges still produce enough evidence to refine generic rules. `HFAMap_JailpatchMap.jsonl` and `HFAMap_Learn.log` can therefore be large during this development phase.
 
-### CI delivery remains artifact-only
+### CI delivery is artifact-only
 
 Status: resolved / intentional.
 
-The repository Actions token has read-only Contents permission. Builds are verified and uploaded as GitHub Actions artifacts rather than pushed back to the branch by the workflow.
+The repository Actions token has read-only Contents permission. Verified builds are uploaded as GitHub Actions artifacts; the workflow does not attempt to push binaries back into the source branch.
