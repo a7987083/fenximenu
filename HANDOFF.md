@@ -2,75 +2,63 @@
 
 ## Current branch
 
-`feature/hfamap-v1931-generic-secret-decrypt-resolver`
+`feature/hfamap-v1932-crash-safe-full-scan`
 
 ## Current build
 
-- Base branch: `feature/hfamap-v1930-jailpatch-selector-resolver`.
-- Base commit: `ded59d42ebca90895173ac4f185bd69cc94348a0`.
-- Build-tested v1.9.31 code commit: `e50600f00d65a84e6ed42b56dd18fbdd3a64906b`.
-- GitHub Actions run: `34786393869` — success.
-- Artifact: `HFAMapUniversal-v1.9.31-GenericSecretDecryptResolver` (ID `10326447565`).
-- Binary: `HFAMapUniversal_v1.9.31_GenericSecretDecryptResolver.dylib`.
+- Base branch: `feature/hfamap-v1931-generic-secret-decrypt-resolver`.
+- Base commit: `4a4db8fbaff6f1a0decf715bc07b782c54022df0`.
+- Build-tested v1.9.32 code commit: `ac2f5419f975ce9f63d2ad59546fe7c9ec16383a`.
+- GitHub Actions run: `34790789928` — success.
+- Artifact: `HFAMapUniversal-v1.9.32-CrashSafeFullScan` (ID `10328366811`).
+- Binary: `HFAMapUniversal_v1.9.32_CrashSafeFullScan.dylib`.
 - Architecture: arm64 Mach-O dylib.
-- Size: `175552` bytes.
-- SHA256: `7638894c72b7b5f391be02ea3ee481fa5ff31cd28080eda2de3bc07fe5a1453f`.
+- Size: `175616` bytes.
+- SHA256: `96c47b4509929bf03289b3329ed4399f13cfa78db7eb2ac7c75bfa8fd1fd8c0c`.
 
 ## Confirmed runtime checkpoints
 
 ### Legacy AP / ~15 MB
 
-Runtime-confirmed under v1.9.28. Device evidence produced 12 valid mappings with UnityFramework RVAs, original/enabled bytes, action IMP metadata, and successful `.hfapatch.json` export.
+Runtime-confirmed under v1.9.28 with 12 valid mappings, UnityFramework RVAs, original/enabled bytes, action IMP metadata, and successful `.hfapatch.json` export.
 
-### Jailpatch-v2 runtime-record path / ~5 MB — v1.9.30
+### Jailpatch selector bridge / ~5 MB
 
-v1.9.30 has now been device tested. The selector resolver correctly recognized runtime records and associated the descriptor with:
+v1.9.30 device evidence confirms descriptor selector matching plus offset/patch-wrapper association. The old fixed decrypt locator failed, which motivated v1.9.31.
 
-- its `offset` secret wrapper;
-- its stable `<identifier>-switch`/identifier/module string evidence;
-- exactly one remaining secret-wrapper patch-data candidate after excluding `offset` and `signature`.
+### v1.9.31 Full Scan regression
 
-The bridge reached the mature HFAMap `[MAPPING]` path. Therefore menu discovery, descriptor fingerprinting, and wrapper association are runtime-confirmed for the tested 5 MB runtime-record architecture.
+Both supplied ~5 MB games crashed when `Auto Detect / Full Scan` was pressed. This crash is upstream of decrypt execution:
 
-The remaining failure was decrypt-function location. The inherited legacy logic tested `secret getter + 0xD00`; on the tested runtime-record sample that candidate did not match the established three-instruction decrypt fingerprint, so offset/patch plaintext was not recovered and mapping validity remained false.
+- Both real menu targets were already found in window index 0.
+- Scanning continued into unrelated windows/targets.
+- Neither log reached `[AUTO-TRAVERSAL-END]` or `[AUTO-SCAN]`.
+- One sample had `records=0`, so it could not have entered the generic secret-decrypt path.
 
-### Independent iGMM ~5 MB path
+The shared historical risk is the old v1.9.24 deep iGMM runtime-graph probe. It was attached to every custom control target and could enumerate object ivars through UIKit/framework superclasses. Objective-C exception handling does not catch raw `EXC_BAD_ACCESS` faults from unsafe object graph traversal.
 
-The WayOfKings-style sample previously exported `com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json` through the existing iGMM resolver/exporter. This path is preserved and must remain regression-protected.
+## v1.9.32 design
 
-## Static evidence behind v1.9.31
+Full Scan now follows a semantic, bounded path:
 
-Both supplied ~5 MB dylibs were inspected independently. Their `secret` wrappers differ in obfuscated class names and absolute RVAs, but each image contains exactly one `__TEXT,__text` function matching the decrypt fingerprint already used by the mature HFAMap decrypt pipeline:
+`UI control target`
+→ generic menu observer
+→ Jailpatch runtime profiler
+→ `HFAJailpatchTargetHasFeatures`
+→ if a semantic feature array exists, optionally register the stricter iGMM `{label,identifier,type}` array
+→ log `[AUTO-MENU-CANDIDATE]`
+→ set `gAutoMenuFound=1`
+→ stop scanning later controls/windows
+→ finalize scan.
 
-- `+0x00 = 0xD105C3FF`
-- `+0x30 = 0xB9400408`
-- `+0x40 = 0x53187D00`
+Safety changes:
 
-Observed decrypt RVAs:
-
-- sample A: `0x2123D4`
-- sample B: `0x2129A4`
-
-The observed getter-to-decrypt delta is `0x1204` in both supplied binaries. This is recorded as evidence only. The v1.9.31 implementation does **not** use `0x1204`, either module name, either sample RVA, or any obfuscated class name.
-
-## v1.9.31 resolver design
-
-`HFADecryptWrapper`
-→ obtain live `secret` getter IMP/image
-→ try the already runtime-confirmed legacy `getter + 0xD00` candidate and require the fingerprint
-→ if it fails, parse the loaded image's Mach-O headers
-→ locate `__TEXT,__text`
-→ scan 4-byte-aligned addresses for the same three-instruction decrypt fingerprint
-→ accept only exactly one match
-→ cache result per image
-→ call the existing decrypt function ABI `(secretCopy, plainBuffer)`
-→ continue existing `[MAP-DECRYPT]` / `[MAPPING]` / group/full mapping / exporter pipeline.
-
-New resolution evidence:
-
-- `[MAP-DECRYPT-RESOLVE] ... mode=legacy-relative matches=1`
-- `[MAP-DECRYPT-RESOLVE] ... mode=text-fingerprint matches=1`
-- `[MAP-DECRYPT-SKIP] ... reason=resolver ...` for zero/ambiguous matches.
+- The old `igmm_probe_target(o)` is no longer called by Auto Detect.
+- `HFAJPFindFeatureArray` stops at framework superclasses.
+- Runtime-record object profiling stops at framework superclasses.
+- The historical iGMM object-ivar walker stops at framework superclasses.
+- v1.9.31 `HFAResolveSecretDecrypt` and `HFADecryptWrapper` are preserved byte-for-byte.
+- Legacy and iGMM exporters are preserved byte-for-byte.
 
 ## Runtime outputs
 
@@ -79,26 +67,32 @@ New resolution evidence:
 - `Documents/HFAMap_JailpatchMap.jsonl`
 - any generated `*.hfapatch.json` package.
 
-## Next validation
+## Next validation — two stages
 
-Inject v1.9.31 into the runtime-record style ~5 MB target, open the original menu, run `Auto Detect / Full Scan`, then exercise visible controls.
+Stage 1, scan stability: open the original menu and press `Auto Detect / Full Scan` without toggling any feature. Required evidence:
 
-Required success chain before marking the generic 5 MB resolver runtime-confirmed:
+`[AUTO-MENU-CANDIDATE]`
+→ `[AUTO-TRAVERSAL-END]`
+→ `[AUTO-SCAN]`
+→ no crash.
+
+Run this on both supplied 5 MB games.
+
+Stage 2, decrypt/mapping: only after Stage 1 is stable, exercise visible switches/controls and require:
 
 `[JAILPATCH-SELECTOR-DESCRIPTOR]`
 → `[MAP-DECRYPT-RESOLVE] mode=text-fingerprint matches=1`
-→ `[MAP-DECRYPT] rc=0` with valid plaintext
+→ `[MAP-DECRYPT] rc=0`
 → `[MAPPING]` / `[FULL-MAPPING] valid=1`
-→ preferably successful `.hfapatch.json` package export.
+→ preferably package export.
 
 ## Verification discipline
 
-- v1.9.31 source integrated: yes.
-- v1.9.31 compiled/linked/signed: yes.
-- CI/invariants/exporter regression/SHA256: passed.
+- v1.9.32 source integrated: yes.
+- v1.9.32 compiled/linked/signed: yes.
+- CI/regression/invariants/SHA256: passed.
 - Artifact independently downloaded and re-hashed: passed.
-- v1.9.31 5 MB device tested: no.
-- v1.9.30 selector/wrapper bridge device tested: yes.
-- v1.9.30 decrypted mapping/package on runtime-record 5 MB: no.
+- v1.9.32 device tested: no.
+- v1.9.31 Full Scan crash reproduced on both supplied 5 MB games: yes.
+- v1.9.31 generic decrypt runtime success: not established.
 - v1.9.28 legacy 15 MB resolver device tested: yes.
-- v1.9.31-on-15MB runtime regression: not performed.
