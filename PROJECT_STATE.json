@@ -1,0 +1,28 @@
+{
+  "project": "HFAMapUniversal",
+  "version": "1.9.28",
+  "phase": "generic-menu-resolver",
+  "branch": "feature/hfamap-v1928-generic-menu-resolver",
+  "base_branch": "feature/hfamap-v1927-target-chain-resolver",
+  "base_commit": "d7d00e8a97698e8c0545390903e082dd83676166",
+  "stable_baseline": {
+    "branch": "build/hfamap-v1.4.4-20260901",
+    "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
+  },
+  "build": {
+    "status": "pending",
+    "ci": "pending",
+    "artifact": null,
+    "sha256": null
+  },
+  "runtime": {
+    "device_tested": false,
+    "legacy_ap": "static-structure-supported-runtime-pending",
+    "jailpatch_v2": "probe-only"
+  },
+  "outputs": [
+    "Documents/HFAMap_Learn.log",
+    "Documents/HFAMap_MenuMap.jsonl"
+  ],
+  "next_task": "Run v1.9.28 GitHub Actions build, fix failures, publish dylib, then collect one legacy AP/IGSecret log and one jailpatch-v2 log."
+}
