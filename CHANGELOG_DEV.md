@@ -1,9 +1,13 @@
 # Development Changelog
 
-## v1.9.28 GenericMenuResolver — in development
+## v1.9.28 GenericMenuResolver — compiled / awaiting device validation
 
 Branch: `feature/hfamap-v1928-generic-menu-resolver`
 Base: `feature/hfamap-v1927-target-chain-resolver` @ `d7d00e8a97698e8c0545390903e082dd83676166`
+Build commit: `e2054a2196f6650e2a345ae90d46cd139daf40ba`
+Successful CI run: `34781824064`
+Artifact ID: `10324649442`
+Binary SHA256: `9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a`
 
 ### Added
 
@@ -18,17 +22,29 @@ Base: `feature/hfamap-v1927-target-chain-resolver` @ `d7d00e8a97698e8c0545390903
   - Connects the generic resolver to the existing UI traversal, target discovery, action hook, and full-scan button.
 - `hfamap/Makefile`
   - Compiles the new generic resolver source.
+- `.github/workflows/theos-hfamap-v1928-generic-menu.yml`
+  - Applies the historical patch chain through v1.9.27, applies v1.9.28, verifies invariants, builds, checks SHA256, and publishes a workflow artifact.
 
-### Compatibility
+### Compatibility / regression checks
 
-- v1.9.27 target-chain behavior is intended to remain intact.
-- Existing legacy/iGMM package exporters are intended to remain byte-identical across the v1.9.28 integration patch.
-- jailpatch-v2 is probe-only in this version.
+- v1.9.27 legacy and iGMM exporter functions were verified byte-identical before/after the v1.9.28 patch.
+- Generic resolver invariant checks passed.
+- Explicit sample/game/class/RVA hardcode deny-list checks passed.
+- Existing v1.9.27 target-chain strings and mapping/export paths remain present in the built dylib.
+- jailpatch-v2 remains deliberately `probe-only`.
 
-### Verification
+### Build result
 
 - Source changes committed: yes.
-- Compiled: pending CI.
-- GitHub Actions: pending.
+- Compiled: yes, arm64.
+- Linked: yes.
+- Signed: yes.
+- GitHub Actions: success (`34781824064`).
+- Artifact uploaded: yes (`HFAMapUniversal-v1.9.28-GenericMenuResolver`).
+- SHA256 verified: yes.
 - Device tested: no.
-- Regression tested: pending CI invariants.
+- Runtime regression tested: no; requires device logs.
+
+### CI note
+
+The first run (`34781698047`) compiled successfully but the final bot `git push` failed because the repository Actions token had read-only Contents permission. The workflow was changed to artifact-only delivery; run `34781824064` then completed successfully end-to-end.
