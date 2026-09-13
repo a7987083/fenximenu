@@ -1,10 +1,10 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.30",
-  "phase": "jailpatch-selector-resolver-device-validation",
-  "branch": "feature/hfamap-v1930-jailpatch-selector-resolver",
-  "base_branch": "feature/hfamap-v1929-jailpatch-runtime-profiler",
-  "base_commit": "0ddbac96ddae0a0162711ce4d7e979d7d1b95438",
+  "version": "1.9.31",
+  "phase": "generic-secret-decrypt-device-validation",
+  "branch": "feature/hfamap-v1931-generic-secret-decrypt-resolver",
+  "base_branch": "feature/hfamap-v1930-jailpatch-selector-resolver",
+  "base_commit": "ded59d42ebca90895173ac4f185bd69cc94348a0",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -12,33 +12,36 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34785200383,
-    "build_commit": "786a26eb66a3aa22d1f1c1ef7a94910e7f8b6f42",
-    "artifact_id": 10326735655,
-    "artifact": "HFAMapUniversal-v1.9.30-JailpatchSelectorResolver",
-    "binary": "HFAMapUniversal_v1.9.30_JailpatchSelectorResolver.dylib",
+    "run_id": 34786393869,
+    "build_commit": "e50600f00d65a84e6ed42b56dd18fbdd3a64906b",
+    "artifact_id": 10326447565,
+    "artifact": "HFAMapUniversal-v1.9.31-GenericSecretDecryptResolver",
+    "binary": "HFAMapUniversal_v1.9.31_GenericSecretDecryptResolver.dylib",
     "architecture": "arm64",
-    "sha256": "6c716180e7e5a2659cfb538e6ca6ee217773a0ce583741f9d1e43f0f140f9d14"
+    "size_bytes": 175552,
+    "sha256": "7638894c72b7b5f391be02ea3ee481fa5ff31cd28080eda2de3bc07fe5a1453f"
   },
   "verification": {
     "patch_chain": "passed",
     "previous_behavior_preserved": true,
     "legacy_and_igmm_exporters_byte_identical": true,
-    "jailpatch_selector_invariants": "passed",
+    "v1930_selector_bridge_preserved": true,
+    "generic_decrypt_invariants": "passed",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed"
   },
   "runtime": {
-    "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features",
+    "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
     "jailpatch_v2_v1929": "device-profiled-runtime-record-structure-confirmed",
+    "jailpatch_v2_v1930": "device-tested-selector-and-wrapper-bridge-confirmed-decrypt-locator-failed",
     "jailpatch_v2_wayofkings_igmm": "device-confirmed-package-exported-via-existing-igmm-path",
-    "jailpatch_v2_v1930": "compiled-awaiting-device-validation"
+    "jailpatch_v2_v1931": "compiled-awaiting-device-validation"
   },
   "runtime_evidence": {
-    "legacy_ap": "APPatchItem + descriptors + UnityFramework RVAs + original/enabled bytes + hfapatch export confirmed",
-    "jailpatch_record_family": "Runtime records expose stable selectors identifier/type/architecture/active/offset/signature/range/searchDirection/setActive: despite randomized class and ivar names. Important object ivars use stripped type metadata @\"?\".",
-    "cross_sample_static": "Both supplied ~5 MB dylibs preserve the same descriptor property/selector fingerprint and compatible secret-wrapper interface even though obfuscated class/ivar names differ.",
-    "wayofkings": "Existing iGMM path exported com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json; v1.9.30 must preserve that path."
+    "v1930_selector_bridge": "Runtime-record descriptors were recognized by stable selectors; offsetWrapper and a unique patchCandidate were associated for the observed records, and execution reached the mature MAPPING path.",
+    "v1930_failure": "The legacy secret decrypt locator assumed getter+0xD00. On the runtime-record 5 MB sample the candidate failed the existing decrypt instruction fingerprint, so decrypted offset/patch remained unavailable and mappings were invalid.",
+    "cross_sample_static": "Both supplied ~5 MB dylibs contain exactly one __TEXT,__text function matching the existing decrypt fingerprint D105C3FF at +0x00, B9400408 at +0x30, and 53187D00 at +0x40. Observed decrypt RVAs are 0x2123D4 and 0x2129A4; the observed getter-to-decrypt delta is 0x1204 in both samples, but v1.9.31 does not hardcode that delta or either RVA.",
+    "wayofkings": "The pre-existing iGMM path remains a confirmed independent path and previously exported com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json."
   },
   "resolver_strategy": {
     "descriptor_fingerprint": [
@@ -52,13 +55,14 @@
       "searchDirection",
       "setActive:"
     ],
-    "bridge": "Reuse existing HFARegisterPatchObject/HFARegisterPatchSecret/HFARegisterPatchString and mature HFAEmitMapping/decrypt/export pipeline.",
-    "safety": "Only auto-assign IGSecretData when exactly one secret-wrapper candidate remains after excluding offset/signature; otherwise evidence-only."
+    "secret_decrypt": "Try the runtime-confirmed legacy getter+0xD00 fingerprint fast path first. If it does not match, parse the getter image's loaded Mach-O __TEXT,__text section and scan 4-byte-aligned addresses for the existing three-instruction decrypt fingerprint. Invoke only when exactly one match exists; cache per image; otherwise fail closed.",
+    "safety": "No 5 MB module name, obfuscated class, feature label, sample RVA, or observed +0x1204 delta is hardcoded. Ambiguous fingerprint scans are rejected."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
-    "Documents/HFAMap_JailpatchMap.jsonl"
+    "Documents/HFAMap_JailpatchMap.jsonl",
+    "*.hfapatch.json when export succeeds"
   ],
-  "next_task": "Inject v1.9.30 into the runtime-record style ~5 MB sample, open its original menu, run Auto Detect / Full Scan, exercise visible controls, and collect all three logs plus any generated .hfapatch.json. Validate JAILPATCH-SELECTOR-DESCRIPTOR -> MAP-DECRYPT -> MAPPING/GROUP-MAPPING/FULL-MAPPING before calling the 5 MB selector resolver runtime-confirmed."
+  "next_task": "Inject v1.9.31 into the runtime-record style ~5 MB sample, open the original menu, run Auto Detect / Full Scan, and exercise visible controls. Confirm MAP-DECRYPT-RESOLVE mode=text-fingerprint matches=1, MAP-DECRYPT rc=0 with valid plaintext, then MAPPING/FULL-MAPPING valid=1 and package export before marking the generic 5 MB path runtime-confirmed."
 }
