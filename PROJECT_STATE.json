@@ -1,28 +1,40 @@
 {
   "project": "HFAMapUniversal",
   "version": "1.9.28",
-  "phase": "generic-menu-resolver",
+  "phase": "generic-menu-resolver-device-validation",
   "branch": "feature/hfamap-v1928-generic-menu-resolver",
   "base_branch": "feature/hfamap-v1927-target-chain-resolver",
   "base_commit": "d7d00e8a97698e8c0545390903e082dd83676166",
+  "build_commit": "e2054a2196f6650e2a345ae90d46cd139daf40ba",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
   },
   "build": {
-    "status": "pending",
-    "ci": "pending",
-    "artifact": null,
-    "sha256": null
+    "status": "success",
+    "ci": "success",
+    "run_id": 34781824064,
+    "artifact_id": 10324649442,
+    "artifact": "HFAMapUniversal-v1.9.28-GenericMenuResolver",
+    "binary": "HFAMapUniversal_v1.9.28_GenericMenuResolver.dylib",
+    "architecture": "arm64",
+    "sha256": "9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a"
+  },
+  "verification": {
+    "patch_chain": "passed",
+    "v1927_exporters_byte_identical": true,
+    "generic_invariants": "passed",
+    "sample_hardcode_check": "passed",
+    "binary_sha256_check": "passed"
   },
   "runtime": {
     "device_tested": false,
-    "legacy_ap": "static-structure-supported-runtime-pending",
+    "legacy_ap": "compiled-ready-for-device-validation",
     "jailpatch_v2": "probe-only"
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl"
   ],
-  "next_task": "Run v1.9.28 GitHub Actions build, fix failures, publish dylib, then collect one legacy AP/IGSecret log and one jailpatch-v2 log."
+  "next_task": "Inject v1.9.28 into one legacy AP/IGSecret sample and one jailpatch-v2 sample; collect HFAMap_Learn.log and HFAMap_MenuMap.jsonl for runtime validation."
 }
