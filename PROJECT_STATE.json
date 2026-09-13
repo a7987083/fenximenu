@@ -1,10 +1,10 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.31",
-  "phase": "generic-secret-decrypt-device-validation",
-  "branch": "feature/hfamap-v1931-generic-secret-decrypt-resolver",
-  "base_branch": "feature/hfamap-v1930-jailpatch-selector-resolver",
-  "base_commit": "ded59d42ebca90895173ac4f185bd69cc94348a0",
+  "version": "1.9.32",
+  "phase": "crash-safe-full-scan-device-validation",
+  "branch": "feature/hfamap-v1932-crash-safe-full-scan",
+  "base_branch": "feature/hfamap-v1931-generic-secret-decrypt-resolver",
+  "base_commit": "4a4db8fbaff6f1a0decf715bc07b782c54022df0",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -12,51 +12,36 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34786393869,
-    "build_commit": "e50600f00d65a84e6ed42b56dd18fbdd3a64906b",
-    "artifact_id": 10326447565,
-    "artifact": "HFAMapUniversal-v1.9.31-GenericSecretDecryptResolver",
-    "binary": "HFAMapUniversal_v1.9.31_GenericSecretDecryptResolver.dylib",
+    "run_id": 34790789928,
+    "build_commit": "ac2f5419f975ce9f63d2ad59546fe7c9ec16383a",
+    "artifact_id": 10328366811,
+    "artifact": "HFAMapUniversal-v1.9.32-CrashSafeFullScan",
+    "binary": "HFAMapUniversal_v1.9.32_CrashSafeFullScan.dylib",
     "architecture": "arm64",
-    "size_bytes": 175552,
-    "sha256": "7638894c72b7b5f391be02ea3ee481fa5ff31cd28080eda2de3bc07fe5a1453f"
+    "size_bytes": 175616,
+    "sha256": "96c47b4509929bf03289b3329ed4399f13cfa78db7eb2ac7c75bfa8fd1fd8c0c"
   },
   "verification": {
     "patch_chain": "passed",
-    "previous_behavior_preserved": true,
+    "v1931_decrypt_functions_byte_identical": true,
     "legacy_and_igmm_exporters_byte_identical": true,
-    "v1930_selector_bridge_preserved": true,
-    "generic_decrypt_invariants": "passed",
+    "crash_safe_scan_invariants": "passed",
+    "unsafe_deep_probe_removed_from_full_scan": true,
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
-    "jailpatch_v2_v1929": "device-profiled-runtime-record-structure-confirmed",
-    "jailpatch_v2_v1930": "device-tested-selector-and-wrapper-bridge-confirmed-decrypt-locator-failed",
+    "jailpatch_v2_v1930": "device-tested-selector-and-wrapper-bridge-confirmed",
+    "jailpatch_v2_v1931": "device-tested-full-scan-crashes-on-both-supplied-5mb-games-before-traversal-end",
     "jailpatch_v2_wayofkings_igmm": "device-confirmed-package-exported-via-existing-igmm-path",
-    "jailpatch_v2_v1931": "compiled-awaiting-device-validation"
+    "jailpatch_v2_v1932": "compiled-awaiting-device-validation"
   },
   "runtime_evidence": {
-    "v1930_selector_bridge": "Runtime-record descriptors were recognized by stable selectors; offsetWrapper and a unique patchCandidate were associated for the observed records, and execution reached the mature MAPPING path.",
-    "v1930_failure": "The legacy secret decrypt locator assumed getter+0xD00. On the runtime-record 5 MB sample the candidate failed the existing decrypt instruction fingerprint, so decrypted offset/patch remained unavailable and mappings were invalid.",
-    "cross_sample_static": "Both supplied ~5 MB dylibs contain exactly one __TEXT,__text function matching the existing decrypt fingerprint D105C3FF at +0x00, B9400408 at +0x30, and 53187D00 at +0x40. Observed decrypt RVAs are 0x2123D4 and 0x2129A4; the observed getter-to-decrypt delta is 0x1204 in both samples, but v1.9.31 does not hardcode that delta or either RVA.",
-    "wayofkings": "The pre-existing iGMM path remains a confirmed independent path and previously exported com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json."
-  },
-  "resolver_strategy": {
-    "descriptor_fingerprint": [
-      "identifier",
-      "type",
-      "architecture",
-      "active",
-      "offset",
-      "signature",
-      "range",
-      "searchDirection",
-      "setActive:"
-    ],
-    "secret_decrypt": "Try the runtime-confirmed legacy getter+0xD00 fingerprint fast path first. If it does not match, parse the getter image's loaded Mach-O __TEXT,__text section and scan 4-byte-aligned addresses for the existing three-instruction decrypt fingerprint. Invoke only when exactly one match exists; cache per image; otherwise fail closed.",
-    "safety": "No 5 MB module name, obfuscated class, feature label, sample RVA, or observed +0x1204 delta is hardcoded. Ambiguous fingerprint scans are rejected."
+    "v1931_crash_commonality": "Both supplied 5 MB games found their real semantic menu target in window 0, then Full Scan continued into unrelated windows and terminated before AUTO-TRAVERSAL-END/AUTO-SCAN.",
+    "v1931_not_decrypt_crash": "One crashing sample had records=0, so the generic secret decrypt path was not entered. Therefore the common Full Scan crash is upstream of decrypt execution.",
+    "historical_risk": "The v1.9.24 iGMM probe deep-traversed every custom target and enumerated object ivars through UIKit/framework superclasses. Objective-C exception handling cannot catch EXC_BAD_ACCESS from invalid object graph traversal.",
+    "v1932_fix": "Use semantic feature-array detection to mark the menu found and stop scanning later windows; remove deep igmm_probe_target from Auto Detect; stop profiler/legacy ivar enumeration when superclass reaches framework classes. Preserve v1.9.31 decrypt and both exporters byte-identically."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
@@ -64,5 +49,5 @@
     "Documents/HFAMap_JailpatchMap.jsonl",
     "*.hfapatch.json when export succeeds"
   ],
-  "next_task": "Inject v1.9.31 into the runtime-record style ~5 MB sample, open the original menu, run Auto Detect / Full Scan, and exercise visible controls. Confirm MAP-DECRYPT-RESOLVE mode=text-fingerprint matches=1, MAP-DECRYPT rc=0 with valid plaintext, then MAPPING/FULL-MAPPING valid=1 and package export before marking the generic 5 MB path runtime-confirmed."
+  "next_task": "Inject v1.9.32 into both supplied ~5 MB games with the original menu already open. First press Auto Detect / Full Scan without toggling features. Require AUTO-MENU-CANDIDATE followed by AUTO-TRAVERSAL-END/AUTO-SCAN and no crash. Only after scan stability is confirmed, exercise controls and validate MAP-DECRYPT-RESOLVE -> MAP-DECRYPT rc=0 -> valid MAPPING/FULL-MAPPING/package export."
 }
