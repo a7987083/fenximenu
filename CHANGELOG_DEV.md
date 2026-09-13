@@ -1,50 +1,55 @@
 # Development Changelog
 
-## v1.9.28 GenericMenuResolver — compiled / awaiting device validation
+## v1.9.29 JailpatchRuntimeProfiler — compiled / awaiting 5 MB device validation
 
-Branch: `feature/hfamap-v1928-generic-menu-resolver`
-Base: `feature/hfamap-v1927-target-chain-resolver` @ `d7d00e8a97698e8c0545390903e082dd83676166`
-Build commit: `e2054a2196f6650e2a345ae90d46cd139daf40ba`
+Branch: `feature/hfamap-v1929-jailpatch-runtime-profiler`
+Build-tested commit: `c6293b4b1aba7b5000d7e8dd6d20785121679588`
+Successful CI run: `34783065857`
+Artifact ID: `10325960671`
+Binary SHA256: `8b76b62424c9152a8e09b2e68dfccc09a590f6526403271b07c7056b1f8b0c3e`
+
+### Runtime evidence received from v1.9.28
+
+- Legacy AP / ~15 MB family is now device-runtime confirmed.
+- The sample was recognized as `family=legacy-ap mode=resolver` and exported 12 valid patch features to a `.hfapatch.json` package.
+- Runtime evidence included menu identifiers, action IMP image/RVA, UnityFramework patch RVAs, original bytes, and enabled bytes.
+- The ~5 MB family was recognized as `family=jailpatch-v2`; its menu controller exposed a three-entry feature-definition array with identifiers `0`, `1`, and `2`.
+- Each 5 MB feature dictionary contains a runtime-record collection. Record objects expose identifier-related strings, module text, nested custom objects, primitive/object ivars, and runtime action/state methods.
+- Root cause of the v1.9.28 descriptor miss: relevant object ivars use stripped Objective-C type encoding `@"?"`, so `IGSecret*` type-name fingerprinting cannot identify this family.
+
+### Added in v1.9.29
+
+- `hfamap/src/HFAMapJailpatchRuntimeProfiler.m`
+  - Locates feature arrays semantically using non-empty `label` + `identifier` dictionaries.
+  - Finds runtime-record collections without depending on their obfuscated dictionary key.
+  - Profiles custom record objects recursively with bounded depth.
+  - Records object ivars even when their ObjC type is stripped to `@"?"`.
+  - Records primitive ivar offsets/raw bytes.
+  - Enumerates custom-class methods with type encodings plus IMP image/RVA.
+  - Resolves block invoke image/RVA.
+  - Emits `Documents/HFAMap_JailpatchMap.jsonl`.
+- `.github/scripts/hfamap_v1929_jailpatch_runtime.py`
+  - Bridges the profiler into target discovery and UIControl actions.
+  - Defers target dedupe until a populated feature array exists, preventing an early empty controller observation from suppressing the real scan.
+- `.github/workflows/theos-hfamap-v1929-jailpatch-runtime.yml`
+  - Replays the historical patch stack, preserves v1.9.28 behavior/exporters, rejects sample-specific hardcoding, builds/signs the arm64 dylib, verifies SHA256, and uploads the artifact.
+
+### Verification
+
+- Patch chain: passed.
+- v1.9.28 behavior regression checks: passed.
+- Legacy/iGMM exporter byte-identity checks: passed.
+- Jailpatch profiler invariant checks: passed.
+- Explicit feature/class/module/RVA hardcode deny-list checks: passed.
+- Compiled/linked/signed: yes, arm64.
+- GitHub Actions: success (`34783065857`).
+- Artifact uploaded: yes.
+- SHA256 independently rechecked after artifact download: yes.
+- v1.9.29 device tested on 5 MB family: not yet.
+
+## v1.9.28 GenericMenuResolver — runtime checkpoint
+
 Successful CI run: `34781824064`
-Artifact ID: `10324649442`
 Binary SHA256: `9e29222665f374fa54dc03d43106e1a10e247aac3e44902ca9e6537b9bf0925a`
 
-### Added
-
-- `hfamap/src/HFAMapGenericMenuResolver.m`
-  - APPatchItem protocol/method fingerprint discovery.
-  - Generic switch/button/slider/group classification.
-  - IGSecretInt / IGSecretData / IGSecretString / APSubpatchManager / IGCodePatch descriptor fingerprinting.
-  - Runtime action IMP image/RVA logging.
-  - Legacy AP vs jailpatch-v2 architecture detection.
-  - `Documents/HFAMap_MenuMap.jsonl` structured evidence output.
-- `.github/scripts/hfamap_v1928_generic_menu.py`
-  - Connects the generic resolver to the existing UI traversal, target discovery, action hook, and full-scan button.
-- `hfamap/Makefile`
-  - Compiles the new generic resolver source.
-- `.github/workflows/theos-hfamap-v1928-generic-menu.yml`
-  - Applies the historical patch chain through v1.9.27, applies v1.9.28, verifies invariants, builds, checks SHA256, and publishes a workflow artifact.
-
-### Compatibility / regression checks
-
-- v1.9.27 legacy and iGMM exporter functions were verified byte-identical before/after the v1.9.28 patch.
-- Generic resolver invariant checks passed.
-- Explicit sample/game/class/RVA hardcode deny-list checks passed.
-- Existing v1.9.27 target-chain strings and mapping/export paths remain present in the built dylib.
-- jailpatch-v2 remains deliberately `probe-only`.
-
-### Build result
-
-- Source changes committed: yes.
-- Compiled: yes, arm64.
-- Linked: yes.
-- Signed: yes.
-- GitHub Actions: success (`34781824064`).
-- Artifact uploaded: yes (`HFAMapUniversal-v1.9.28-GenericMenuResolver`).
-- SHA256 verified: yes.
-- Device tested: no.
-- Runtime regression tested: no; requires device logs.
-
-### CI note
-
-The first run (`34781698047`) compiled successfully but the final bot `git push` failed because the repository Actions token had read-only Contents permission. The workflow was changed to artifact-only delivery; run `34781824064` then completed successfully end-to-end.
+The legacy ~15 MB path is now runtime-confirmed from device logs. The ~5 MB probe also successfully exposed enough structure to design v1.9.29, but v1.9.28 itself did not resolve the stripped descriptor record layout.
