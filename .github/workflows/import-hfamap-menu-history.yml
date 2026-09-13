@@ -1,0 +1,55 @@
+name: Import HFAMap menu-analysis history
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-hfamap-menu-history.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch selected source branches and preserve history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir repo.git
+          cd repo.git
+          git init --bare
+          git remote add source https://github.com/a7987083/UnitXP_SP3-Moonstone.git
+          git remote add target "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          branches=(
+            'build/hfamap-v1.4.4-20260901'
+            'feature/login-ip-tracer-dylib-v2-hfamap187-v1920-menu'
+            'feature/hfamap-v1921-patch-only'
+            'feature/hfamap-v1922-safe-menu-patch-only'
+            'feature/hfamap-v1923-multiwindow-safe-patch-only'
+            'feature/hfamap-v1924-dual-iosgods-probe'
+            'feature/hfamap-v1925-dual-iosgods-json'
+            'feature/hfamap-v1925-dual-json-export'
+            'feature/hfamap-v1926-igmm-implementation-resolver'
+            'feature/hfamap-v1927-target-chain-resolver'
+          )
+
+          for branch in "${branches[@]}"; do
+            echo "==> fetch ${branch}"
+            git fetch --no-tags source "+refs/heads/${branch}:refs/heads/${branch}"
+          done
+
+          for branch in "${branches[@]}"; do
+            echo "==> push ${branch}"
+            git push target "refs/heads/${branch}:refs/heads/${branch}"
+          done
+
+          echo '==> verify destination refs'
+          for branch in "${branches[@]}"; do
+            printf '%s ' "$branch"
+            git rev-parse "refs/heads/${branch}"
+          done
