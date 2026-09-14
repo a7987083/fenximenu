@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v1.9.35 MainImageTruth — compiled / CI passed / awaiting device validation
+v1.9.36 ArchitectureTruth — compiled / CI passed / awaiting device validation
 
 ## Completed foundations
 
@@ -11,52 +11,57 @@ v1.9.35 MainImageTruth — compiled / CI passed / awaiting device validation
 - 5 MB iGMM semantic/runtime-implementation discovery is runtime-confirmed.
 - The canonical consumer contract is the 15 MB-style `com.hfa.patch/v1` static package.
 - v1.9.34 device-tested the canonical structure gate and diagnostic-only iGMM separation.
+- v1.9.35 device-confirmed real `MH_EXECUTE` main resolution and correct original-byte acquisition on the Dragons sample.
 
-## v1.9.34 device result
+## v1.9.35 device result
 
-The iGMM half passed its intended truth policy: runtime primitives were exported only to `com.hfa.igmm.runtime/v1`, with no new canonical-looking iGMM `.hfapatch.json`.
+The runtime-record path now resolves `main` to the actual game executable, not dyld index 0. The identity sidecar UUID matches the supplied target Mach-O, and all eight exported originals match that same file exactly at their preferred VM addresses.
 
-The runtime-record half exposed a deeper historical defect. Although scan/decrypt/mapping and the canonical structural validator passed, `@main` was resolved through dyld image index 0. In the tested injection environment index 0 was an injected dylib, not the app executable. The identity sidecar therefore identified the wrong binary, and the same index contaminated original-byte reads. Some exported originals were unrelated ASCII-like data at statically confirmed code offsets.
+One metadata defect remained: package `architectures` was still derived from `_dyld_get_image_header(0)` and reported `arm64e` while the actual target identity is `arm64 / cpusubtype=0`.
 
-Therefore v1.9.34 is not a trusted runtime-record canonical-package baseline.
-
-## Current milestone: v1.9.35 MainImageTruth
+## Current milestone: v1.9.36 ArchitectureTruth
 
 Policy:
 
-- `main` / `@main` must resolve to the real app `MH_EXECUTE`, never to a positional dyld index assumption.
-- Prefer `NSBundle.mainBundle.executablePath` matched against loaded `MH_EXECUTE` images.
-- Fall back only to a unique loaded `MH_EXECUTE`.
-- Fail closed if main image identity is ambiguous or unresolved.
-- Preserve preferred-Mach-O-VM-address offset semantics.
-- Preserve v1.9.34 canonical structural gate and iGMM diagnostic isolation.
-- Preserve v1.9.33 original-byte reader implementations; change only which image they read.
+- canonical package architecture comes from the actual resolved canonical targets;
+- every target must resolve and be ARM64;
+- all targets in one package must agree on one architecture;
+- unresolved, non-ARM64 or mixed target architecture fails closed;
+- preserve v1.9.35 main-image truth and all previous runtime evidence.
+
+Implementation:
+
+- remove the final package-writer dependency on dyld image index 0;
+- derive `arm64` / `arm64e` from each target header resolved through `HFAImageIndexForName`;
+- log `[PACKAGE-ARCH]` success/failure evidence;
+- leave the actual patch bytes, offsets, target identity sidecar, decrypt and iGMM behavior unchanged.
 
 ## Build checkpoint
 
-- Branch: `feature/hfamap-v1935-main-image-truth`.
-- Base commit: `7dd64cdafc45cf0017b9fb99a87b4bae84ee7758`.
-- Build-tested code commit: `9b88d83919c824e371ebc3c21b70138a165b2ee5`.
-- Successful CI run: `34830471085`.
-- Artifact ID: `10341533093`.
-- Artifact digest: `sha256:3426aad904df4e0bb2a7a9510a6eb0d8d97593041abe01e29c6606be044d0a83`.
-- Binary: `HFAMapUniversal_v1.9.35_MainImageTruth.dylib`.
+- Branch: `feature/hfamap-v1936-architecture-truth`.
+- Base commit: `9556c223646c4dda12d566a1e65b8a4394bbb59d`.
+- Build-tested code commit: `75f94da37221343b6839465ad365ddec2679e63a`.
+- Successful CI run: `34832916059`.
+- Artifact ID: `10343305875`.
+- Artifact digest: `sha256:db31af9643b24861fbb10a5408fa8605d5bc1812d47565450ac541a8fc6dcb4d`.
+- Binary: `HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib`.
 - Binary size: `175664` bytes.
-- SHA256: `93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f`.
-- v1.9.35 device validation: pending.
+- SHA256: `3249137776562b0723114904c4a92131387c908fd227aec0709d92c3e8f2ca13`.
+- v1.9.36 device validation: pending.
 
 ## Next validation
 
-First clear stale generated output files, then run the runtime-record/Dragons sample.
+Clear stale generated outputs, then run Dragons/runtime-record.
 
 Required evidence:
 
-1. `[MAIN-IMAGE-RESOLVE]` resolves to the actual game `MH_EXECUTE` image.
-2. All `PACKAGE-ORIGINAL` records for `module=main` report that executable and filetype `2`.
-3. Canonical validation still reports 3 features / 8 patches.
-4. The identity sidecar resolves `@main` to the game executable and, for the supplied sample, reports preferred `__TEXT` VM address `0x100000000`.
-5. Original bytes at the eight patch locations are plausible target code bytes and no longer reproduce the unrelated ASCII values observed under v1.9.34.
+1. `MAIN-IMAGE-RESOLVE` still identifies the actual `MH_EXECUTE` game image.
+2. All eight `PACKAGE-ORIGINAL` records still use that image and `filetype=2`.
+3. `CANONICAL-CHECK` remains 3 features / 8 patches.
+4. `PACKAGE-ARCH` reports `status=pass architecture=arm64 source=canonical-targets`.
+5. `package.architectures` is `["arm64"]`, matching the identity sidecar.
+6. Identity UUID/cpusubtype/textVM remains unchanged and all eight originals still match the same-UUID file.
 
-Then regression-test the WayOfKings/iGMM path and verify diagnostic-only behavior is unchanged.
+Then regression-test WayOfKings and confirm diagnostic-only output remains unchanged.
 
-After the two 5 MB paths pass, device-regression the legacy 15 MB family with the current binary. Final closure still requires all of those runtime gates; CI alone is insufficient.
+After both 5 MB paths pass, device-regression the current binary on the legacy 15 MB family. Final project closure still requires those runtime gates and a consumer-level canonical playback test.
