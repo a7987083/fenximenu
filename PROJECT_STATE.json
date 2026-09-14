@@ -1,10 +1,10 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.35",
-  "phase": "main-image-truth-device-validation",
-  "branch": "feature/hfamap-v1935-main-image-truth",
-  "base_branch": "feature/hfamap-v1934-unified-canonical-exporter",
-  "base_commit": "7dd64cdafc45cf0017b9fb99a87b4bae84ee7758",
+  "version": "1.9.36",
+  "phase": "architecture-truth-device-validation",
+  "branch": "feature/hfamap-v1936-architecture-truth",
+  "base_branch": "feature/hfamap-v1935-main-image-truth",
+  "base_commit": "9556c223646c4dda12d566a1e65b8a4394bbb59d",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -12,15 +12,15 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34830471085,
-    "build_commit": "9b88d83919c824e371ebc3c21b70138a165b2ee5",
-    "artifact_id": 10341533093,
-    "artifact": "HFAMapUniversal-v1.9.35-MainImageTruth",
-    "artifact_digest": "sha256:3426aad904df4e0bb2a7a9510a6eb0d8d97593041abe01e29c6606be044d0a83",
-    "binary": "HFAMapUniversal_v1.9.35_MainImageTruth.dylib",
+    "run_id": 34832916059,
+    "build_commit": "75f94da37221343b6839465ad365ddec2679e63a",
+    "artifact_id": 10343305875,
+    "artifact": "HFAMapUniversal-v1.9.36-ArchitectureTruth",
+    "artifact_digest": "sha256:db31af9643b24861fbb10a5408fa8605d5bc1812d47565450ac541a8fc6dcb4d",
+    "binary": "HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib",
     "architecture": "arm64",
     "size_bytes": 175664,
-    "sha256": "93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f"
+    "sha256": "3249137776562b0723114904c4a92131387c908fd227aec0709d92c3e8f2ca13"
   },
   "verification": {
     "patch_chain": "passed",
@@ -28,37 +28,38 @@
     "v1931_decrypt_functions_preserved": true,
     "v1933_original_byte_readers_preserved": true,
     "v1934_canonical_truth_gate_preserved": true,
-    "main_image_resolver_invariants": "passed",
-    "no_main_index0_assumption": true,
+    "v1935_main_image_resolver_preserved": true,
+    "package_architecture_target_derived": true,
+    "no_package_architecture_index0_assumption": true,
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed",
-    "device_runtime_v1935": "pending"
+    "device_runtime_v1936": "pending"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
-    "jailpatch_v2_v1934_runtime_record_scan": "device-confirmed-no-crash-decrypt-rc0-3-groups-8-valid-mappings",
-    "jailpatch_v2_v1934_canonical_structure": "device-confirmed-3-features-8-patches-contract-pass",
-    "jailpatch_v2_v1934_identity": "device-failed-main-resolved-to-injected-dylib-via-index0",
-    "jailpatch_v2_v1934_original_bytes": "device-failed-main-originals-read-from-wrong-image-including-non-code-ascii-at-executable-offsets",
     "jailpatch_v2_v1934_igmm": "device-confirmed-diagnostic-only-export-no-new-hfapatch-json",
-    "jailpatch_v2_v1935": "compiled-ci-passed-awaiting-device-validation",
-    "v1935_on_15mb": "not-device-regression-tested"
+    "jailpatch_v2_v1935_runtime_record_scan": "device-confirmed-no-crash-decrypt-rc0-3-groups-8-valid-mappings",
+    "jailpatch_v2_v1935_main_identity": "device-confirmed-main-resolved-to-Dragons-prod-remote-nocheat-MH_EXECUTE-index1",
+    "jailpatch_v2_v1935_identity_sidecar": "device-confirmed-uuid-7E74523C-90F5-3D72-9A9C-108BDE23A4A8-arm64-cpusubtype0-textvm-0x100000000-cryptid0",
+    "jailpatch_v2_v1935_original_bytes": "device-confirmed-8-of-8-from-real-game-executable-and-static-file-verified-8-of-8-against-same-uuid-macho",
+    "jailpatch_v2_v1935_package_architecture": "device-failed-metadata-still-reported-arm64e-from-dyld-index0",
+    "jailpatch_v2_v1936": "compiled-ci-passed-awaiting-device-validation",
+    "v1936_on_15mb": "not-device-regression-tested"
   },
   "runtime_evidence": {
-    "v1934_runtime_record": "AUTO-MENU-CANDIDATE -> AUTO-TRAVERSAL-END -> AUTO-SCAN completed without crash. FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3 and CANONICAL-CHECK reported status=pass.",
-    "v1934_identity_failure": "The generated identity sidecar declared @main but resolved the target as systemhook.dylib with preferredTextVMAddr=0x0. Source inspection confirmed both HFAImageIndexForName(main) and the v1.9.34 identity writer assumed dyld image index 0.",
-    "v1934_original_failure": "The same index-0 assumption fed the original-byte reader. Exported originals at statically confirmed executable offsets included ASCII-like bytes 4531454E53395F31 and 70726F706F736564, proving the canonical package was structurally valid but not byte-truthworthy.",
-    "v1934_igmm": "WayOfKings produced four execution-primitive records in com.hfa.igmm.runtime/v1 and no new canonical-looking .hfapatch.json. Diagnostic isolation passed on device.",
-    "v1935_fix": "main/@main now resolve by NSBundle.mainBundle.executablePath plus MH_EXECUTE, with unique-MH_EXECUTE fallback and fail-closed ambiguity. The v1.9.33 original readers are unchanged; only their image-index source is corrected."
+    "v1935_main_resolution": "PACKAGE-ORIGINAL records resolved module=main to imageIndex=1 image=Dragons-prod-remote-nocheat filetype=2 for all eight mappings. TARGET-IDENTITY resolved the same executable with UUID 7E74523C-90F5-3D72-9A9C-108BDE23A4A8, architecture arm64, cpusubtype 0, preferredTextVMAddr 0x100000000 and cryptid 0.",
+    "v1935_static_byte_crosscheck": "The identity UUID exactly matches the previously supplied Dragons-prod-remote-nocheat Mach-O. Mapping all eight preferred VM addresses back to that file produced byte-for-byte matches for every exported original: 8/8 verified.",
+    "v1935_architecture_metadata_failure": "Despite the correct target identity, package.architectures still contained arm64e. Source inspection found HFAWritePatchPackage still derived architecture from _dyld_get_image_header(0), the same positional assumption already removed from main target resolution.",
+    "v1936_fix": "HFAWritePatchPackage now derives one agreed ARM64 architecture from the actual canonical targets resolved through HFAImageIndexForName. Unresolved, non-ARM64 or mixed target architectures fail closed. The proven v1.9.35 main/original/identity path is protected unchanged."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
     "Documents/HFAMap_JailpatchMap.jsonl",
     "Documents/HFAMap_Mapping.log",
-    "*.hfapatch.json only after canonical structure and target resolution pass",
+    "*.hfapatch.json only after canonical structure, target identity and architecture truth pass",
     "*.hfapatch.identity.json for canonical target identity",
     "*.hfamap.igmm.json for iGMM runtime diagnostics"
   ],
-  "next_task": "Clear old generated outputs and device-test v1.9.35 on the runtime-record sample first. Require MAIN-IMAGE-RESOLVE to identify the real MH_EXECUTE game executable, every PACKAGE-ORIGINAL for module=main to report that executable and filetype=MH_EXECUTE, the identity sidecar to report the real executable UUID and preferredTextVMAddr=0x100000000 for the supplied Dragons sample, and the exported originals to contain real instruction bytes rather than the prior unrelated ASCII values. Then regression-test the iGMM diagnostic-only path and later the 15 MB family."
+  "next_task": "Clear old outputs and device-test v1.9.36 on the Dragons/runtime-record sample. Require MAIN-IMAGE-RESOLVE and all eight PACKAGE-ORIGINAL records to remain on the real MH_EXECUTE game image, CANONICAL-CHECK to remain 3 features / 8 patches, PACKAGE-ARCH to report status=pass architecture=arm64 source=canonical-targets, package.architectures to be [arm64], identity sidecar to remain UUID/cpusubtype/textVM-correct, and the eight originals to remain byte-identical to the same-UUID Mach-O. Then regression-test the WayOfKings diagnostic-only path and later the 15 MB family."
 }
