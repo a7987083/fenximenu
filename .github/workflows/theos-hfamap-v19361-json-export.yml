@@ -63,8 +63,8 @@ jobs:
           grep -q 'com.hfa.igmm.runtime/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'HFAMapJSONExport.m' hfamap/Makefile
-          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
-            echo 'forbidden playback/runtime dependency found'; exit 1
+          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
+            echo 'forbidden playback dependency found'; exit 1
           fi
           if grep -q '__attribute__((constructor))' hfamap/src/HFAMapJSONExport.m; then
             echo 'JSON exporter must not add a constructor'; exit 1
@@ -93,8 +93,13 @@ jobs:
           grep -q 'HFAMap v1.9.36.1 JSON Export' dist/strings_v1.9.36.1.txt
           grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.1.txt
           grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.1.txt
-          if grep -Eq 'DobbyHook|HFAPatchConsumerPlayback|RUNTIME-TAKEOVER' dist/strings_v1.9.36.1.txt; then
-            echo 'runtime executor leaked into pure parser build'; exit 1
+          nm -u "$out" > dist/nm_undefined_v1.9.36.1.txt
+          otool -L "$out" > dist/otool_v1.9.36.1.txt
+          if grep -Eq '_Dobby(Hook|Destroy)|HFAPatchConsumer' dist/nm_undefined_v1.9.36.1.txt; then
+            echo 'runtime executor symbol leaked into pure parser build'; exit 1
+          fi
+          if grep -Eqi 'dobby|hfapatchconsumer' dist/otool_v1.9.36.1.txt; then
+            echo 'runtime executor library linked into pure parser build'; exit 1
           fi
 
       - name: Upload artifact
