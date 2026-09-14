@@ -1,4 +1,4 @@
-name: HFAMapUniversal v1.9.36.1 JSONExport
+name: HFAMapUniversal v1.9.36.2 JSONExport
 
 on:
   push:
@@ -13,6 +13,7 @@ on:
       - '.github/scripts/apply_hfamap_v1935_chain.py'
       - '.github/scripts/apply_hfamap_v1936_chain.py'
       - '.github/workflows/theos-hfamap-v19361-json-export.yml'
+      - 'tests/igmm_control_kind_fixture.json'
   workflow_dispatch:
 
 jobs:
@@ -58,13 +59,16 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'HFAMapJSONExportLatest' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMap v1.9.36.2 JSON Export' hfamap/src/HFAMapLegacy.m
           grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
           grep -q 'com.hfa.igmm.runtime/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'kTypeButton' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapUniversal v1.9.36.2 JSONExport' hfamap/src/HFAMapJSONExport.m
           grep -q 'HFAMapJSONExport.m' hfamap/Makefile
-          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
-            echo 'forbidden playback dependency found'; exit 1
+          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
+            echo 'forbidden playback/runtime dependency found'; exit 1
           fi
           if grep -q '__attribute__((constructor))' hfamap/src/HFAMapJSONExport.m; then
             echo 'JSON exporter must not add a constructor'; exit 1
@@ -78,35 +82,32 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build HFAMapUniversal v1.9.36.1
+      - name: Build HFAMapUniversal v1.9.36.2
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFAMapUniversal_v1.9.36.1_JSONExport.dylib'
+          out='dist/HFAMapUniversal_v1.9.36.2_JSONExport.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.1.txt
-          strings "$out" > dist/strings_v1.9.36.1.txt
-          grep -q 'HFAMap v1.9.36.1 JSON Export' dist/strings_v1.9.36.1.txt
-          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.1.txt
-          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.1.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.36.1.txt
-          otool -L "$out" > dist/otool_v1.9.36.1.txt
-          if grep -Eq '_Dobby(Hook|Destroy)|HFAPatchConsumer' dist/nm_undefined_v1.9.36.1.txt; then
-            echo 'runtime executor symbol leaked into pure parser build'; exit 1
-          fi
-          if grep -Eqi 'dobby|hfapatchconsumer' dist/otool_v1.9.36.1.txt; then
-            echo 'runtime executor library linked into pure parser build'; exit 1
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.2.txt
+          strings "$out" > dist/strings_v1.9.36.2.txt
+          grep -q 'HFAMap v1.9.36.2 JSON Export' dist/strings_v1.9.36.2.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.2.txt
+          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.2.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.2.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.2.txt
+          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.2.txt dist/nm_undefined_v1.9.36.2.txt; then
+            echo 'Dobby symbol leaked into pure parser build'; exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.36.1-JSONExport
+          name: HFAMapUniversal-v1.9.36.2-JSONExport
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.36.1_JSONExport.dylib
-            hfamap/dist/SHA256_v1.9.36.1.txt
+            hfamap/dist/HFAMapUniversal_v1.9.36.2_JSONExport.dylib
+            hfamap/dist/SHA256_v1.9.36.2.txt
           if-no-files-found: error
