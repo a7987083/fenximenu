@@ -1,4 +1,4 @@
-name: HFAMapUniversal v1.9.36.2 JSONExport
+name: HFAMapUniversal v1.9.36.3 JSONExport
 
 on:
   push:
@@ -59,13 +59,17 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'HFAMapJSONExportLatest' hfamap/src/HFAMapLegacy.m
-          grep -q 'HFAMap v1.9.36.2 JSON Export' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMap v1.9.36.3 JSON Export' hfamap/src/HFAMapLegacy.m
           grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
           grep -q 'com.hfa.igmm.runtime/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'kTypeButton' hfamap/src/HFAMapJSONExport.m
-          grep -q 'HFAMapUniversal v1.9.36.2 JSONExport' hfamap/src/HFAMapJSONExport.m
+          grep -q 'normalizedExecutionPrimitive' hfamap/src/HFAMapJSONExport.m
+          grep -q 'targetIdentities' hfamap/src/HFAMapJSONExport.m
+          grep -q 'LC_UUID' hfamap/src/HFAMapJSONExport.m
+          grep -q 'LC_ENCRYPTION_INFO_64' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapUniversal v1.9.36.3 JSONExport' hfamap/src/HFAMapJSONExport.m
           grep -q 'HFAMapJSONExport.m' hfamap/Makefile
           if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
             echo 'forbidden playback/runtime dependency found'; exit 1
@@ -73,6 +77,24 @@ jobs:
           if grep -q '__attribute__((constructor))' hfamap/src/HFAMapJSONExport.m; then
             echo 'JSON exporter must not add a constructor'; exit 1
           fi
+
+      - name: Verify WayOfKings evidence normalization fixture
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          fixture=json.loads(Path('tests/igmm_control_kind_fixture.json').read_text())
+          by_title={f['title']:f for f in fixture['features']}
+          assert by_title['Damage Multiplier']['type']=='modtext'
+          assert by_title['Defence Multiplier']['type']=='modtext'
+          assert by_title['God Mode']['type']=='customSwitch'
+          assert by_title['Debug Menu']['type']=='kTypeButton'
+          source=Path('hfamap/src/HFAMapJSONExport.m').read_text()
+          assert '[type isEqualToString:@"kTypeButton"]' in source
+          assert '[implementationKind isEqualToString:@"buttonBlock"]' in source
+          assert 'return @"runtimeAction";' in source
+          print('WayOfKings observed control types are explicitly normalized without changing resolver evidence')
+          PY
 
       - name: Install build dependencies
         run: brew install ldid
@@ -82,32 +104,34 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build HFAMapUniversal v1.9.36.2
+      - name: Build HFAMapUniversal v1.9.36.3
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFAMapUniversal_v1.9.36.2_JSONExport.dylib'
+          out='dist/HFAMapUniversal_v1.9.36.3_JSONExport.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.2.txt
-          strings "$out" > dist/strings_v1.9.36.2.txt
-          grep -q 'HFAMap v1.9.36.2 JSON Export' dist/strings_v1.9.36.2.txt
-          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.2.txt
-          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.2.txt
-          nm -g "$out" > dist/nm_global_v1.9.36.2.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.36.2.txt
-          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.2.txt dist/nm_undefined_v1.9.36.2.txt; then
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.3.txt
+          strings "$out" > dist/strings_v1.9.36.3.txt
+          grep -q 'HFAMap v1.9.36.3 JSON Export' dist/strings_v1.9.36.3.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.3.txt
+          grep -q 'normalizedExecutionPrimitive' dist/strings_v1.9.36.3.txt
+          grep -q 'targetIdentities' dist/strings_v1.9.36.3.txt
+          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.3.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.3.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.3.txt
+          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.3.txt dist/nm_undefined_v1.9.36.3.txt; then
             echo 'Dobby symbol leaked into pure parser build'; exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.36.2-JSONExport
+          name: HFAMapUniversal-v1.9.36.3-JSONExport
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.36.2_JSONExport.dylib
-            hfamap/dist/SHA256_v1.9.36.2.txt
+            hfamap/dist/HFAMapUniversal_v1.9.36.3_JSONExport.dylib
+            hfamap/dist/SHA256_v1.9.36.3.txt
           if-no-files-found: error
