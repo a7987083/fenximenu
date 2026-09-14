@@ -2,47 +2,62 @@
 
 ## v1.9.33 OriginalByteResolver
 
+### 15 MB and 5 MB JSON are not yet proven to share one canonical contract
+
+Status: open / current project blocker.
+
+The 5 MB runtime paths are device-confirmed, but their exported JSON representations are not yet verified as structurally and semantically equivalent to the formal 15 MB output.
+
+Current 5 MB outputs include two different representations:
+
+- runtime-record backend: static patch features with `target`, `offset`, `original`, and `enabled`;
+- iGMM backend: runtime-definition features with `runtime/config/backend` metadata and empty static `patches` arrays.
+
+Therefore "5 MB runtime chain complete" must not be conflated with "project export format complete". The canonical 15 MB package must be used as the compatibility target and explicitly diffed against both 5 MB forms before declaring closure.
+
 ### Runtime-record 5 MB package aggregation gap
 
 Status: resolved on the supplied runtime-record sample.
 
-v1.9.32 produced 8/8 valid mappings but exported only one patch because seven mappings lacked trusted original bytes. v1.9.33 device logs now show eight `PACKAGE-ORIGINAL ... source=vm-read status=ok` records. The generated package contains exactly 3 features / 8 patches with complete target, offset, original, and enabled fields.
+v1.9.32 produced 8/8 valid mappings but exported only one patch because seven mappings lacked trusted original bytes. v1.9.33 device logs show eight `PACKAGE-ORIGINAL ... source=vm-read status=ok` records and a generated package with 3 features / 8 static patches.
+
+This resolves only the internal runtime-record package completeness issue; it does not establish parity with the 15 MB canonical JSON.
 
 ### Crash-safe Full Scan on the supplied 5 MB games
 
 Status: resolved for the tested games.
 
-Both games reach semantic menu confirmation, `AUTO-TRAVERSAL-END`, and `AUTO-SCAN` without reproducing the v1.9.31 crash. The historical deep `igmm_probe_target(o)` remains inactive in Auto Detect and framework-superclass ivar traversal remains bounded.
+Both games reach semantic menu confirmation, `AUTO-TRAVERSAL-END`, and `AUTO-SCAN` without reproducing the v1.9.31 crash.
 
 ### Generic 5 MB decrypt resolution
 
 Status: resolved for the tested runtime-record sample.
 
-The image-local `__TEXT,__text` fingerprint resolver returns `matches=1`, and live decrypt calls return `rc=0`. Eight full mappings are valid.
+The image-local `__TEXT,__text` fingerprint resolver returns `matches=1`, live decrypt calls return `rc=0`, and eight full mappings are valid.
 
 ### Original-byte fallback branches
 
 Status: open / not runtime-exercised.
 
-v1.9.33 includes readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks after the primary `vm_read` path. CI verifies these branches compile and satisfy invariants, but the current device test recovered all eight originals through `vm-read`; therefore the fallback branches must not yet be described as runtime-confirmed.
+The readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks compile and pass CI invariants, but the current device test recovered all eight originals through `vm-read`.
 
 ### WayOfKings iGMM features have empty static patch arrays
 
-Status: expected design, not a bug.
+Status: representation mismatch / requires unified-contract decision.
 
-The iGMM exporter represents these four features as runtime definitions with implementation metadata. `patches=[]` is intentional for this backend and remains valid under v1.9.33.
+This is intentional for the current iGMM runtime-definition backend, but whether that representation is acceptable in the final 15 MB-compatible package contract is still unresolved. Do not label it "not a bug" at project level until the canonical cross-family schema is defined.
 
 ### v1.9.33 has not been runtime-regression-tested on ~15 MB
 
-Status: open / low priority.
+Status: open.
 
-The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28 with 12 valid mappings and package export. CI preserves the legacy path through v1.9.33, but the current v1.9.33 binary itself has not been re-injected into a 15 MB target.
+The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. The current v1.9.33 binary itself has not been re-injected into a 15 MB target.
 
 ### Generalization beyond the two supplied 5 MB samples
 
 Status: open / future validation.
 
-The current selector/decrypt/original-byte strategy is runtime-confirmed on the supplied runtime-record sample and the independent iGMM sample. Additional 5 MB binaries are still needed before claiming universal coverage across all Jailpatch generations.
+The current selector/decrypt/original-byte strategy is confirmed on the supplied runtime-record sample and the independent iGMM sample. Additional binaries are still needed before claiming universal Jailpatch coverage.
 
 ### CI delivery
 
