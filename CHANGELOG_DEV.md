@@ -1,6 +1,6 @@
 # Development Changelog
 
-## v1.9.36.4 JSONExport — compiled / CI passed / awaiting device validation
+## v1.9.36.4 JSONExport — CI passed / WayOfKings device passed
 
 Branch: `feature/hfamap-v19361-json-export`
 Parser baseline: `v1.9.36 ArchitectureTruth @ 75f94da37221343b6839465ad365ddec2679e63a`
@@ -12,40 +12,35 @@ Binary size: `192432` bytes
 Binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
 Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
 
-### v1.9.36.3 device result
+### v1.9.36.4 device result
 
-WayOfKings device archive confirmed:
+WayOfKings device archive `归档 6(1).zip` confirmed:
 
 - injection did not crash;
 - Full Scan completed;
-- `com.hfa.igmm.runtime/v1` output was written;
-- `com.hfa.menu.analysis/v1` output was written;
-- four features were exported;
+- `com.hfa.igmm.runtime/v1` regenerated with 4 features;
+- `com.hfa.menu.analysis/v1` regenerated;
+- `JSON-EXPORT` reported `status=pass features=4 sources=1 targetIdentities=2`.
+
+Normalized controls and evidence:
+
 - Damage Multiplier: `modtext -> number`, default `1`;
 - Defence Multiplier: `modtext -> number`, default `1`;
 - God Mode: `customSwitch -> toggle`;
 - Debug Menu: `kTypeButton -> button`;
-- raw Debug Menu `executionPrimitive = nativeHook` remained preserved;
+- Debug Menu raw `executionPrimitive = nativeHook` preserved;
 - Debug Menu `normalizedExecutionPrimitive = runtimeAction`;
-- `targetIdentities` resolved `libpathofkings.dylib` and `UnityFramework` with the expected UUID, arm64, filetype, preferred `__TEXT` and cryptid evidence.
+- Debug Menu raw `canonicalReason = runtime-hook-requires-portable-equivalent` preserved;
+- Debug Menu `normalizedCanonicalReason = runtime-action-not-static-bytes`;
+- Damage/Defence normalized reason = `dynamic-numeric-state-not-static-bytes`;
+- God Mode normalized reason = `runtime-hook-requires-portable-equivalent`.
 
-Confirmed identities:
+Target identities remained stable:
 
 - `libpathofkings.dylib`: UUID `4C4C448B-5555-3144-A14F-4905D9ED4E59`, arm64, filetype 6, text VM `0x0`, cryptid 0;
 - `UnityFramework`: UUID `E0039512-CCB0-33E3-A69A-3DBEBFF3641B`, arm64, filetype 6, text VM `0x0`, cryptid 0.
 
-### v1.9.36.4 change
-
-v1.9.36.3 correctly preserved raw classifier evidence, but Debug Menu therefore had a raw `canonicalReason` corresponding to its source `nativeHook` classification while the normalized primitive was `runtimeAction`.
-
-v1.9.36.4 keeps the raw evidence and adds a parallel normalized reason:
-
-- raw `canonicalReason`: unchanged;
-- `normalizedExecutionPrimitive`: unchanged from v1.9.36.3;
-- new `normalizedCanonicalReason`;
-- observed button block/action -> `runtime-action-not-static-bytes`.
-
-No parser-core or runtime behavior changed.
+Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further WayOfKings normalizer changes are required without new contradictory evidence.
 
 ### Verification
 
@@ -56,9 +51,10 @@ No parser-core or runtime behavior changed.
 - analysis-only invariants: PASS;
 - arm64 compile/link/strip/sign: PASS;
 - no Dobby symbols in final binary: PASS;
-- artifact upload: PASS;
-- artifact independently downloaded/re-hashed: PASS;
-- v1.9.36.4 device validation: PENDING.
+- artifact upload/re-hash: PASS;
+- v1.9.36.4 WayOfKings device validation: PASS;
+- runtime-record/static 5 MB current-line regression: PENDING;
+- legacy ~15 MB current-line regression: PENDING.
 
 ## v1.9.36.3 JSONExport — device passed on WayOfKings
 
