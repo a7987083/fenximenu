@@ -1,70 +1,77 @@
 # Known Issues
 
-## v1.9.35 MainImageTruth
+## Current parser-only line: v1.9.36.3 JSONExport
 
-### v1.9.35 main-executable resolver is not yet device-confirmed
+### v1.9.36.3 device validation is still pending
 
 Status: open / primary validation gate.
 
-The candidate replaces all known `main -> dyld image index 0` assumptions with an `NSBundle.mainBundle.executablePath` + `MH_EXECUTE` resolver, and CI verifies the historical index-0 patterns are absent from the generated source. The dylib compiles, signs and passes regression checks, but device evidence is still required before the fix can be called runtime-confirmed.
+The build preserves the v1.9.36 constructor, `run_full_scan()` and resolver core, and CI confirms no Dobby or HFAPatchConsumer linkage. It adds only analysis-layer normalization and read-only target image identity. Device evidence is still required before v1.9.36.3 can be called runtime-confirmed.
 
-### v1.9.34 main target identity/original bytes were wrong
+### Debug Menu was mis-normalized in v1.9.36.1
 
-Status: confirmed defect / fixed in v1.9.35 candidate / device validation pending.
+Status: confirmed defect / fixed in v1.9.36.2+ / device confirmation pending.
 
-v1.9.34 device testing showed that `@main` resolved to `systemhook.dylib` because the identity writer hardcoded dyld image index 0. Source inspection also found the older `HFAImageIndexForName("main") -> 0` assumption, so runtime-record original-byte acquisition used the same wrong loaded image.
+WayOfKings device output proved the raw control type is `kTypeButton`. v1.9.36.1 only recognized `button`, so `Debug Menu` became `control.kind = unknown`. v1.9.36.2+ maps the observed exact source type `kTypeButton` to `button` without changing the underlying resolver evidence.
 
-The exported package consequently contained unrelated bytes at statically confirmed executable patch offsets, including `4531454E53395F31` and `70726F706F736564`. Therefore the v1.9.34 runtime-record package is structurally canonical but not trusted as a byte-correct package.
+### Raw source primitive can differ from normalized UI semantics
 
-v1.9.35 routes both `main` and `@main` through the real `MH_EXECUTE` resolver and fails closed if the executable cannot be identified unambiguously.
+Status: intentional evidence policy.
+
+The original iGMM diagnostic writer classified the observed Debug Menu record as `executionPrimitive = nativeHook`, while its runtime implementation evidence shows `kind = buttonBlock` with a block handler and one resolved target. v1.9.36.3 does not rewrite or hide the raw source primitive. Instead it adds `normalizedExecutionPrimitive = runtimeAction` in the normalized analysis JSON. Consumers must treat the raw field as source evidence and the normalized field as the analysis-layer interpretation.
+
+### Target identities are analysis evidence, not an execution authorization
+
+Status: permanent rule.
+
+v1.9.36.3 adds read-only UUID/architecture/filetype/preferred-`__TEXT`/cryptid records for images referenced by the generated diagnostics. This is for build matching and analysis quality only. It must not be interpreted as permission to install hooks or execute a generated package.
 
 ### iGMM runtime features remain non-canonical static patches
 
-Status: intentional / device behavior confirmed under v1.9.34.
+Status: intentional / device behavior confirmed.
 
-The supplied iGMM sample uses runtime numeric/native-hook behavior. v1.9.34 correctly exported four features only to `com.hfa.igmm.runtime/v1` diagnostics and produced no new iGMM `.hfapatch.json`. v1.9.35 preserves that policy.
+WayOfKings uses runtime numeric/native-hook/block behavior. These records remain diagnostic and analysis-only. They are not converted into fabricated `target/offset/original/enabled` static patches.
 
-A future feature can enter `com.hfa.patch/v1` only after a real portable static `target/offset/original/enabled` equivalent is proven. Runtime hook metadata must not be converted into fabricated patch bytes.
+### v1.9.37 and v1.9.37.1 are retired from the HFAMapUniversal parser mainline
 
-### Canonical structural validity is not sufficient
+Status: confirmed device startup failure / architecture direction reverted.
 
-Status: permanent verification rule.
-
-v1.9.34 demonstrated that a package can satisfy exact JSON keys, valid hex lengths and known target IDs while still reading bytes from the wrong Mach-O. Canonical acceptance therefore requires both:
-
-1. structural contract validation; and
-2. resolved target binary identity consistent with the declared target.
-
-For `@main`, the resolved image must be `MH_EXECUTE`.
+Those builds merged the independent playback/runtime consumer and Dobby into the same HFAMapUniversal dylib. Both builds crashed immediately when injected on device. The exact crash instruction has not been established because no `.ips` crash report was supplied, but the product-direction issue is resolved: HFAMapUniversal remains a parser/exporter and no longer embeds that execution engine.
 
 ### Stale generated files can confuse device validation
 
 Status: test-environment hazard.
 
-Before testing v1.9.35, delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files. Otherwise a v1.9.34 package can be mistaken for the new candidate's output.
+Before testing a new parser version, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs. Otherwise a prior result can be mistaken for the current scan.
+
+### Canonical structural validity is not sufficient
+
+Status: permanent verification rule.
+
+A static package is trusted only when structure, target identity and original-byte truth all agree. Preferred Mach-O VM address semantics remain required for canonical offsets.
 
 ### Original-byte fallback branches remain incompletely runtime-exercised
 
 Status: open.
 
-The readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks from v1.9.33 remain compiled and CI-verified. The new v1.9.35 change does not rewrite those readers; it corrects the loaded-image index supplied to them. Their fallback branches still need dedicated runtime evidence if `vm-read` is insufficient on a future sample.
+The v1.9.33 multi-source original-byte readers remain part of the frozen parser core. Their fallback branches still need dedicated runtime evidence on samples where the preferred read path is unavailable.
 
-### v1.9.35 has not been runtime-regression-tested on ~15 MB
+### Current binary has not yet been regression-tested across all menu families
 
 Status: open.
 
-The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. A current-binary 15 MB device regression is still required before v1.9.35 can be promoted as the cross-family runtime candidate.
+- WayOfKings/iGMM: v1.9.36.1 parser/export path device-confirmed; v1.9.36.3 pending.
+- Runtime-record/static 5 MB family: current v1.9.36.3 regression pending.
+- Legacy ~15 MB family: current v1.9.36.3 regression pending.
 
-### Generalization beyond supplied samples
+Do not claim universal coverage until the current parser-only binary passes all three families.
 
-Status: open / future validation.
+## Current CI delivery
 
-The architecture is currently grounded in one runtime-record 5 MB sample, one iGMM/native-hook 5 MB sample, and the legacy 15 MB family. Additional menu generations are still needed before claiming universal Jailpatch coverage.
+Authoritative candidate:
 
-### CI delivery
-
-Status: intentional.
-
-Verified candidate binary: `HFAMapUniversal_v1.9.35_MainImageTruth.dylib`, successful run `34830471085`, artifact `10341533093`, SHA256 `93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f`.
-
-The earlier v1.9.35 run `34830298479` failed before compilation because of a patch-script anchor mismatch and is not the authoritative build.
+- binary: `HFAMapUniversal_v1.9.36.3_JSONExport.dylib`
+- run: `34906163687`
+- artifact: `10372078251`
+- binary SHA256: `5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546`
+- artifact digest: `sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed`
