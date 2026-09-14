@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v1.9.36.4 JSONExport — pure parser/exporter, CI passed, awaiting device validation.
+v1.9.36.4 JSONExport — pure parser/exporter, CI passed, **WayOfKings/iGMM device validation passed**, cross-family regression next.
 
 ## Product direction
 
@@ -20,34 +20,7 @@ The runtime execution engine is not part of the parser mainline. v1.9.37/v1.9.37
 - iGMM runtime behavior remains diagnostic-only under `com.hfa.igmm.runtime/v1`.
 - Normalized cross-family analysis uses `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
 
-## Device-confirmed checkpoint: v1.9.36.3
-
-WayOfKings device archive confirmed:
-
-- stable injection;
-- Full Scan completion;
-- four iGMM features;
-- iGMM diagnostic JSON generation;
-- normalized analysis JSON generation;
-- Debug Menu correctly normalized as `button`;
-- Debug Menu `normalizedExecutionPrimitive = runtimeAction` while the raw primitive remains preserved;
-- read-only identities for `libpathofkings.dylib` and `UnityFramework` match the expected UUID/arm64/cryptid evidence.
-
 ## Current milestone: v1.9.36.4
-
-Completed in code/CI:
-
-- preserve raw `executionPrimitive`;
-- preserve raw `canonicalReason`;
-- keep `normalizedExecutionPrimitive`;
-- add `normalizedCanonicalReason` so normalized action semantics and normalized reason are consistent;
-- observed `buttonBlock/runtimeAction` -> `runtime-action-not-static-bytes`;
-- preserve read-only `targetIdentities`;
-- no new constructor;
-- no Dobby;
-- no HFAPatchConsumer;
-- no command polling;
-- no runtime takeover.
 
 Build checkpoint:
 
@@ -60,28 +33,46 @@ Build checkpoint:
 - size: `192432` bytes;
 - SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`.
 
-## Next validation: WayOfKings
+## WayOfKings/iGMM validation: COMPLETE
 
-Inject v1.9.36.4 and run the same Full Scan. Require:
+Device archive `归档 6(1).zip` confirmed:
 
-1. no crash at injection/startup;
-2. HFA floating window appears;
-3. Full Scan completes;
-4. `.hfamap.igmm.json` and `.hfamap.analysis.json` regenerate;
-5. Debug Menu remains `control.kind = button`;
-6. raw source primitive/reason remain visible;
-7. `normalizedExecutionPrimitive = runtimeAction`;
-8. `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-9. target identities remain identical to v1.9.36.3 evidence.
+- stable injection / no startup crash;
+- Full Scan completion;
+- 4-feature iGMM diagnostic export;
+- normalized analysis export with `status=pass`;
+- `Damage Multiplier -> number`, default `1`;
+- `Defence Multiplier -> number`, default `1`;
+- `God Mode -> toggle`;
+- `Debug Menu: kTypeButton -> button`;
+- raw Debug Menu primitive/reason preserved;
+- `normalizedExecutionPrimitive = runtimeAction`;
+- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
+- target identities for `libpathofkings.dylib` and `UnityFramework` remain correct.
 
-## Following validation
+The iGMM path should now be treated as a completed regression checkpoint for this parser line unless new contradictory device evidence appears.
 
-After WayOfKings passes:
+## Next validation: runtime-record/static 5 MB family
 
-1. regression-test the runtime-record/static 5 MB family and confirm canonical byte-patch export is unchanged;
-2. regression-test the legacy ~15 MB family;
-3. compare normalized analysis output across all three families;
-4. only then consider this parser/exporter line a cross-family candidate.
+Use the same v1.9.36.4 binary. Required evidence:
+
+1. no startup crash;
+2. Full Scan completes;
+3. canonical `com.hfa.patch/v1` is generated only after the existing truth gates pass;
+4. the target image is the intended executable/dylib, not an injected module;
+5. target identity UUID/architecture/preferred `__TEXT` values are consistent with the tested binary;
+6. every exported `original` byte sequence matches the real target code at the preferred Mach-O VM address;
+7. no stale package from a previous run is mistaken for current output;
+8. normalized `com.hfa.menu.analysis/v1` reflects the canonical features without changing the static patch contract.
+
+## Following validation: legacy ~15 MB family
+
+After the static 5 MB family passes:
+
+1. run the same v1.9.36.4 parser on the legacy AP/IGSecret-style sample;
+2. confirm the historically working static package path still exports correctly;
+3. compare control/patch/identity normalization across the 15 MB, static 5 MB and iGMM families;
+4. only then promote this parser/exporter line as a cross-family candidate.
 
 ## Deferred work
 
