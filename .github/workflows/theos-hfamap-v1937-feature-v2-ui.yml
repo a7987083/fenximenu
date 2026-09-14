@@ -11,6 +11,7 @@ on:
       - 'tools/**'
       - 'tests/**'
       - '.github/scripts/hfamap_v1937_feature_v2_ui.py'
+      - '.github/scripts/hfamap_v1937_runtime_takeover.py'
       - '.github/scripts/apply_hfamap_v1937_chain.py'
       - '.github/scripts/hfapatch_consumer_v2_compat.py'
       - '.github/scripts/hfapatch_consumer_v2_runtime.py'
@@ -42,9 +43,11 @@ jobs:
         run: |
           python3 -m py_compile .github/scripts/apply_hfamap_v1937_chain.py
           python3 -m py_compile .github/scripts/hfamap_v1937_feature_v2_ui.py
+          python3 -m py_compile .github/scripts/hfamap_v1937_runtime_takeover.py
           python3 .github/scripts/apply_hfamap_v1937_chain.py
           python3 .github/scripts/hfapatch_consumer_v2_compat.py
           python3 .github/scripts/hfapatch_consumer_v2_runtime.py
+          python3 .github/scripts/hfamap_v1937_runtime_takeover.py
           git diff --check
 
       - name: Verify unified source invariants
@@ -58,7 +61,9 @@ jobs:
           grep -q 'runtimeState' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'nativeCall' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'HFAPatchPlayback.command.json' hfamap/src/HFAMapFeatureV2UI.m
-          grep -q 'HFAPCVersion = @"1.2.0"' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'HFAPCVersion = @"1.2.1-unified"' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'RUNTIME-TAKEOVER' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'preexisting' hfapatch-consumer/src/HFAPatchConsumer.m
           grep -q 'DobbyHook' hfapatch-consumer/src/HFAPatchConsumer.m
           grep -q 'HFAPatchConsumerEmbed.m' hfamap/Makefile
           grep -q 'vendor/libdobby.a' hfamap/Makefile
@@ -112,6 +117,7 @@ jobs:
           strings "$out" | grep -q 'com.hfa.feature/v2'
           strings "$out" | grep -q 'HFAPatchPlayback.command.json'
           strings "$out" | grep -q 'runtime-hook-install-failed'
+          strings "$out" | grep -q 'RUNTIME-TAKEOVER'
           nm -g "$out" | grep '_DobbyHook'
           if nm -u "$out" | grep -q '_DobbyHook'; then
             echo 'DobbyHook is undefined after static link'; exit 1
