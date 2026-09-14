@@ -1,7 +1,7 @@
 {
   "project": "HFAMapUniversal",
   "version": "1.9.36.4",
-  "phase": "pure-parser-json-export-device-validation",
+  "phase": "pure-parser-cross-family-regression",
   "branch": "feature/hfamap-v19361-json-export",
   "base_commit": "75f94da37221343b6839465ad365ddec2679e63a",
   "stable_parser_baseline": {
@@ -32,36 +32,32 @@
     "no_hfapatch_consumer": true,
     "no_command_polling": true,
     "wayofkings_control_fixture": "passed",
-    "button_kTypeButton_normalization": "device-confirmed-in-v1.9.36.3",
-    "target_identity_export": "device-confirmed-in-v1.9.36.3",
-    "v19363_wayofkings_device_startup": "passed",
-    "v19363_wayofkings_full_scan": "passed",
-    "v19363_wayofkings_analysis_json_export": "passed",
-    "v19364_ci": "passed",
-    "v19364_device_validation": "pending"
+    "button_kTypeButton_normalization": "device-confirmed",
+    "target_identity_export": "device-confirmed",
+    "normalized_execution_primitive": "device-confirmed",
+    "normalized_canonical_reason": "device-confirmed",
+    "v19364_wayofkings_device_startup": "passed",
+    "v19364_wayofkings_full_scan": "passed",
+    "v19364_wayofkings_igmm_export": "passed",
+    "v19364_wayofkings_analysis_export": "passed",
+    "runtime_record_static_5mb_regression": "pending",
+    "legacy_15mb_regression": "pending"
   },
   "runtime_evidence": {
-    "wayofkings_v19363": "Device archive confirmed stable injection, Full Scan completion, com.hfa.igmm.runtime/v1 generation and com.hfa.menu.analysis/v1 generation with 4 features.",
+    "wayofkings_v19364": "Device archive 归档 6(1).zip confirmed stable injection, Full Scan completion, iGMM runtime diagnostic export and normalized analysis export with 4 features.",
     "wayofkings_controls": {
-      "Damage Multiplier": "modtext -> number, default 1",
-      "Defence Multiplier": "modtext -> number, default 1",
-      "God Mode": "customSwitch -> toggle",
-      "Debug Menu": "kTypeButton -> button; raw executionPrimitive=nativeHook preserved; normalizedExecutionPrimitive=runtimeAction"
+      "Damage Multiplier": "modtext -> number, default 1; normalizedExecutionPrimitive=numericRuntimeModifier; normalizedCanonicalReason=dynamic-numeric-state-not-static-bytes",
+      "Defence Multiplier": "modtext -> number, default 1; normalizedExecutionPrimitive=numericRuntimeModifier; normalizedCanonicalReason=dynamic-numeric-state-not-static-bytes",
+      "God Mode": "customSwitch -> toggle; raw and normalized primitive=nativeHook; normalizedCanonicalReason=runtime-hook-requires-portable-equivalent",
+      "Debug Menu": "kTypeButton -> button; raw executionPrimitive=nativeHook preserved; normalizedExecutionPrimitive=runtimeAction; raw canonicalReason preserved; normalizedCanonicalReason=runtime-action-not-static-bytes"
     },
     "wayofkings_target_identities": {
       "libpathofkings.dylib": "UUID 4C4C448B-5555-3144-A14F-4905D9ED4E59, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0",
       "UnityFramework": "UUID E0039512-CCB0-33E3-A69A-3DBEBFF3641B, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0"
     },
-    "wayofkings_runtime_evidence": "Damage/Defence/God share iGMM handler evidence at libpathofkings+0x4128 resolving through trampoline evidence toward UnityFramework+0x3BF6D94. Debug Menu has buttonBlock evidence at libpathofkings+0x66B0 / nested +0x66C4 resolving to UnityFramework+0x3DEC9A0.",
+    "wayofkings_log": "FULL-SCAN-END completed; IGMM-RUNTIME-EXPORT features=4; JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2.",
     "retired_runtime_merge": "v1.9.37 and v1.9.37.1 injected runtime-consumer/Dobby builds crashed on device and are not the HFAMapUniversal parser baseline."
   },
-  "v19364_changes": [
-    "Keep raw executionPrimitive and raw canonicalReason evidence unchanged.",
-    "Add normalizedCanonicalReason alongside normalizedExecutionPrimitive.",
-    "For observed buttonBlock/runtimeAction, normalizedCanonicalReason becomes runtime-action-not-static-bytes.",
-    "Keep targetIdentities read-only and analysisOnly=true.",
-    "No playback engine, Dobby, runtime takeover, command polling or extra constructor."
-  ],
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
@@ -71,5 +67,5 @@
     "*.hfamap.igmm.json for iGMM runtime diagnostics",
     "*.hfamap.analysis.json for normalized analysis-only menu description"
   ],
-  "next_task": "Device-test HFAMapUniversal_v1.9.36.4_JSONExport.dylib on WayOfKings and confirm normalizedCanonicalReason=runtime-action-not-static-bytes for Debug Menu while raw canonicalReason remains preserved. Then regression-test the runtime-record/static 5 MB family and legacy ~15 MB family without adding an execution engine to HFAMapUniversal."
+  "next_task": "Use the same v1.9.36.4 parser-only dylib for cross-family regression. First test the runtime-record/static 5 MB family and require trusted com.hfa.patch/v1 output with correct target identity and original bytes; then test the legacy ~15 MB family. Do not add an execution engine to HFAMapUniversal."
 }
