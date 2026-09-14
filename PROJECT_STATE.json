@@ -1,9 +1,10 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.33",
-  "phase": "5mb-runtime-confirmed-unified-export-pending",
-  "branch": "feature/hfamap-v1933-original-byte-resolver",
-  "base_branch": "feature/hfamap-v1932-crash-safe-full-scan",
+  "version": "1.9.34",
+  "phase": "canonical-truth-gate-device-validation",
+  "branch": "feature/hfamap-v1934-unified-canonical-exporter",
+  "base_branch": "feature/hfamap-v1933-original-byte-resolver",
+  "base_commit": "59ceb4bfa28b016b1bc52acea1613527c06aa231",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -11,50 +12,58 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34799869649,
-    "build_commit": "8845d84b2adbada07fdd46a1de0243ff8ae4165b",
-    "artifact_id": 10330589684,
-    "artifact": "HFAMapUniversal-v1.9.33-OriginalByteResolver",
-    "binary": "HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib",
+    "run_id": 34824481536,
+    "build_commit": "5c7edc0a70f571813c8b2882dd260beae3c0db6c",
+    "artifact_id": 10339925211,
+    "artifact": "HFAMapUniversal-v1.9.34-CanonicalTruthGate",
+    "artifact_digest": "sha256:f8d3846e1dad069a10c494f751b3591d4a7209fa6e5376e99c52bde1311031cd",
+    "binary": "HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib",
     "architecture": "arm64",
-    "size_bytes": 175616,
-    "sha256": "1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a"
+    "size_bytes": 175648,
+    "sha256": "98d5643e1c72b049e647bd58fcf861ef1012a6efbf406fbb71fec7e36673863c"
   },
   "verification": {
     "patch_chain": "passed",
     "v1932_crash_safe_scan_preserved": true,
     "v1931_decrypt_functions_preserved": true,
-    "package_writer_preserved": true,
-    "original_byte_resolver_invariants": "passed",
+    "v1933_original_byte_resolver_preserved": true,
+    "canonical_patch_writer_preserved": true,
+    "canonical_contract_gate": "passed",
+    "igmm_canonical_mislabel_removed": true,
+    "igmm_diagnostic_writer": "passed",
+    "binary_identity_sidecar": "present",
+    "offset_semantics": "preferred-mach-o-vmaddr",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed",
-    "device_runtime_v1933": "passed",
-    "unified_15mb_5mb_export_contract": "not-verified"
+    "device_runtime_v1934": "pending"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
-    "jailpatch_v2_v1930": "device-tested-selector-and-wrapper-bridge-confirmed",
-    "jailpatch_v2_v1931": "device-tested-full-scan-crash-reproduced-on-both-supplied-5mb-games",
-    "jailpatch_v2_v1932_scan": "device-confirmed-no-crash-on-both-supplied-5mb-games",
-    "jailpatch_v2_v1932_decrypt": "device-confirmed-text-fingerprint-matches-1-rc0",
-    "jailpatch_v2_v1932_mapping": "device-confirmed-8-of-8-full-mappings-valid-on-runtime-record-sample",
-    "jailpatch_v2_v1933_runtime_record_export": "device-confirmed-3-features-8-static-patches",
-    "jailpatch_v2_v1933_igmm_export": "device-confirmed-4-runtime-definition-features",
-    "v1933_on_15mb": "not-device-regression-tested",
-    "cross_family_json_parity": "pending"
+    "jailpatch_v2_v1933_runtime_record": "device-confirmed-3-features-8-static-patches-under-v1.9.33",
+    "jailpatch_v2_v1933_igmm": "device-confirmed-runtime-definition-discovery-under-v1.9.33-but-not-canonical-static-package",
+    "jailpatch_v2_v1934": "compiled-ci-passed-awaiting-device-validation",
+    "v1934_on_15mb": "not-device-regression-tested"
   },
-  "runtime_evidence": {
-    "runtime_record_v1933": "AUTO-MENU-CANDIDATE source=jailpatch-feature-array -> AUTO-TRAVERSAL-END -> AUTO-SCAN with no crash. MAP-DECRYPT-RESOLVE used text-fingerprint matches=1 and MAP-DECRYPT rc=0. FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3.",
-    "package_v1933": "The runtime-record 5 MB package contains 3 features with patch counts 1 + 6 + 1 = 8 and complete target/offset/original/enabled fields.",
-    "wayofkings_v1933": "The iGMM 5 MB package contains 4 runtime-definition features with runtime/config/backend metadata and empty static patches arrays by design.",
-    "scope_correction": "These results prove the two 5 MB runtime/export backends work internally. They do not prove that 5 MB JSON is contract-identical to the canonical 15 MB JSON. Project completion requires explicit 15 MB versus 5 MB schema and semantic parity validation or a deliberate unified compatibility format."
+  "static_evidence": {
+    "canonical_15mb_contract": "Formal com.hfa.patch/v1 package uses root schema/name/package/targets/features; each feature uses id/title/group/defaultEnabled/patches; each patch uses target/offset/original/enabled.",
+    "two_5mb_menu_family_relation": "The two supplied ~5 MB menu dylibs share the same semantic selector/decrypt family despite randomized class names; key IMPs are structurally aligned while their feature backends differ.",
+    "runtime_record_backend": "The runtime-record sample resolves to real static byte-patch points and is compatible in shape with the canonical patch contract.",
+    "igmm_backend": "The second sample uses runtime numeric/native-hook behavior; multiple features share hook infrastructure, so fixed original/enabled byte pairs must not be invented without a proven portable static equivalent.",
+    "binary_identity_requirement": "Patch-byte evidence must be tied to target UUID/cputype/cpusubtype/preferred __TEXT vmaddr. An arm64 package must not be byte-validated against an arm64e slice or another build solely by offset similarity."
+  },
+  "v1934_behavior": {
+    "canonical_static_export": "Before writing .hfapatch.json, require exact target/feature/patch keys, nonempty patch arrays, valid preferred-VM-address offsets, same-length differing original/enabled hex, and known targets.",
+    "identity_sidecar": "Write <bundle>_<version>_<build>.hfapatch.identity.json with UUID, CPU type/subtype, architecture, preferred __TEXT vmaddr, slide and cryptid for resolved canonical targets.",
+    "igmm_export": "Write <bundle>_<version>_<build>.hfamap.igmm.json using schema com.hfa.igmm.runtime/v1. Record executionPrimitive/canonicalEligible/canonicalReason and runtime implementation evidence. Do not emit a canonical-looking .hfapatch.json for unresolved iGMM runtime primitives."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
     "Documents/HFAMap_JailpatchMap.jsonl",
     "Documents/HFAMap_Mapping.log",
-    "*.hfapatch.json when export succeeds"
+    "*.hfapatch.json only for strict canonical static patches",
+    "*.hfapatch.identity.json for canonical target identity",
+    "*.hfamap.igmm.json for iGMM runtime diagnostics"
   ],
-  "next_task": "Obtain the canonical 15 MB exported .hfapatch.json used as the compatibility target, diff it field-by-field against both 5 MB outputs, define one canonical consumer contract, then implement a new-branch unified exporter/adapter and regression-test 15 MB + runtime-record 5 MB + iGMM 5 MB before calling the project closed."
+  "next_task": "Device-test v1.9.34 after deleting old generated package/report files. On the runtime-record 5 MB sample require CANONICAL-CHECK status=pass, TARGET-IDENTITY/TARGET-IDENTITY-EXPORT, the existing 3-feature/8-patch canonical package, and no regression in decrypt/mapping. On the iGMM sample require IGMM-PRIMITIVE plus IGMM-RUNTIME-EXPORT to .hfamap.igmm.json and verify that this backend does not create a new .hfapatch.json. Only after those checks consider a separate version that attempts proven portable equivalents for eligible runtime hooks."
 }
