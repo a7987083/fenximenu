@@ -1,0 +1,96 @@
+name: HFAPatch Consumer Playback v1.0.0
+
+on:
+  push:
+    branches:
+      - feature/hfapatch-consumer-playback-v1
+    paths:
+      - 'hfapatch-consumer/**'
+      - '.github/workflows/hfapatch-consumer-playback-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Protect v1.9.36 generator
+        run: |
+          git diff --exit-code a1c98bbac3d496d1038beddbaef2d0e7b75e6b6f -- hfamap/src hfamap/Makefile .github/scripts/hfamap_v1936_architecture_truth.py .github/scripts/apply_hfamap_v1936_chain.py
+
+      - name: Verify consumer fail-closed invariants
+        run: |
+          set -euo pipefail
+          src=hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'com.hfa.patch/v1' "$src"
+          grep -q 'com.hfa.patch.identity/v1' "$src"
+          grep -q 'preferred-mach-o-vmaddr' "$src"
+          grep -q 'HFAPCMainExecutableImageIndex' "$src"
+          grep -q 'mach_vm_read_overwrite' "$src"
+          grep -q 'mach_vm_protect' "$src"
+          grep -q 'mach_vm_write' "$src"
+          grep -q 'sys_icache_invalidate' "$src"
+          grep -q 'preflight-byte-mismatch' "$src"
+          grep -q 'identity-mismatch' "$src"
+          grep -q 'duplicate-patch-address' "$src"
+          grep -q '\[ROLLBACK-BEGIN\]' "$src"
+          grep -q 'dispatch_source_set_timer' "$src"
+          grep -q 'action isEqualToString:@"restore"' "$src"
+          for forbidden in \
+            'Dragons-prod-remote-nocheat' 'UnityFramework' 'systemhook.dylib' \
+            '7E74523C-90F5-3D72-9A9C-108BDE23A4A8' '8654D76C-B760-34FC-BEE0-FE70AE8C95C8' \
+            '0x1007E5390' '0x10088EFE0'; do
+            if grep -q "$forbidden" "$src"; then
+              echo "sample hardcode found: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Validate command example
+        run: |
+          python3 - <<'PY'
+          import json
+          p='hfapatch-consumer/example.command.json'
+          x=json.load(open(p))
+          assert x['action'] in {'preflight','apply','restore'}
+          assert x['package'].endswith('.hfapatch.json')
+          assert x['identity'].endswith('.hfapatch.identity.json')
+          assert isinstance(x['featureIds'], list) and all(isinstance(v,str) for v in x['featureIds'])
+          print('example command contract passed')
+          PY
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build consumer
+        run: |
+          cd hfapatch-consumer
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAPatchConsumerPlayback_v1.0.0.dylib"
+          cp .theos/obj/HFAPatchConsumerPlayback.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.0.0.txt
+          strings "$out" | grep -q 'HFAPatchConsumerPlayback'
+          strings "$out" | grep -q 'com.hfa.patch.playback.result/v1'
+          strings "$out" | grep -q 'preflight-byte-mismatch'
+          strings "$out" | grep -q '\[PLAYBACK\]'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAPatchConsumerPlayback-v1.0.0
+          path: |
+            hfapatch-consumer/dist/HFAPatchConsumerPlayback_v1.0.0.dylib
+            hfapatch-consumer/dist/SHA256_v1.0.0.txt
+            hfapatch-consumer/README.md
+            hfapatch-consumer/example.command.json
+          if-no-files-found: error
