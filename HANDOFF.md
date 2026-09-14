@@ -2,63 +2,85 @@
 
 ## Current branch
 
-`feature/hfamap-v1933-original-byte-resolver`
+`feature/hfamap-v1934-unified-canonical-exporter`
 
 ## Current build
 
-- Build-tested code commit: `8845d84b2adbada07fdd46a1de0243ff8ae4165b`.
-- GitHub Actions run: `34799869649` — success.
-- Artifact: `HFAMapUniversal-v1.9.33-OriginalByteResolver` (ID `10330589684`).
-- Binary: `HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib`.
+- Base: `feature/hfamap-v1933-original-byte-resolver @ 59ceb4bfa28b016b1bc52acea1613527c06aa231`.
+- Build-tested code commit: `5c7edc0a70f571813c8b2882dd260beae3c0db6c`.
+- GitHub Actions run: `34824481536` — success.
+- Artifact: `HFAMapUniversal-v1.9.34-CanonicalTruthGate` (ID `10339925211`).
+- Binary: `HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib`.
 - Architecture: arm64 Mach-O dylib.
-- Size: `175616` bytes.
-- SHA256: `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
+- Size: `175648` bytes.
+- SHA256: `98d5643e1c72b049e647bd58fcf861ef1012a6efbf406fbb71fec7e36673863c`.
 
-## Confirmed runtime checkpoints
+## Canonical contract
+
+The formal `.hfapatch.json` contract is the static 15 MB shape:
+
+`schema/name/package/targets/features`
+→ feature `id/title/group/defaultEnabled/patches`
+→ patch `target/offset/original/enabled`.
+
+Canonical offsets are Mach-O preferred VM addresses. They are not runtime slid addresses and are not file offsets. A main executable can therefore legitimately use `0x100...` values while a framework/dylib can use lower preferred VMs.
+
+## Confirmed historical runtime checkpoints
 
 ### Legacy AP / ~15 MB
 
-v1.9.28 remains runtime-confirmed with 12 valid mappings and successful `.hfapatch.json` export.
+v1.9.28 remains runtime-confirmed with 12 static mappings and successful canonical package export.
 
-### Jailpatch runtime-record / ~5 MB
+### Runtime-record / ~5 MB
 
-v1.9.33 confirms the supplied runtime-record sample can complete:
+v1.9.33 is runtime-confirmed for semantic menu discovery, selector descriptors, secret-wrapper association, generic decrypt, 8/8 valid mappings and a 3-feature / 8-static-patch package.
 
-`semantic menu discovery`
-→ `selector descriptor`
-→ `secret-wrapper association`
-→ `generic decrypt`
-→ `8/8 valid mappings`
-→ `3 features / 8 static patches exported`.
+### iGMM / ~5 MB
 
-### iGMM / WayOfKings ~5 MB
+v1.9.33 is runtime-confirmed for semantic menu discovery and runtime implementation discovery. Static analysis of the supplied menu/target pair shows the backend can use shared native hooks and dynamic numeric state; therefore its old runtime-definition JSON must not be treated as equivalent to a static canonical package.
 
-v1.9.33 also confirms the independent iGMM path exports four runtime-definition features and no longer crashes during Full Scan.
+## v1.9.34 behavior
 
-## Critical remaining gap: unified JSON contract
+### Static patch path
 
-The two 5 MB exporters currently produce different representations, and cross-family equivalence with the canonical 15 MB JSON has not been established.
+Before canonical export, `HFACanonical34Validate` requires exact target/feature/patch keys, nonempty patch arrays, valid `0x...` preferred-VM-address offsets, known targets, and same-length differing `original/enabled` bytes. A failure logs `[CANONICAL-EXPORT-SKIP]` instead of producing a misleading package.
 
-- Runtime-record 5 MB currently exports static patch entries (`target/offset/original/enabled`).
-- iGMM 5 MB currently exports runtime-definition features (`runtime/config/backend/...`) with empty static `patches` arrays.
-- The user requires the final 5 MB output to be compatible with the 15 MB formal JSON format/semantics.
+A successful static package also writes `*.hfapatch.identity.json` with target UUID, CPU type/subtype, architecture, preferred `__TEXT` VM address, slide and cryptid. This sidecar exists to prevent cross-build or arm64/arm64e byte validation mistakes without changing the canonical `com.hfa.patch/v1` schema.
 
-Therefore v1.9.33 is **runtime-confirmed**, but the project is **not cross-family export-complete**.
+### iGMM path
 
-Do not use phrases such as "final closure" or "5 MB project complete" until the canonical 15 MB package is explicitly diffed against both 5 MB package types and a unified consumer contract passes device regression.
+`HFAWriteIGMMPackage` is retained as the internal call surface but now writes only diagnostic `*.hfamap.igmm.json` using `com.hfa.igmm.runtime/v1`. Each feature records an execution primitive and why it is not yet canonical. It does not create a new `.hfapatch.json` for unresolved runtime hooks/modifiers.
 
-## Required next work
+## Device validation protocol
 
-1. Retrieve the exact canonical 15 MB `.hfapatch.json` used as the compatibility target.
-2. Diff root keys, target model, feature schema, patch schema, menu-family metadata, runtime metadata, and consumer semantics against both 5 MB outputs.
-3. Decide the canonical schema; prefer an adapter/unified exporter instead of deleting evidence-rich backend data.
-4. Implement on a new branch.
-5. Regression-test legacy 15 MB, runtime-record 5 MB, and iGMM 5 MB before promoting completion.
+Delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files before each test so stale v1.9.33 output cannot be mistaken for v1.9.34 output.
+
+Runtime-record 5 MB expected chain:
+
+`AUTO-MENU-CANDIDATE`
+→ `AUTO-TRAVERSAL-END`
+→ `AUTO-SCAN`
+→ decrypt `matches=1 / rc=0`
+→ 8 valid mappings
+→ `[CANONICAL-CHECK] status=pass`
+→ `[TARGET-IDENTITY-EXPORT]`
+→ canonical 3-feature / 8-patch `.hfapatch.json`.
+
+The iGMM 5 MB expected chain:
+
+`AUTO-MENU-CANDIDATE source=igmm-feature-array`
+→ `AUTO-TRAVERSAL-END/AUTO-SCAN`
+→ one `[IGMM-PRIMITIVE]` per feature
+→ `[IGMM-RUNTIME-EXPORT]`
+→ `*.hfamap.igmm.json`
+→ no newly created `.hfapatch.json` from the iGMM fallback.
 
 ## Verification discipline
 
-- v1.9.33 5 MB runtime behavior: confirmed.
-- v1.9.33 runtime-record package internal completeness: confirmed (3 features / 8 patches).
-- v1.9.33 iGMM package internal completeness: confirmed for its current runtime-definition representation.
-- 15 MB ↔ 5 MB JSON contract parity: **not confirmed**.
-- v1.9.33 itself on 15 MB: not device-regression-tested.
+- v1.9.34 source modified/committed: yes.
+- compiled/linked/signed: yes.
+- CI regression/invariants: passed.
+- artifact independently downloaded and re-hashed: passed.
+- v1.9.34 device-tested: no.
+- v1.9.34 15 MB runtime regression: no.
+- portable static equivalents for iGMM native hooks/modtext: not established; do not invent them.
