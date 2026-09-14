@@ -1,0 +1,220 @@
+            planOK = NO; break;
+        }
+        [seenTargets addObject:addressKey];
+
+        mach_vm_address_t runtime = 0;
+        NSMutableDictionary *targetRecord = nil;
+        if (!HFAPCRTResolveRuntimeAddress(package, identity, target, offset, &runtime, &targetRecord, errorOut)) {
+            planOK = NO; break;
+        }
+        if (targetRecord && targetRecords) [targetRecords addObject:targetRecord];
+        NSData *original = HFAPCHexData(originalHex);
+        if (!original || original.length == 0 || original.length > HFAPC_RT_ORIGINAL_MAX) {
+            if (errorOut) *errorOut = @"runtime-hook-original-invalid";
+            planOK = NO; break;
+        }
+        NSData *current = HFAPCReadMemory(runtime, original.length, errorOut);
+        if (!current || ![current isEqualToData:original]) {
+            if (errorOut && !*errorOut) {
+                *errorOut = [NSString stringWithFormat:@"runtime-hook-preflight-byte-mismatch target=%@ offset=%@ expected=%@ actual=%@",
+                             target, offset, HFAPCHexString(original), HFAPCHexString(current)];
+            }
+            planOK = NO; break;
+        }
+
+        HFAPCRTHookPlan *plan = &plans[planCount];
+        plan->address = runtime;
+        plan->originalLength = (uint32_t)original.length;
+        memcpy(plan->original, original.bytes, original.length);
+
+        if ([behaviorKind isEqualToString:@"captureFieldPointer"]) {
+            if (![behavior[@"baseRegister"] isEqual:@"x0"]) {
+                if (errorOut) *errorOut = @"runtime-capture-base-register-unsupported";
+                planOK = NO; break;
+            }
+            uint64_t fieldOffset = 0;
+            if (!HFAPCParseHexU64(behavior[@"fieldOffset"], &fieldOffset)) {
+                if (errorOut) *errorOut = @"runtime-capture-field-offset-invalid";
+                planOK = NO; break;
+            }
+            int storeIndex = HFAPCRTStoreIndex(graph, behavior[@"store"]);
+            int slotIndex = HFAPCRTClaimCaptureSlot();
+            if (storeIndex < 0 || slotIndex < 0) {
+                if (errorOut) *errorOut = @"runtime-capture-store-or-slot-unavailable";
+                planOK = NO; break;
+            }
+            HFAPCRTCaptureSlot *slot = &gHFAPCRTCaptureSlots[slotIndex];
+            slot->graph = graph;
+            slot->storeIndex = (uint32_t)storeIndex;
+            slot->fieldOffset = fieldOffset;
+            plan->kind = 1;
+            plan->slotIndex = (uint8_t)slotIndex;
+            plan->replacement = HFAPCRTCaptureReplacement((uint32_t)slotIndex);
+        } else if ([behaviorKind isEqualToString:@"conditionalPipeline"]) {
+            int slotIndex = HFAPCRTClaimPipelineSlot();
+            if (slotIndex < 0) {
+                if (errorOut) *errorOut = @"runtime-pipeline-slot-unavailable";
+                planOK = NO; break;
+            }
+            HFAPCRTPipelineSlot *slot = &gHFAPCRTPipelineSlots[slotIndex];
+            if (!HFAPCRTConfigurePipelineSlot(slot, graph, behavior, errorOut)) {
+                HFAPCRTReleaseHookSlot(2, (uint8_t)slotIndex);
+                planOK = NO; break;
+            }
+            plan->kind = 2;
+            plan->slotIndex = (uint8_t)slotIndex;
+            plan->replacement = HFAPCRTPipelineReplacement((uint32_t)slotIndex);
+        } else {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-hook-behavior-unsupported:%@", behaviorKind ?: @"?"];
+            planOK = NO; break;
+        }
+        if (!plan->replacement) {
+            if (errorOut) *errorOut = @"runtime-hook-replacement-unavailable";
+            planOK = NO; break;
+        }
+        planCount++;
+    }
+
+    if (!planOK) {
+        for (uint32_t i = 0; i < planCount; i++) HFAPCRTReleaseHookSlot(plans[i].kind, plans[i].slotIndex);
+        graph->inUse = NO;
+        pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+        return NO;
+    }
+
+    for (uint32_t i = 0; i < planCount; i++) {
+        HFAPCRTHookPlan *plan = &plans[i];
+        void **originOut = NULL;
+        if (plan->kind == 1) originOut = (void **)&gHFAPCRTCaptureSlots[plan->slotIndex].original;
+        if (plan->kind == 2) originOut = (void **)&gHFAPCRTPipelineSlots[plan->slotIndex].original;
+        int rc = DobbyHook((void *)(uintptr_t)plan->address, plan->replacement, originOut);
+        if (rc != 0 || !originOut || !*originOut) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-hook-install-failed index=%u rc=%d", i, rc];
+            HFAPCRTReleaseHookSlot(plan->kind, plan->slotIndex);
+            HFAPCRTRollbackGraph(graph);
+            for (uint32_t j = i + 1; j < planCount; j++) HFAPCRTReleaseHookSlot(plans[j].kind, plans[j].slotIndex);
+            graph->inUse = NO;
+            pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+            return NO;
+        }
+        graph->installedTargets[graph->installedCount] = (void *)(uintptr_t)plan->address;
+        graph->installedKinds[graph->installedCount] = plan->kind;
+        graph->installedSlots[graph->installedCount] = plan->slotIndex;
+        graph->installedCount++;
+
+        NSData *after = HFAPCReadMemory(plan->address, plan->originalLength, nil);
+        NSData *before = [NSData dataWithBytes:plan->original length:plan->originalLength];
+        if (!after || [after isEqualToData:before]) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-hook-readback-unchanged index=%u", i];
+            HFAPCRTRollbackGraph(graph);
+            for (uint32_t j = i + 1; j < planCount; j++) HFAPCRTReleaseHookSlot(plans[j].kind, plans[j].slotIndex);
+            graph->inUse = NO;
+            pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+            return NO;
+        }
+    }
+
+    graph->bootstrapped = YES;
+    HFAPCLog(@"[RUNTIME-GRAPH] status=bootstrapped graph=%@ hooks=%u dobby=%s", graphName,
+             graph->installedCount, DobbyBuildVersion ? DobbyBuildVersion() : "?");
+    pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+    return YES;
+}
+
+static BOOL HFAPCRTSetStateValue(HFAPCRuntimeGraphContext *graph,
+                                 NSString *binding,
+                                 NSDictionary *control,
+                                 id value,
+                                 NSString **errorOut) {
+    int stateIndex = HFAPCRTStateIndex(graph, binding);
+    if (stateIndex < 0) {
+        if (errorOut) *errorOut = @"runtime-state-binding-unresolved";
+        return NO;
+    }
+    HFAPCRTState *state = &graph->states[stateIndex];
+    NSString *controlKind = control[@"kind"];
+    if (state->type == HFAPCRTStateBool) {
+        if (![controlKind isEqualToString:@"toggle"] || ![value isKindOfClass:[NSNumber class]] ||
+            CFGetTypeID((CFTypeRef)value) != CFBooleanGetTypeID()) {
+            if (errorOut) *errorOut = @"runtime-state-bool-value-invalid";
+            return NO;
+        }
+        pthread_mutex_lock(&graph->lock);
+        state->value.b = [value boolValue];
+        pthread_mutex_unlock(&graph->lock);
+        return YES;
+    }
+
+    if (![controlKind isEqualToString:@"number"] && ![controlKind isEqualToString:@"slider"]) {
+        if (errorOut) *errorOut = @"runtime-state-numeric-control-invalid";
+        return NO;
+    }
+    if (![value isKindOfClass:[NSNumber class]] || CFGetTypeID((CFTypeRef)value) == CFBooleanGetTypeID()) {
+        if (errorOut) *errorOut = @"runtime-state-numeric-value-invalid";
+        return NO;
+    }
+    double d = [value doubleValue];
+    if (!isfinite(d)) {
+        if (errorOut) *errorOut = @"runtime-state-numeric-value-nonfinite";
+        return NO;
+    }
+    NSNumber *min = [control[@"min"] isKindOfClass:[NSNumber class]] ? control[@"min"] : nil;
+    NSNumber *max = [control[@"max"] isKindOfClass:[NSNumber class]] ? control[@"max"] : nil;
+    if ((min && d < min.doubleValue) || (max && d > max.doubleValue)) {
+        if (errorOut) *errorOut = @"runtime-state-value-out-of-range";
+        return NO;
+    }
+    pthread_mutex_lock(&graph->lock);
+    switch (state->type) {
+        case HFAPCRTStateInt: state->value.i = [value longLongValue]; break;
+        case HFAPCRTStateUInt: state->value.u = [value unsignedLongLongValue]; break;
+        case HFAPCRTStateFloat32: state->value.f32 = [value floatValue]; break;
+        case HFAPCRTStateFloat64: state->value.f64 = d; break;
+        default:
+            pthread_mutex_unlock(&graph->lock);
+            if (errorOut) *errorOut = @"runtime-state-type-not-settable";
+            return NO;
+    }
+    pthread_mutex_unlock(&graph->lock);
+    return YES;
+}
+
+static NSDictionary *HFAPCResultBase(NSString *status, NSString *action, NSString *reason);
+
+static NSDictionary *HFAPCRTProcessCommand(NSDictionary *package,
+                                            NSDictionary *identity,
+                                            NSDictionary *command,
+                                            NSString *packageName,
+                                            NSString *identityName,
+                                            NSString *action) {
+    NSString *error = nil;
+    NSString *featureId = [command[@"featureId"] isKindOfClass:[NSString class]] ? command[@"featureId"] : nil;
+    if (!featureId.length) return HFAPCResultBase(@"fail", action, @"runtime-featureId-required");
+
+    NSDictionary *feature = nil;
+    for (NSDictionary *candidate in package[@"features"]) {
+        if ([candidate[@"id"] isEqual:featureId]) { feature = candidate; break; }
+    }
+    if (![feature isKindOfClass:[NSDictionary class]]) return HFAPCResultBase(@"fail", action, @"runtime-feature-not-found");
+
+    NSDictionary *control = [feature[@"control"] isKindOfClass:[NSDictionary class]] ? feature[@"control"] : nil;
+    NSDictionary *execution = [feature[@"execution"] isKindOfClass:[NSDictionary class]] ? feature[@"execution"] : nil;
+    NSString *executionKind = execution[@"kind"];
+    NSMutableArray *targetRecords = [NSMutableArray array];
+    NSMutableDictionary *result = nil;
+
+    if ([action isEqualToString:@"prepare"] || [action isEqualToString:@"set"]) {
+        if (![executionKind isEqualToString:@"runtimeState"]) {
+            return HFAPCResultBase(@"fail", action, @"runtime-action-requires-runtimeState");
+        }
+        NSString *graphName = execution[@"graph"];
+        NSString *binding = execution[@"binding"];
+        if (!HFAPCRTEnsureGraph(package, identity, graphName, targetRecords, &error)) {
+            result = [HFAPCResultBase(@"fail", action, error) mutableCopy];
+        } else {
+            HFAPCRuntimeGraphContext *graph = HFAPCRTFindGraph(HFAPCRTPackageKey(package), graphName);
+            if (!graph || !graph->bootstrapped) {
+                result = [HFAPCResultBase(@"fail", action, @"runtime-graph-not-bootstrapped") mutableCopy];
+            } else if ([action isEqualToString:@"set"] && !HFAPCRTSetStateValue(graph, binding, control, command[@"value"], &error)) {
+                result = [HFAPCResultBase(@"fail", action, error) mutableCopy];
+            } else {
