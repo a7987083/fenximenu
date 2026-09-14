@@ -1,66 +1,61 @@
 # Known Issues
 
-## v1.9.33 OriginalByteResolver
+## v1.9.34 CanonicalTruthGate
 
-### 15 MB and 5 MB JSON are not yet proven to share one canonical contract
+### v1.9.34 has not yet been device-tested
 
-Status: open / current project blocker.
+Status: open / primary validation gate.
 
-The 5 MB runtime paths are device-confirmed, but their exported JSON representations are not yet verified as structurally and semantically equivalent to the formal 15 MB output.
+The source is committed, CI replay/regression/invariant checks pass, the arm64 dylib is compiled/signed, and the artifact hash is independently verified. Do not claim runtime behavior for the new canonical gate, identity sidecar, or iGMM diagnostic-only export until device logs/files are supplied.
 
-Current 5 MB outputs include two different representations:
+### iGMM runtime features are not canonical static patches
 
-- runtime-record backend: static patch features with `target`, `offset`, `original`, and `enabled`;
-- iGMM backend: runtime-definition features with `runtime/config/backend` metadata and empty static `patches` arrays.
+Status: intentionally unresolved, not silently converted.
 
-Therefore "5 MB runtime chain complete" must not be conflated with "project export format complete". The canonical 15 MB package must be used as the compatibility target and explicitly diffed against both 5 MB forms before declaring closure.
+Static analysis of the supplied iGMM target/menu pair confirms that multiple user-visible features can share native-hook infrastructure and use runtime numeric/state decisions. A fixed `target/offset/original/enabled` tuple is therefore not established merely because a hook target address is known.
 
-### Runtime-record 5 MB package aggregation gap
+v1.9.34 stops writing unresolved iGMM runtime-definition data as `com.hfa.patch/v1`. It emits `com.hfa.igmm.runtime/v1` diagnostics instead. A later version may promote an individual feature only if a real portable static equivalent is demonstrated.
 
-Status: resolved on the supplied runtime-record sample.
+### Stale v1.9.33 package files can confuse device validation
 
-v1.9.32 produced 8/8 valid mappings but exported only one patch because seven mappings lacked trusted original bytes. v1.9.33 device logs show eight `PACKAGE-ORIGINAL ... source=vm-read status=ok` records and a generated package with 3 features / 8 static patches.
+Status: test-environment hazard.
 
-This resolves only the internal runtime-record package completeness issue; it does not establish parity with the 15 MB canonical JSON.
+Before testing v1.9.34, delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files. Otherwise an old iGMM `.hfapatch.json` can be mistaken for new output even though v1.9.34 no longer creates one through the iGMM fallback.
 
-### Crash-safe Full Scan on the supplied 5 MB games
+### Binary identity is required for byte-level comparisons
 
-Status: resolved for the tested games.
+Status: addressed by sidecar, device verification pending.
 
-Both games reach semantic menu confirmation, `AUTO-TRAVERSAL-END`, and `AUTO-SCAN` without reproducing the v1.9.31 crash.
+Offset similarity alone does not prove identical machine bytes across builds/slices. In particular, arm64 and arm64e can preserve similar function layout while differing in PAC-related instructions and original bytes.
 
-### Generic 5 MB decrypt resolution
+v1.9.34 writes canonical-target UUID, cputype/cpusubtype, architecture, preferred `__TEXT` VM address, slide and cryptid to `*.hfapatch.identity.json`. The sidecar must be checked before cross-file byte validation.
 
-Status: resolved for the tested runtime-record sample.
+### Canonical offset semantics must stay consistent
 
-The image-local `__TEXT,__text` fingerprint resolver returns `matches=1`, live decrypt calls return `rc=0`, and eight full mappings are valid.
+Status: defined / device verification pending.
 
-### Original-byte fallback branches
+The canonical offset field is a Mach-O preferred VM address. It is not a slid runtime address and not a file offset. Main executables can legitimately use `0x100...` preferred addresses while frameworks/dylibs may use lower values. Consumers must apply the image slide exactly once.
 
-Status: open / not runtime-exercised.
-
-The readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks compile and pass CI invariants, but the current device test recovered all eight originals through `vm-read`.
-
-### WayOfKings iGMM features have empty static patch arrays
-
-Status: representation mismatch / requires unified-contract decision.
-
-This is intentional for the current iGMM runtime-definition backend, but whether that representation is acceptable in the final 15 MB-compatible package contract is still unresolved. Do not label it "not a bug" at project level until the canonical cross-family schema is defined.
-
-### v1.9.33 has not been runtime-regression-tested on ~15 MB
+### Original-byte fallback branches remain incompletely runtime-exercised
 
 Status: open.
 
-The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. The current v1.9.33 binary itself has not been re-injected into a 15 MB target.
+The v1.9.33 readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks are preserved and CI-verified. Previous runtime testing recovered all observed originals through `vm-read`, so the fallback branches are still not device-confirmed.
 
-### Generalization beyond the two supplied 5 MB samples
+### v1.9.34 has not been runtime-regression-tested on ~15 MB
+
+Status: open.
+
+The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. CI preserves the canonical writer path, but the v1.9.34 binary itself has not yet been injected into the 15 MB target.
+
+### Generalization beyond supplied samples
 
 Status: open / future validation.
 
-The current selector/decrypt/original-byte strategy is confirmed on the supplied runtime-record sample and the independent iGMM sample. Additional binaries are still needed before claiming universal Jailpatch coverage.
+The current architecture is grounded in one runtime-record 5 MB sample, one iGMM/native-hook 5 MB sample, and the legacy 15 MB family. Additional menu generations are still needed before claiming universal Jailpatch coverage.
 
 ### CI delivery
 
 Status: intentional.
 
-Verified binaries are distributed through GitHub Actions artifacts. The v1.9.33 build checkpoint is run `34799869649`, artifact `10330589684`, SHA256 `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
+Verified binary: `HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib`, run `34824481536`, artifact `10339925211`, SHA256 `98d5643e1c72b049e647bd58fcf861ef1012a6efbf406fbb71fec7e36673863c`.
