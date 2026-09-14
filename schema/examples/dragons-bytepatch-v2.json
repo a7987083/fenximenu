@@ -1,0 +1,33 @@
+{
+  "schema": "com.hfa.feature/v2",
+  "name": "Dragons patch #1 v2 compatibility sample",
+  "offsetSemantics": "preferred-mach-o-vmaddr",
+  "package": {
+    "bundleIdentifier": "example.dragons",
+    "shortVersion": "",
+    "buildVersion": "",
+    "architectures": ["arm64"]
+  },
+  "targets": {
+    "main": {"image": "main"}
+  },
+  "features": [
+    {
+      "id": "patch1",
+      "title": "Patch 1",
+      "group": "Imported",
+      "control": {"kind": "toggle", "default": false},
+      "execution": {
+        "kind": "bytePatch",
+        "patches": [
+          {
+            "target": "main",
+            "offset": "0x1007E5390",
+            "original": "8EE50D14",
+            "enabled": "C0035FD6"
+          }
+        ]
+      }
+    }
+  ]
+}
