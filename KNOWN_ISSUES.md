@@ -2,74 +2,50 @@
 
 ## v1.9.33 OriginalByteResolver
 
-### Runtime-record package is still incomplete under v1.9.32
+### Runtime-record 5 MB package aggregation gap
 
-Status: open / current v1.9.33 validation target.
+Status: resolved on the supplied runtime-record sample.
 
-The v1.9.32 runtime-record sample produced eight valid mappings across three features, and `HFAMap_Mapping.log` contains all eight. The exported `.hfapatch.json` contained only one feature/one patch because seven valid mappings logged `reason=identity-or-original-unavailable`.
+v1.9.32 produced 8/8 valid mappings but exported only one patch because seven mappings lacked trusted original bytes. v1.9.33 device logs now show eight `PACKAGE-ORIGINAL ... source=vm-read status=ok` records. The generated package contains exactly 3 features / 8 patches with complete target, offset, original, and enabled fields.
 
-This is an exporter-input problem, not a selector/decrypt/mapping problem.
+### Crash-safe Full Scan on the supplied 5 MB games
 
-### v1.9.33 original-byte fallback is compiled but not device-confirmed
+Status: resolved for the tested games.
 
-Status: open.
+Both games reach semantic menu confirmation, `AUTO-TRAVERSAL-END`, and `AUTO-SCAN` without reproducing the v1.9.31 crash. The historical deep `igmm_probe_target(o)` remains inactive in Auto Detect and framework-superclass ivar traversal remains bounded.
 
-v1.9.33 tries live `vm_read_overwrite`, readable direct memory, then on-disk Mach-O segment translation. CI verifies the implementation and preserves previous scan/decrypt/package-writer functions, but only device evidence can show which source succeeds for the seven previously skipped mappings.
+### Generic 5 MB decrypt resolution
 
-Require `[PACKAGE-ORIGINAL]` evidence for every valid mapping before declaring the package path complete.
+Status: resolved for the tested runtime-record sample.
 
-### On-disk original fallback refuses active FairPlay-encrypted ranges
+The image-local `__TEXT,__text` fingerprint resolver returns `matches=1`, and live decrypt calls return `rc=0`. Eight full mappings are valid.
 
-Status: intentional safety behavior.
+### Original-byte fallback branches
 
-The file fallback parses `LC_ENCRYPTION_INFO_64`. If the requested file bytes overlap a range whose `cryptid` is active, the fallback returns unavailable rather than exporting encrypted bytes as an "original" instruction sequence.
+Status: open / not runtime-exercised.
 
-If a future sample is FairPlay-encrypted and live memory cannot be read, a verified decrypted image/dump will be required instead of weakening this check.
+v1.9.33 includes readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks after the primary `vm_read` path. CI verifies these branches compile and satisfy invariants, but the current device test recovered all eight originals through `vm-read`; therefore the fallback branches must not yet be described as runtime-confirmed.
 
-### Live bytes may already equal the enabled patch
+### WayOfKings iGMM features have empty static patch arrays
 
-Status: handled conservatively.
+Status: expected design, not a bug.
 
-If live memory returns bytes identical to the enabled patch, v1.9.33 attempts a trustworthy unencrypted file original. If that is unavailable, the existing package logic still skips the patch rather than inventing an original value.
-
-### v1.9.32 Full Scan crash is resolved on both supplied 5 MB games
-
-Status: device-confirmed resolved for the tested games.
-
-Both v1.9.32 captures reached `[AUTO-MENU-CANDIDATE]`, `[AUTO-TRAVERSAL-END]`, and `[AUTO-SCAN]` without crashing. The historical deep iGMM Auto Detect probe remains inactive.
-
-### Generic 5 MB decrypt resolution is runtime-confirmed on the tested runtime-record sample
-
-Status: resolved for current architecture evidence.
-
-v1.9.32 selected the image-local text fingerprint with `matches=1`; offset and patch-data decrypt calls returned `rc=0`; all eight full mappings were valid. Future binaries with zero or multiple fingerprint matches still fail closed.
-
-### WayOfKings iGMM path remains a separate supported architecture path
-
-Status: runtime-confirmed / regression requirement.
-
-Under v1.9.32, WayOfKings completed crash-safe Full Scan and exported a four-feature iGMM package. v1.9.33 changes only ordinary patch original-byte recovery and must not regress this path.
-
-### Patch-data candidate inference requires uniqueness
-
-Status: intentionally conservative / confirmed for current runtime records.
-
-Patch data is registered only when exactly one remaining `secret` wrapper exists after excluding offset/signature candidates. Ambiguous records remain evidence-only.
-
-### Relevant Jailpatch ivars may use stripped type metadata
-
-Status: understood / handled.
-
-Discovery relies on stable selectors, live object behavior, and bounded runtime structure rather than randomized class/ivar names or declared object types.
+The iGMM exporter represents these four features as runtime definitions with implementation metadata. `patches=[]` is intentional for this backend and remains valid under v1.9.33.
 
 ### v1.9.33 has not been runtime-regression-tested on ~15 MB
 
 Status: open / low priority.
 
-The legacy 15 MB architecture remains runtime-confirmed under v1.9.28. CI preserves the legacy mapping/decrypt/export paths, but v1.9.33 itself has not been injected into the 15 MB sample.
+The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28 with 12 valid mappings and package export. CI preserves the legacy path through v1.9.33, but the current v1.9.33 binary itself has not been re-injected into a 15 MB target.
 
-### CI delivery remains artifact-only
+### Generalization beyond the two supplied 5 MB samples
+
+Status: open / future validation.
+
+The current selector/decrypt/original-byte strategy is runtime-confirmed on the supplied runtime-record sample and the independent iGMM sample. Additional 5 MB binaries are still needed before claiming universal coverage across all Jailpatch generations.
+
+### CI delivery
 
 Status: intentional.
 
-Verified binaries are distributed through GitHub Actions artifacts because the workflow token has read-only Contents permission.
+Verified binaries are distributed through GitHub Actions artifacts. The v1.9.33 build checkpoint is run `34799869649`, artifact `10330589684`, SHA256 `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
