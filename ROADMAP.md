@@ -2,75 +2,63 @@
 
 ## Current phase
 
-v1.9.32 CrashSafeFullScan — two-game 5 MB scan-stability validation
+v1.9.33 OriginalByteResolver — complete runtime-record package aggregation
 
 ## Completed milestone: legacy AP / ~15 MB
 
-v1.9.28 remains runtime-confirmed on the tested legacy AP/IGSecret architecture with 12 valid patch mappings and successful `.hfapatch.json` export.
+v1.9.28 remains runtime-confirmed with 12 valid mappings and successful `.hfapatch.json` export.
 
-Formal regression baseline remains:
+Formal regression baseline:
 
 `build/hfamap-v1.4.4-20260901 @ 7bd19ba08a647104d230a2da299bcdd232687abf`
 
-## Completed milestone: 5 MB structure and selector bridge
+## Completed milestones: 5 MB runtime-record path
 
-- v1.9.29 established feature dictionaries, runtime-record arrays, stable descriptor selectors, and secret-wrapper behavior.
-- v1.9.30 device-confirmed selector matching plus offset/patch-wrapper association; the inherited fixed decrypt locator was the remaining mapping failure.
-- The independent WayOfKings-style iGMM path has already produced a valid patch package and remains a required regression path.
+- v1.9.29: runtime-record structure, feature arrays, selector surface and secret wrappers confirmed.
+- v1.9.30: selector descriptor and offset/patch-wrapper association confirmed.
+- v1.9.31: generic image-local decrypt resolver implemented.
+- v1.9.32: Full Scan crash fixed and device-confirmed on both supplied 5 MB games.
+- v1.9.32 runtime-record sample: generic decrypt confirmed with `matches=1`, `rc=0`, and 8/8 valid mappings across 3 feature groups.
+- v1.9.32 WayOfKings sample: semantic iGMM scan remains stable and its four-feature package export remains working.
 
-## v1.9.31 finding: Full Scan crash is upstream of decrypt
+## Current remaining gap
 
-Both supplied 5 MB games crashed when `Auto Detect / Full Scan` was pressed. The common evidence is stronger than a decrypt hypothesis:
+The runtime-record sample has eight valid mappings, but v1.9.32 package aggregation exported only one patch. Seven valid mappings were omitted because original bytes were unavailable to the strict package writer.
 
-- each real menu target was discovered in window index 0;
-- Full Scan continued into unrelated windows/targets;
-- neither log reached `[AUTO-TRAVERSAL-END]` or `[AUTO-SCAN]`;
-- one crashing game exposed `records=0`, so the generic decrypt path was not entered.
+The mapping resolver itself is no longer the blocker.
 
-Historical review identified an unsafe legacy design: the v1.9.24 iGMM probe deep-traversed every custom target and could enumerate object ivars through UIKit/framework superclasses. This is not protected from `EXC_BAD_ACCESS` by Objective-C `@try/@catch`.
-
-## Current milestone: v1.9.32 CrashSafeFullScan
+## Current milestone: v1.9.33 OriginalByteResolver
 
 Policy:
 
-- Prefer semantic feature-array confirmation instead of deep arbitrary object-graph probing.
-- Once a semantic 5 MB menu target is confirmed, set `gAutoMenuFound` and stop scanning later windows.
-- Preserve iGMM feature-array registration when `{label,identifier,type}` validation succeeds.
-- Stop feature-array and runtime-record ivar enumeration when superclass traversal reaches framework classes.
-- Keep the historical deep iGMM probe inactive during Auto Detect.
-- Preserve v1.9.31 generic decrypt logic byte-for-byte.
-- Preserve both package exporters byte-for-byte.
+- Preserve v1.9.32 crash-safe scan exactly.
+- Preserve v1.9.31 generic decrypt exactly.
+- Preserve the package schema/writer safety rule: every patch requires trustworthy original bytes.
+- Add multiple original-byte sources: live VM read, readable direct memory, then cryptid-aware Mach-O file mapping.
+- Refuse on-disk fallback when the requested bytes overlap active FairPlay encryption.
+- Emit `[PACKAGE-ORIGINAL]` evidence for every valid mapping.
+- Do not hardcode current game/image/feature names or observed addresses.
 
 ## Build checkpoint
 
-- Branch: `feature/hfamap-v1932-crash-safe-full-scan`.
-- Base: v1.9.31 docs HEAD `4a4db8fbaff6f1a0decf715bc07b782c54022df0`.
-- Build-tested code commit: `ac2f5419f975ce9f63d2ad59546fe7c9ec16383a`.
-- CI run: `34790789928` — success.
-- Artifact ID: `10328366811`.
-- Binary: `HFAMapUniversal_v1.9.32_CrashSafeFullScan.dylib`.
-- SHA256: `96c47b4509929bf03289b3329ed4399f13cfa78db7eb2ac7c75bfa8fd1fd8c0c`.
-- v1.9.31 decrypt functions byte-identical: passed.
-- Legacy/iGMM exporter byte-identity: passed.
-- Crash-safe invariants and no-sample-hardcode checks: passed.
-- v1.9.32 device validation: pending.
-
-## Regression checkpoints
-
-- Formal stable baseline: v1.4.4 exact branch/SHA above.
-- Legacy runtime: v1.9.28 15 MB package export.
-- Jailpatch structure: v1.9.29 runtime records/selectors.
-- Jailpatch bridge: v1.9.30 descriptor + wrapper association.
-- Full Scan regression evidence: v1.9.31 crashes on both supplied 5 MB games before traversal end.
-- iGMM runtime/export: WayOfKings-style package export.
-- Immediate build checkpoint: v1.9.32 build-tested commit above.
+- Branch: `feature/hfamap-v1933-original-byte-resolver`.
+- Build-tested code commit: `8845d84b2adbada07fdd46a1de0243ff8ae4165b`.
+- CI run: `34799869649` — success.
+- Artifact ID: `10330589684`.
+- Binary: `HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib`.
+- SHA256: `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
+- v1.9.32 Full Scan regression: passed.
+- v1.9.31 decrypt regression: passed.
+- package writer regression: passed.
+- original-byte resolver invariants: passed.
+- v1.9.33 device validation: pending.
 
 ## Next task
 
-First validate scan stability on both supplied 5 MB games. Open the original menu and press `Auto Detect / Full Scan` only; do not toggle a feature yet. Require:
+Run v1.9.33 on the runtime-record 5 MB game and require:
 
-`[AUTO-MENU-CANDIDATE]` → `[AUTO-TRAVERSAL-END]` → `[AUTO-SCAN]` with no crash.
+`[AUTO-MENU-CANDIDATE]` → `[AUTO-TRAVERSAL-END]` → `[AUTO-SCAN]`
 
-Only after that succeeds, operate menu controls and resume generic decrypt validation:
+plus the already-confirmed decrypt/mapping chain, then inspect `[PACKAGE-ORIGINAL]` for all 8 mappings. The preferred completion criterion is a package with 3 semantic features containing all 8 patch records.
 
-`[MAP-DECRYPT-RESOLVE] mode=text-fingerprint matches=1` → `[MAP-DECRYPT] rc=0` → valid `[MAPPING]/[FULL-MAPPING]` → package export when available.
+After that, retest WayOfKings once to preserve its four-feature iGMM package regression checkpoint.
