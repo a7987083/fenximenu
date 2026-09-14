@@ -2,61 +2,94 @@
 
 ## Current phase
 
-v1.9.35 MainImageTruth — compiled / CI passed / awaiting device validation
+v1.9.36.3 JSONExport — pure parser/exporter, CI passed, awaiting device validation.
 
-## Completed foundations
+## Product direction
 
-- Legacy ~15 MB static patch path remains runtime-confirmed under v1.9.28.
-- 5 MB runtime-record menu discovery/decrypt/mapping is runtime-confirmed.
-- 5 MB iGMM semantic/runtime-implementation discovery is runtime-confirmed.
-- The canonical consumer contract is the 15 MB-style `com.hfa.patch/v1` static package.
-- v1.9.34 device-tested the canonical structure gate and diagnostic-only iGMM separation.
+HFAMapUniversal stays focused on:
 
-## v1.9.34 device result
+`original menu -> parser -> evidence -> normalized JSON`
 
-The iGMM half passed its intended truth policy: runtime primitives were exported only to `com.hfa.igmm.runtime/v1`, with no new canonical-looking iGMM `.hfapatch.json`.
+The runtime execution engine is not part of the HFAMapUniversal parser mainline. v1.9.37/v1.9.37.1 demonstrated that merging the playback consumer/Dobby directly into the parser created device-startup regressions and was reverted.
 
-The runtime-record half exposed a deeper historical defect. Although scan/decrypt/mapping and the canonical structural validator passed, `@main` was resolved through dyld image index 0. In the tested injection environment index 0 was an injected dylib, not the app executable. The identity sidecar therefore identified the wrong binary, and the same index contaminated original-byte reads. Some exported originals were unrelated ASCII-like data at statically confirmed code offsets.
+## Stable foundation
 
-Therefore v1.9.34 is not a trusted runtime-record canonical-package baseline.
+- Frozen parser baseline: v1.9.36 ArchitectureTruth, commit `75f94da37221343b6839465ad365ddec2679e63a`.
+- Preserve constructor, `run_full_scan()` and resolver/decrypt/original-byte core exactly.
+- Canonical static patches remain `com.hfa.patch/v1` with preferred Mach-O VM addresses.
+- iGMM runtime behavior remains diagnostic-only under `com.hfa.igmm.runtime/v1`.
+- Normalized cross-family analysis uses `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
 
-## Current milestone: v1.9.35 MainImageTruth
+## Device-confirmed checkpoint: v1.9.36.1
 
-Policy:
+WayOfKings device archive confirmed:
 
-- `main` / `@main` must resolve to the real app `MH_EXECUTE`, never to a positional dyld index assumption.
-- Prefer `NSBundle.mainBundle.executablePath` matched against loaded `MH_EXECUTE` images.
-- Fall back only to a unique loaded `MH_EXECUTE`.
-- Fail closed if main image identity is ambiguous or unresolved.
-- Preserve preferred-Mach-O-VM-address offset semantics.
-- Preserve v1.9.34 canonical structural gate and iGMM diagnostic isolation.
-- Preserve v1.9.33 original-byte reader implementations; change only which image they read.
+- injection stability;
+- Full Scan completion;
+- four iGMM feature records;
+- iGMM diagnostic JSON generation;
+- normalized analysis JSON generation.
 
-## Build checkpoint
+One normalization defect was exposed: the raw source type `kTypeButton` for Debug Menu was not recognized and became `unknown`.
 
-- Branch: `feature/hfamap-v1935-main-image-truth`.
-- Base commit: `7dd64cdafc45cf0017b9fb99a87b4bae84ee7758`.
-- Build-tested code commit: `9b88d83919c824e371ebc3c21b70138a165b2ee5`.
-- Successful CI run: `34830471085`.
-- Artifact ID: `10341533093`.
-- Artifact digest: `sha256:3426aad904df4e0bb2a7a9510a6eb0d8d97593041abe01e29c6606be044d0a83`.
-- Binary: `HFAMapUniversal_v1.9.35_MainImageTruth.dylib`.
-- Binary size: `175664` bytes.
-- SHA256: `93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f`.
-- v1.9.35 device validation: pending.
+## v1.9.36.2
 
-## Next validation
+Completed:
 
-First clear stale generated output files, then run the runtime-record/Dragons sample.
+- exact observed alias `kTypeButton -> button`;
+- CI run `34904404292` passed;
+- no parser-core changes.
 
-Required evidence:
+## Current milestone: v1.9.36.3
 
-1. `[MAIN-IMAGE-RESOLVE]` resolves to the actual game `MH_EXECUTE` image.
-2. All `PACKAGE-ORIGINAL` records for `module=main` report that executable and filetype `2`.
-3. Canonical validation still reports 3 features / 8 patches.
-4. The identity sidecar resolves `@main` to the game executable and, for the supplied sample, reports preferred `__TEXT` VM address `0x100000000`.
-5. Original bytes at the eight patch locations are plausible target code bytes and no longer reproduce the unrelated ASCII values observed under v1.9.34.
+Completed in code/CI:
 
-Then regression-test the WayOfKings/iGMM path and verify diagnostic-only behavior is unchanged.
+- preserve raw source `executionPrimitive` evidence;
+- add `normalizedExecutionPrimitive` so `buttonBlock` can be represented as `runtimeAction` without rewriting source diagnostics;
+- collect referenced image names from canonical/iGMM analysis trees;
+- resolve each loaded image read-only;
+- export target identity fields: UUID, cputype, cpusubtype, architecture, filetype, preferred `__TEXT` VM address and cryptid;
+- no new constructor;
+- no Dobby;
+- no HFAPatchConsumer;
+- no command polling;
+- no runtime takeover.
 
-After the two 5 MB paths pass, device-regression the legacy 15 MB family with the current binary. Final closure still requires all of those runtime gates; CI alone is insufficient.
+Build checkpoint:
+
+- branch: `feature/hfamap-v19361-json-export`;
+- build-tested commit: `67e291c640f6bc503860b414d65c21dd8af8e153`;
+- CI run: `34906163687` — success;
+- artifact ID: `10372078251`;
+- artifact digest: `sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed`;
+- binary: `HFAMapUniversal_v1.9.36.3_JSONExport.dylib`;
+- size: `192432` bytes;
+- SHA256: `5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546`.
+
+## Next validation: WayOfKings
+
+Inject v1.9.36.3 and run the same Full Scan. Require:
+
+1. no crash at injection/startup;
+2. HFA floating window appears;
+3. Full Scan completes;
+4. `.hfamap.igmm.json` is regenerated;
+5. `.hfamap.analysis.json` is regenerated;
+6. `Debug Menu` has `control.kind = button`;
+7. raw source primitive remains visible;
+8. `normalizedExecutionPrimitive = runtimeAction` for the observed button block;
+9. `targetIdentities` resolves both `libpathofkings.dylib` and `UnityFramework`;
+10. UnityFramework UUID/architecture/preferred-`__TEXT` evidence matches the supplied target binary.
+
+## Following validation
+
+After WayOfKings passes:
+
+1. regression-test the runtime-record/static 5 MB family and confirm canonical byte-patch export is unchanged;
+2. regression-test the legacy ~15 MB family;
+3. compare normalized analysis output across all three families;
+4. only then consider the parser/exporter line a cross-family candidate.
+
+## Deferred work
+
+Execution of generated JSON remains a separate project/module. Do not merge it back into HFAMapUniversal until there is a separately device-validated integration design with startup isolation and explicit user approval.
