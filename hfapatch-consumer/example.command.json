@@ -1,0 +1,6 @@
+{
+  "action": "preflight",
+  "package": "com.example.game_1.0_1.hfapatch.json",
+  "identity": "com.example.game_1.0_1.hfapatch.identity.json",
+  "featureIds": ["0"]
+}
