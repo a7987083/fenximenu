@@ -12,7 +12,6 @@
 - Artifact: `HFAMapUniversal-v1.9.36-ArchitectureTruth` (ID `10343305875`).
 - Artifact digest: `sha256:db31af9643b24861fbb10a5408fa8605d5bc1812d47565450ac541a8fc6dcb4d`.
 - Binary: `HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib`.
-- Architecture: arm64 Mach-O dylib.
 - Size: `175664` bytes.
 - SHA256: `3249137776562b0723114904c4a92131387c908fd227aec0709d92c3e8f2ca13`.
 
@@ -24,69 +23,58 @@ Formal `.hfapatch.json` remains the 15 MB static shape:
 → feature `id/title/group/defaultEnabled/patches`
 → patch `target/offset/original/enabled`.
 
-Offsets are Mach-O preferred VM addresses. Binary identity and architecture must agree with the actual resolved target image.
+Offsets are Mach-O preferred VM addresses. Binary identity, original bytes and package architecture must all come from the actual resolved target image.
 
-## Latest device result: v1.9.35
+## v1.9.36 device result
 
 ### Runtime-record / Dragons
 
-Confirmed:
+Confirmed on device:
 
-- semantic scan / selector / generic decrypt remain stable;
-- 3 groups / 8 valid mappings;
-- strict canonical structural check passes for 3 features / 8 patches;
-- `main` resolves to `Dragons-prod-remote-nocheat` at dyld image index 1, filetype `MH_EXECUTE`;
-- identity sidecar reports UUID `7E74523C-90F5-3D72-9A9C-108BDE23A4A8`, `arm64`, `cpusubtype=0`, preferred `__TEXT` VM `0x100000000`, `cryptid=0`;
-- the UUID matches the supplied target Mach-O;
-- all eight exported `original` byte strings match that same file exactly at their preferred VM addresses.
+- `MAIN-IMAGE-RESOLVE` identifies `Dragons-prod-remote-nocheat` as the real bundle `MH_EXECUTE` image at dyld index 1.
+- Generic secret decrypt remains `matches=1 / rc=0`.
+- Full Scan remains 3 semantic groups / 8 valid mappings.
+- All 8 `PACKAGE-ORIGINAL` records use the real game executable with `filetype=2`, `source=vm-read`, `status=ok`.
+- `CANONICAL-CHECK` passes for 3 features / 8 patches / 1 target.
+- Identity sidecar reports UUID `7E74523C-90F5-3D72-9A9C-108BDE23A4A8`, `arm64`, `cpusubtype=0`, preferred `__TEXT` VM `0x100000000`, `cryptid=0`.
+- `PACKAGE-ARCH` reports `status=pass architecture=arm64 targets=1 source=canonical-targets`.
+- Persisted package contains `architectures=["arm64"]`.
+- Formal root/feature/patch keysets exactly match the canonical contract.
+- 3 features / 8 patch records are otherwise identical to v1.9.35; only architecture metadata changed from arm64e to arm64.
+- The 8 original values are unchanged from v1.9.35, where they were independently verified 8/8 against the supplied same-UUID Mach-O.
 
-Therefore v1.9.35 fixed the main-image and original-byte truth problem exposed by v1.9.34.
-
-Still wrong in v1.9.35:
-
-- `package.architectures` reported `arm64e` even though target identity is `arm64`.
-- Source inspection found `HFAWritePatchPackage` still used `_dyld_get_image_header(0)` solely for architecture metadata.
+Conclusion: the supplied runtime-record 5 MB sample is now device-confirmed for structure, target identity, original-byte truth and architecture metadata under v1.9.36.
 
 ### iGMM / WayOfKings
 
-The v1.9.34 diagnostic-only policy remains device-confirmed: runtime primitives export to `com.hfa.igmm.runtime/v1`, with no new canonical-looking iGMM `.hfapatch.json`.
+Also regression-confirmed under v1.9.36:
 
-## v1.9.36 ArchitectureTruth
+- 4 runtime primitives exported to `com.hfa.igmm.runtime/v1`;
+- Damage / Defence are `numericRuntimeModifier`;
+- God Mode / Button are `nativeHook`;
+- all remain `canonicalEligible=false`;
+- no new canonical-looking iGMM `.hfapatch.json` is created.
 
-Only the package architecture source changes.
+## What is still not closed
 
-- Resolve every canonical target through the existing v1.9.35 image resolver.
-- Derive `arm64` vs `arm64e` from each resolved target Mach-O header.
-- Require all canonical targets to agree on one ARM64 architecture.
-- Fail closed on unresolved, non-ARM64, or mixed target architectures.
-- Emit `[PACKAGE-ARCH]` evidence.
+- v1.9.36 itself has not been regression-tested on the legacy ~15 MB family; the historical 15 MB runtime confirmation remains v1.9.28.
+- Consumer-level playback of a v1.9.36 static package is still pending.
+- iGMM runtime hooks/modtext still have no proven portable static equivalent and must remain non-canonical.
+- Additional menu generations are required before universal Jailpatch coverage can be claimed.
 
-The main-image resolver, original-byte readers, canonical validator, iGMM diagnostic writer, decrypt path and crash-safe Full Scan are CI-protected unchanged.
+## Next task
 
-## Required device validation
-
-Clear old generated outputs, then test Dragons/runtime-record first. Require:
-
-`[MAIN-IMAGE-RESOLVE]` → actual game executable
-→ all 8 `[PACKAGE-ORIGINAL]` records remain on that executable with `filetype=2`
-→ `[CANONICAL-CHECK] status=pass features=3 patches=8`
-→ `[PACKAGE-ARCH] status=pass architecture=arm64 targets=1 source=canonical-targets`
-→ identity sidecar remains UUID/cpusubtype/textVM-correct
-→ package `architectures` becomes `["arm64"]`
-→ all 8 originals remain byte-identical to the same-UUID target Mach-O.
-
-Then regression-test WayOfKings diagnostic-only behavior. A current-binary 15 MB device regression is still required before cross-family promotion.
+Keep v1.9.36 unchanged as the current confirmed 5 MB checkpoint. Next inject this exact binary into the legacy ~15 MB target and verify its existing 12-feature canonical package. After that, perform consumer-level playback of the v1.9.36 runtime-record package.
 
 ## Verification discipline
 
-- v1.9.35 device-tested: yes.
-- v1.9.35 main target identity: passed.
-- v1.9.35 original-byte truth: passed and independently static-file verified 8/8.
-- v1.9.35 package architecture metadata: failed.
 - v1.9.36 source modified/committed: yes.
-- v1.9.36 compiled/linked/signed: yes.
-- v1.9.36 CI: passed.
-- v1.9.36 artifact independently re-hashed: passed.
-- v1.9.36 device-tested: no.
+- compiled/linked/signed: yes.
+- CI: passed.
+- artifact independently re-hashed: passed.
+- v1.9.36 runtime-record 5 MB device test: passed.
+- v1.9.36 iGMM diagnostic-only regression: passed.
+- v1.9.36 package architecture metadata: passed (`arm64`).
 - v1.9.36 15 MB runtime regression: no.
+- consumer playback: no.
 - project final closure: no.
