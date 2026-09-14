@@ -22,45 +22,43 @@ v1.9.28 remains runtime-confirmed with 12 valid mappings and successful `.hfapat
 
 ### Jailpatch runtime-record / ~5 MB
 
-v1.9.33 is now the confirmed checkpoint for the supplied runtime-record sample.
+v1.9.33 confirms the supplied runtime-record sample can complete:
 
-Confirmed device chain:
-
-`AUTO-MENU-CANDIDATE source=jailpatch-feature-array`
-→ `AUTO-TRAVERSAL-END`
-→ `AUTO-SCAN`
-→ `MAP-DECRYPT-RESOLVE mode=text-fingerprint matches=1`
-→ `MAP-DECRYPT rc=0`
-→ `FULL-SCAN-END groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3`
-→ successful `.hfapatch.json` export.
-
-The exported package contains:
-
-- feature `0`: 1 patch;
-- feature `1`: 6 patches;
-- feature `2`: 1 patch;
-- total: 3 features / 8 patches.
-
-Every patch has complete `target`, `offset`, `original`, and `enabled` fields. Original/enabled lengths match and contents differ.
-
-All eight original-byte recoveries used `source=vm-read status=ok`. The `memcpy` and cryptid-aware Mach-O file fallbacks remain CI/build-verified but were not exercised in this device run.
+`semantic menu discovery`
+→ `selector descriptor`
+→ `secret-wrapper association`
+→ `generic decrypt`
+→ `8/8 valid mappings`
+→ `3 features / 8 static patches exported`.
 
 ### iGMM / WayOfKings ~5 MB
 
-v1.9.33 preserves the independent iGMM path. Device output still reaches semantic menu early-stop and exports four runtime-definition features. Empty `patches` arrays are expected for this backend because implementation metadata, not static byte patches, represents the behavior.
+v1.9.33 also confirms the independent iGMM path exports four runtime-definition features and no longer crashes during Full Scan.
 
-## Regression discipline
+## Critical remaining gap: unified JSON contract
 
-- Do not rewrite historical v1.9.28–v1.9.33 branches for new experiments.
-- Treat v1.9.33 as the confirmed 5 MB selector/decrypt/package checkpoint.
-- Any future resolver change should start on a new branch and preserve:
-  - crash-safe semantic Full Scan;
-  - selector descriptor fingerprinting;
-  - generic secret decrypt resolution;
-  - 3-feature / 8-patch runtime-record package output;
-  - 4-feature iGMM runtime-definition export;
-  - legacy 15 MB exporter behavior.
+The two 5 MB exporters currently produce different representations, and cross-family equivalence with the canonical 15 MB JSON has not been established.
 
-## Remaining validation gap
+- Runtime-record 5 MB currently exports static patch entries (`target/offset/original/enabled`).
+- iGMM 5 MB currently exports runtime-definition features (`runtime/config/backend/...`) with empty static `patches` arrays.
+- The user requires the final 5 MB output to be compatible with the 15 MB formal JSON format/semantics.
 
-v1.9.33 itself has not yet been re-injected into the legacy ~15 MB target. The legacy path is still runtime-confirmed under v1.9.28, and CI preserves it, but do not claim a v1.9.33-on-15MB runtime regression pass until such a device run exists.
+Therefore v1.9.33 is **runtime-confirmed**, but the project is **not cross-family export-complete**.
+
+Do not use phrases such as "final closure" or "5 MB project complete" until the canonical 15 MB package is explicitly diffed against both 5 MB package types and a unified consumer contract passes device regression.
+
+## Required next work
+
+1. Retrieve the exact canonical 15 MB `.hfapatch.json` used as the compatibility target.
+2. Diff root keys, target model, feature schema, patch schema, menu-family metadata, runtime metadata, and consumer semantics against both 5 MB outputs.
+3. Decide the canonical schema; prefer an adapter/unified exporter instead of deleting evidence-rich backend data.
+4. Implement on a new branch.
+5. Regression-test legacy 15 MB, runtime-record 5 MB, and iGMM 5 MB before promoting completion.
+
+## Verification discipline
+
+- v1.9.33 5 MB runtime behavior: confirmed.
+- v1.9.33 runtime-record package internal completeness: confirmed (3 features / 8 patches).
+- v1.9.33 iGMM package internal completeness: confirmed for its current runtime-definition representation.
+- 15 MB ↔ 5 MB JSON contract parity: **not confirmed**.
+- v1.9.33 itself on 15 MB: not device-regression-tested.
