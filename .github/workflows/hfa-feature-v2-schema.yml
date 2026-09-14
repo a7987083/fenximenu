@@ -1,0 +1,30 @@
+name: HFA Feature v2 schema
+
+on:
+  push:
+    branches:
+      - feature/hfa-feature-v2-unified-schema
+  pull_request:
+    paths:
+      - 'schema/**'
+      - 'tools/validate_hfa_feature_v2.py'
+      - 'tools/hfa_feature_bridge.py'
+      - 'tests/test_hfa_feature_v2.py'
+      - '.github/workflows/hfa-feature-v2-schema.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate examples
+        run: |
+          python tools/validate_hfa_feature_v2.py \
+            schema/examples/legacy-v1-compat.json \
+            schema/examples/dragons-bytepatch-v2.json \
+            schema/examples/wayofkings-runtime-v2.json
+      - name: Unit tests
+        run: python -m unittest discover -s tests -p 'test_hfa_feature_v2.py' -v
