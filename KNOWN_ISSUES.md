@@ -22,6 +22,8 @@ v1.9.36 device testing confirms:
 - package architecture `arm64` from canonical targets;
 - the 8 original values were independently verified against the same-UUID supplied Mach-O.
 
+A later archive also confirms the original Jailpatch menu executes an ON/OFF roundtrip for all three static features and all eight mappings: every mapping appears as `active=1` and later `active=0`, with each feature event ending `GROUP ... status=EXECUTED`.
+
 ### Legacy ~15 MB current-binary regression
 
 Status: resolved for canonical parity / runtime export.
@@ -49,21 +51,24 @@ The supplied iGMM sample still exports only `com.hfa.igmm.runtime/v1` diagnostic
 
 A feature may enter `com.hfa.patch/v1` only after a real portable static equivalent is proven.
 
-### Consumer playback has not yet been validated
+### Independent consumer playback has not yet been validated
 
 Status: open / primary remaining static-package gate.
 
-Static generation now has current-device evidence across the runtime-record 5 MB and legacy 15 MB canonical families, but final consumer behavior still needs direct validation.
+The source-menu ON/OFF roundtrip is **not** the same as consumer playback. It proves that the original Jailpatch menu's own execution path applies and reverts the same eight mappings, but it does not prove that an independent consumer can safely execute the generated package.
 
-Required consumer behavior:
+Required consumer evidence is still missing:
 
-1. verify target identity before any write;
-2. verify current bytes match every declared `original`;
-3. apply `enabled` bytes;
-4. confirm intended behavior;
-5. restore `original` bytes;
-6. confirm behavior restoration;
-7. fail closed on identity or original mismatch.
+1. the consumer opens the generated `.hfapatch.json`;
+2. verifies target identity before any write;
+3. verifies current bytes equal every declared `original`;
+4. writes each `enabled` value;
+5. re-reads and verifies the enabled bytes;
+6. confirms the intended game behavior;
+7. writes back each `original`;
+8. re-reads and verifies restoration;
+9. confirms behavior restoration;
+10. fails closed on identity, original, write or revert mismatch.
 
 The runtime-record package should be tested first because its original bytes are independently verified against the matching target Mach-O. The 15 MB package should follow when its matching UnityFramework binary/identity is available for the same byte-level precondition check.
 
@@ -83,9 +88,9 @@ A trusted static package requires all of the following:
 2. resolved target identity consistent with the declared image;
 3. original bytes from that target;
 4. package architecture consistent with the target Mach-O;
-5. consumer playback validation.
+5. independent consumer playback validation.
 
-The first four are confirmed for the runtime-record sample. The legacy 15 MB sample is currently confirmed for runtime export, canonical parity and architecture/identity metadata, but did not include its target binary for a new file-level original-byte recheck. Consumer playback remains open for both.
+The first four are confirmed for the runtime-record sample. The source-menu roundtrip additionally confirms the source menu's apply/revert semantics, but the fifth remains open. The legacy 15 MB sample is currently confirmed for runtime export, canonical parity and architecture/identity metadata, but did not include its target binary for a new file-level original-byte recheck.
 
 ### Stale generated files can confuse validation
 
