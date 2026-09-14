@@ -1,0 +1,22 @@
+{
+  "schema": "com.hfa.patch.identity/v1",
+  "offsetSemantics": "preferred-mach-o-vmaddr",
+  "package": {
+    "bundleIdentifier": "com.TornadoBear.WayOfKings",
+    "shortVersion": "1.4.0",
+    "buildVersion": "165"
+  },
+  "targets": {
+    "UnityFramework": {
+      "status": "resolved",
+      "declaredImage": "UnityFramework",
+      "resolvedImage": "UnityFramework",
+      "uuid": "E0039512-CCB0-33E3-A69A-3DBEBFF3641B",
+      "architecture": "arm64",
+      "cputype": 16777228,
+      "cpusubtype": 0,
+      "preferredTextVMAddr": "0x0",
+      "cryptid": 0
+    }
+  }
+}
