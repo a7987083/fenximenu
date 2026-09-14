@@ -38,6 +38,7 @@ static NSString *HFAJSONControlKind(NSDictionary *feature) {
         return @"toggle";
 
     if ([type isEqualToString:@"button"] ||
+        [type isEqualToString:@"kTypeButton"] ||
         [primitive isEqualToString:@"runtimeAction"] ||
         [primitive isEqualToString:@"blockHandler"])
         return @"button";
@@ -153,7 +154,7 @@ BOOL HFAMapJSONExportLatest(void) {
         };
         NSMutableDictionary *root = [@{
             @"schema": @"com.hfa.menu.analysis/v1",
-            @"analyzer": @"HFAMapUniversal v1.9.36.1 JSONExport",
+            @"analyzer": @"HFAMapUniversal v1.9.36.2 JSONExport",
             @"analysisOnly": @YES,
             @"package": package,
             @"sources": sources,
