@@ -1,0 +1,29 @@
+{
+  "schema": "com.hfa.patch/v1",
+  "name": "Legacy v1 compatibility fixture",
+  "package": {
+    "bundleIdentifier": "com.example.legacy",
+    "shortVersion": "1.0",
+    "buildVersion": "1",
+    "architectures": ["arm64"]
+  },
+  "targets": {
+    "UnityFramework": {"image": "UnityFramework"}
+  },
+  "features": [
+    {
+      "id": "0",
+      "title": "Legacy toggle",
+      "group": "Imported",
+      "defaultEnabled": false,
+      "patches": [
+        {
+          "target": "UnityFramework",
+          "offset": "0x1000",
+          "original": "00000014",
+          "enabled": "C0035FD6"
+        }
+      ]
+    }
+  ]
+}
