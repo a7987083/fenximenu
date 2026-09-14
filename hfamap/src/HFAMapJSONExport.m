@@ -207,6 +207,20 @@ static NSString *HFAJSONNormalizedExecutionPrimitive(NSDictionary *feature, NSSt
     return raw.length ? raw : @"unresolved";
 }
 
+static NSString *HFAJSONNormalizedCanonicalReason(NSDictionary *feature, NSString *normalizedPrimitive) {
+    NSString *raw = [feature[@"canonicalReason"] isKindOfClass:[NSString class]]
+        ? feature[@"canonicalReason"] : @"";
+    if ([normalizedPrimitive isEqualToString:@"runtimeAction"])
+        return @"runtime-action-not-static-bytes";
+    if ([normalizedPrimitive isEqualToString:@"numericRuntimeModifier"])
+        return @"dynamic-numeric-state-not-static-bytes";
+    if ([normalizedPrimitive isEqualToString:@"nativeHook"])
+        return @"runtime-hook-requires-portable-equivalent";
+    if ([normalizedPrimitive isEqualToString:@"runtimeBoolean"])
+        return @"runtime-boolean-implementation-unresolved";
+    return raw.length ? raw : @"execution-primitive-unresolved";
+}
+
 static NSArray *HFAJSONCanonicalFeatures(NSDictionary *package) {
     NSArray *raw = [package[@"features"] isKindOfClass:[NSArray class]] ? package[@"features"] : @[];
     NSMutableArray *out = [NSMutableArray array];
@@ -254,6 +268,7 @@ static NSArray *HFAJSONIGMMFeatures(NSDictionary *report) {
             record[@"executionPrimitive"] = feature[@"executionPrimitive"];
         NSString *normalizedPrimitive = HFAJSONNormalizedExecutionPrimitive(feature, kind);
         record[@"normalizedExecutionPrimitive"] = normalizedPrimitive;
+        record[@"normalizedCanonicalReason"] = HFAJSONNormalizedCanonicalReason(feature, normalizedPrimitive);
         record[@"canonicalEligible"] = @([feature[@"canonicalEligible"] boolValue]);
         if ([feature[@"canonicalReason"] isKindOfClass:[NSString class]])
             record[@"canonicalReason"] = feature[@"canonicalReason"];
@@ -321,7 +336,7 @@ BOOL HFAMapJSONExportLatest(void) {
         };
         NSMutableDictionary *root = [@{
             @"schema": @"com.hfa.menu.analysis/v1",
-            @"analyzer": @"HFAMapUniversal v1.9.36.3 JSONExport",
+            @"analyzer": @"HFAMapUniversal v1.9.36.4 JSONExport",
             @"analysisOnly": @YES,
             @"package": package,
             @"sources": sources,
