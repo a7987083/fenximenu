@@ -2,42 +2,40 @@
 
 ## Current phase
 
-v1.9.33 OriginalByteResolver — complete runtime-record package aggregation
+v1.9.33 OriginalByteResolver — 5 MB runtime milestone complete
 
 ## Completed milestone: legacy AP / ~15 MB
 
-v1.9.28 remains runtime-confirmed with 12 valid mappings and successful `.hfapatch.json` export.
+v1.9.28 is runtime-confirmed with 12 valid mappings and successful patch-package export.
 
-Formal regression baseline:
+Formal stable baseline remains:
 
 `build/hfamap-v1.4.4-20260901 @ 7bd19ba08a647104d230a2da299bcdd232687abf`
 
-## Completed milestones: 5 MB runtime-record path
+## Completed milestone: Jailpatch runtime-record / ~5 MB
 
-- v1.9.29: runtime-record structure, feature arrays, selector surface and secret wrappers confirmed.
-- v1.9.30: selector descriptor and offset/patch-wrapper association confirmed.
-- v1.9.31: generic image-local decrypt resolver implemented.
-- v1.9.32: Full Scan crash fixed and device-confirmed on both supplied 5 MB games.
-- v1.9.32 runtime-record sample: generic decrypt confirmed with `matches=1`, `rc=0`, and 8/8 valid mappings across 3 feature groups.
-- v1.9.32 WayOfKings sample: semantic iGMM scan remains stable and its four-feature package export remains working.
+Progression:
 
-## Current remaining gap
+- v1.9.29: runtime-record object graph and stable selector surface established.
+- v1.9.30: selector descriptor and offset/patch-wrapper association device-confirmed.
+- v1.9.31: image-local decrypt fingerprint resolver built; unrelated Full Scan crash blocked runtime validation.
+- v1.9.32: semantic crash-safe Full Scan confirmed on both supplied games; generic decrypt reached `matches=1 / rc=0`; runtime-record sample produced 8/8 valid mappings, but only one patch entered the package.
+- v1.9.33: package original-byte acquisition completed the runtime-record path.
 
-The runtime-record sample has eight valid mappings, but v1.9.32 package aggregation exported only one patch. Seven valid mappings were omitted because original bytes were unavailable to the strict package writer.
+Current confirmed runtime-record result:
 
-The mapping resolver itself is no longer the blocker.
+`semantic menu discovery`
+→ `selector descriptor`
+→ `secret wrapper association`
+→ `image-local decrypt fingerprint`
+→ `rc=0 plaintext`
+→ `3 groups / 8 valid mappings`
+→ `8 trusted original-byte reads`
+→ `3 features / 8 patches exported`.
 
-## Current milestone: v1.9.33 OriginalByteResolver
+## Completed milestone: iGMM / WayOfKings ~5 MB
 
-Policy:
-
-- Preserve v1.9.32 crash-safe scan exactly.
-- Preserve v1.9.31 generic decrypt exactly.
-- Preserve the package schema/writer safety rule: every patch requires trustworthy original bytes.
-- Add multiple original-byte sources: live VM read, readable direct memory, then cryptid-aware Mach-O file mapping.
-- Refuse on-disk fallback when the requested bytes overlap active FairPlay encryption.
-- Emit `[PACKAGE-ORIGINAL]` evidence for every valid mapping.
-- Do not hardcode current game/image/feature names or observed addresses.
+The independent iGMM path remains runtime-confirmed under v1.9.33 with four runtime-definition features and successful package export. `patches=[]` is expected for this representation.
 
 ## Build checkpoint
 
@@ -47,18 +45,14 @@ Policy:
 - Artifact ID: `10330589684`.
 - Binary: `HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib`.
 - SHA256: `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
-- v1.9.32 Full Scan regression: passed.
-- v1.9.31 decrypt regression: passed.
-- package writer regression: passed.
-- original-byte resolver invariants: passed.
-- v1.9.33 device validation: pending.
+- Device validation: passed for both supplied 5 MB paths.
 
-## Next task
+## Next work
 
-Run v1.9.33 on the runtime-record 5 MB game and require:
+Do not extend v1.9.33 in place. Use a new branch for any new work.
 
-`[AUTO-MENU-CANDIDATE]` → `[AUTO-TRAVERSAL-END]` → `[AUTO-SCAN]`
+Priorities:
 
-plus the already-confirmed decrypt/mapping chain, then inspect `[PACKAGE-ORIGINAL]` for all 8 mappings. The preferred completion criterion is a package with 3 semantic features containing all 8 patch records.
-
-After that, retest WayOfKings once to preserve its four-feature iGMM package regression checkpoint.
+1. Optional v1.9.33-on-15MB device regression to promote the current binary, not only v1.9.28, on the legacy family.
+2. Additional 5 MB samples to test how broadly the selector/decrypt/original-byte strategy generalizes beyond the two supplied games.
+3. Exercise the `memcpy` and cryptid-aware Mach-O original-byte fallbacks on a sample where live `vm-read` is insufficient; they are currently build-verified but not runtime-confirmed.
