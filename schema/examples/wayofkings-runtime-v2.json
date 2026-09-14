@@ -122,7 +122,13 @@
       "title": "Debug Menu",
       "group": "Other",
       "control": {"kind": "button"},
-      "execution": {"kind": "nativeCall", "target": "UnityFramework", "offset": "0x3DEC9A0"}
+      "execution": {
+        "kind": "nativeCall",
+        "target": "UnityFramework",
+        "offset": "0x3DEC9A0",
+        "abi": "void()",
+        "original": "F44FBEA9"
+      }
     }
   ]
 }
