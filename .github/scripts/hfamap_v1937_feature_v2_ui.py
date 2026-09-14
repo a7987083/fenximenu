@@ -38,18 +38,12 @@ r = once(r,
 r = r.replace('@"1.9.36"', '@"1.9.37"')
 
 # Keep the existing learning/floating-window UI, then attach the generated-JSON
-# renderer to that same panel. The execution engine is embedded separately.
-extern_anchor = ('extern void HFAPatchTraceBeginEvent(unsigned int); extern void HFAPatchTraceSetFeature(const char*); '
-                 'extern void HFAPatchTraceConsiderString(const char*); extern void HFAPatchTraceSetTarget(const char*); '
-                 'extern void HFAPatchTraceSetIdentifier(const char*); extern void HFAPatchTraceObserveAction(id,SEL); '
-                 'extern void HFAPatchTraceArm(unsigned int); extern void HFAPatchTraceFinalizeEvent(unsigned int); '
-                 'extern unsigned int HFAPatchTraceFinalizeScan(void); extern const char* HFAPatchTraceDetectedTarget(void); '
-                 'extern void HFARegisterPatchObject(id,const char*); extern void HFARegisterPatchSecret(id,id,const char*); '
-                 'extern void HFARegisterPatchString(id,const char*); extern void HFARegisterFeatureDefinition(const char*,const char*); '
-                 'extern void HFARegisterCustomBlock(id,const char*);')
-extern_new = extern_anchor + ('\nextern void HFAMapFeatureUIAttach(id,id); '
-                              'extern void HFAMapFeatureUIReloadLatest(void);')
-l = once(l, extern_anchor, extern_new, 'feature UI externs')
+# renderer to that same panel. Use the stable macro boundary instead of matching
+# the historical extern line because earlier patch generations append declarations.
+macro_anchor = '#define M0(r,o,s)'
+externs = ('extern void HFAMapFeatureUIAttach(id,id); '
+           'extern void HFAMapFeatureUIReloadLatest(void);\n')
+l = once(l, macro_anchor, externs + macro_anchor, 'feature UI externs')
 
 l = once(l,
          'unsigned int valid=run_full_scan();',
