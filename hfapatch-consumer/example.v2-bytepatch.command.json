@@ -1,0 +1,6 @@
+{
+  "action": "preflight",
+  "package": "example.hfafeature.json",
+  "identity": "example.hfapatch.identity.json",
+  "featureIds": ["patch1"]
+}
