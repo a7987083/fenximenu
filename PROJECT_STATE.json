@@ -1,64 +1,70 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.35",
-  "phase": "main-image-truth-device-validation",
-  "branch": "feature/hfamap-v1935-main-image-truth",
-  "base_branch": "feature/hfamap-v1934-unified-canonical-exporter",
-  "base_commit": "7dd64cdafc45cf0017b9fb99a87b4bae84ee7758",
-  "stable_baseline": {
-    "branch": "build/hfamap-v1.4.4-20260901",
-    "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
+  "version": "1.9.36.3",
+  "phase": "pure-parser-json-export-device-validation",
+  "branch": "feature/hfamap-v19361-json-export",
+  "base_commit": "75f94da37221343b6839465ad365ddec2679e63a",
+  "stable_parser_baseline": {
+    "version": "1.9.36",
+    "branch": "feature/hfamap-v1936-architecture-truth",
+    "commit": "75f94da37221343b6839465ad365ddec2679e63a",
+    "policy": "preserve startup, full scan and resolver core; add analysis-only export after scan"
   },
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34830471085,
-    "build_commit": "9b88d83919c824e371ebc3c21b70138a165b2ee5",
-    "artifact_id": 10341533093,
-    "artifact": "HFAMapUniversal-v1.9.35-MainImageTruth",
-    "artifact_digest": "sha256:3426aad904df4e0bb2a7a9510a6eb0d8d97593041abe01e29c6606be044d0a83",
-    "binary": "HFAMapUniversal_v1.9.35_MainImageTruth.dylib",
+    "run_id": 34906163687,
+    "build_commit": "67e291c640f6bc503860b414d65c21dd8af8e153",
+    "artifact_id": 10372078251,
+    "artifact": "HFAMapUniversal-v1.9.36.3-JSONExport",
+    "artifact_digest": "sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed",
+    "binary": "HFAMapUniversal_v1.9.36.3_JSONExport.dylib",
     "architecture": "arm64",
-    "size_bytes": 175664,
-    "sha256": "93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f"
+    "size_bytes": 192432,
+    "sha256": "5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546"
   },
   "verification": {
-    "patch_chain": "passed",
-    "v1932_crash_safe_scan_preserved": true,
-    "v1931_decrypt_functions_preserved": true,
-    "v1933_original_byte_readers_preserved": true,
-    "v1934_canonical_truth_gate_preserved": true,
-    "main_image_resolver_invariants": "passed",
-    "no_main_index0_assumption": true,
-    "sample_hardcode_check": "passed",
-    "binary_sha256_check": "passed",
-    "device_runtime_v1935": "pending"
-  },
-  "runtime": {
-    "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
-    "jailpatch_v2_v1934_runtime_record_scan": "device-confirmed-no-crash-decrypt-rc0-3-groups-8-valid-mappings",
-    "jailpatch_v2_v1934_canonical_structure": "device-confirmed-3-features-8-patches-contract-pass",
-    "jailpatch_v2_v1934_identity": "device-failed-main-resolved-to-injected-dylib-via-index0",
-    "jailpatch_v2_v1934_original_bytes": "device-failed-main-originals-read-from-wrong-image-including-non-code-ascii-at-executable-offsets",
-    "jailpatch_v2_v1934_igmm": "device-confirmed-diagnostic-only-export-no-new-hfapatch-json",
-    "jailpatch_v2_v1935": "compiled-ci-passed-awaiting-device-validation",
-    "v1935_on_15mb": "not-device-regression-tested"
+    "v1936_constructor_preserved": true,
+    "v1936_full_scan_preserved": true,
+    "v1936_trace_resolver_core_preserved": true,
+    "analysis_only_exporter_has_no_constructor": true,
+    "no_dobby_linkage": true,
+    "no_hfapatch_consumer": true,
+    "no_command_polling": true,
+    "wayofkings_control_fixture": "passed",
+    "button_kTypeButton_normalization": "passed",
+    "target_identity_export_compile_check": "passed",
+    "v19361_wayofkings_device_startup": "passed",
+    "v19361_wayofkings_full_scan": "passed",
+    "v19361_wayofkings_analysis_json_export": "passed",
+    "v19363_device_validation": "pending"
   },
   "runtime_evidence": {
-    "v1934_runtime_record": "AUTO-MENU-CANDIDATE -> AUTO-TRAVERSAL-END -> AUTO-SCAN completed without crash. FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3 and CANONICAL-CHECK reported status=pass.",
-    "v1934_identity_failure": "The generated identity sidecar declared @main but resolved the target as systemhook.dylib with preferredTextVMAddr=0x0. Source inspection confirmed both HFAImageIndexForName(main) and the v1.9.34 identity writer assumed dyld image index 0.",
-    "v1934_original_failure": "The same index-0 assumption fed the original-byte reader. Exported originals at statically confirmed executable offsets included ASCII-like bytes 4531454E53395F31 and 70726F706F736564, proving the canonical package was structurally valid but not byte-truthworthy.",
-    "v1934_igmm": "WayOfKings produced four execution-primitive records in com.hfa.igmm.runtime/v1 and no new canonical-looking .hfapatch.json. Diagnostic isolation passed on device.",
-    "v1935_fix": "main/@main now resolve by NSBundle.mainBundle.executablePath plus MH_EXECUTE, with unique-MH_EXECUTE fallback and fail-closed ambiguity. The v1.9.33 original readers are unchanged; only their image-index source is corrected."
+    "wayofkings_v19361": "Device archive confirmed no injection crash, successful Full Scan, com.hfa.igmm.runtime/v1 generation and com.hfa.menu.analysis/v1 generation with 4 features.",
+    "wayofkings_controls": {
+      "Damage Multiplier": "modtext -> number, default 1",
+      "Defence Multiplier": "modtext -> number, default 1",
+      "God Mode": "customSwitch -> toggle",
+      "Debug Menu": "kTypeButton observed; v1.9.36.1 normalized it as unknown and v1.9.36.2+ maps it to button"
+    },
+    "wayofkings_runtime_evidence": "Damage/Defence/God share iGMM handler evidence at libpathofkings+0x4128 resolving through trampoline evidence toward UnityFramework+0x3BF6D94. Debug Menu has block evidence at libpathofkings+0x66B0 / nested +0x66C4 resolving to UnityFramework+0x3DEC9A0.",
+    "retired_runtime_merge": "v1.9.37 and v1.9.37.1 injected runtime-consumer/Dobby builds crashed on device and are not the HFAMapUniversal parser baseline."
   },
+  "v19363_changes": [
+    "Keep raw executionPrimitive evidence unchanged.",
+    "Add normalizedExecutionPrimitive derived from control + runtime evidence; buttonBlock becomes runtimeAction without rewriting source diagnostics.",
+    "Add read-only targetIdentities for referenced Mach-O images using UUID, cputype/cpusubtype, architecture, filetype, preferred __TEXT VM address and cryptid.",
+    "Keep schema com.hfa.menu.analysis/v1 and analysisOnly=true.",
+    "No playback engine, Dobby, runtime takeover or extra constructor."
+  ],
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
     "Documents/HFAMap_JailpatchMap.jsonl",
-    "Documents/HFAMap_Mapping.log",
-    "*.hfapatch.json only after canonical structure and target resolution pass",
-    "*.hfapatch.identity.json for canonical target identity",
-    "*.hfamap.igmm.json for iGMM runtime diagnostics"
+    "*.hfapatch.json only for proven canonical static patches",
+    "*.hfapatch.identity.json for canonical target identity when available",
+    "*.hfamap.igmm.json for iGMM runtime diagnostics",
+    "*.hfamap.analysis.json for normalized analysis-only menu description"
   ],
-  "next_task": "Clear old generated outputs and device-test v1.9.35 on the runtime-record sample first. Require MAIN-IMAGE-RESOLVE to identify the real MH_EXECUTE game executable, every PACKAGE-ORIGINAL for module=main to report that executable and filetype=MH_EXECUTE, the identity sidecar to report the real executable UUID and preferredTextVMAddr=0x100000000 for the supplied Dragons sample, and the exported originals to contain real instruction bytes rather than the prior unrelated ASCII values. Then regression-test the iGMM diagnostic-only path and later the 15 MB family."
+  "next_task": "Device-test HFAMapUniversal_v1.9.36.3_JSONExport.dylib on WayOfKings. Confirm injection remains stable, Full Scan completes, Debug Menu exports control.kind=button and normalizedExecutionPrimitive=runtimeAction, and targetIdentities resolves both libpathofkings.dylib and UnityFramework with the expected UUID/architecture/text-vm evidence. Then regression-test the canonical static-patch family and legacy ~15 MB family without adding an execution engine to HFAMapUniversal."
 }
