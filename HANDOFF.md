@@ -2,106 +2,101 @@
 
 ## Current branch
 
-`feature/hfamap-v1935-main-image-truth`
+`feature/hfamap-v19361-json-export`
 
-## Current build
+## Current direction
 
-- Base: `feature/hfamap-v1934-unified-canonical-exporter @ 7dd64cdafc45cf0017b9fb99a87b4bae84ee7758`.
-- Build-tested code commit: `9b88d83919c824e371ebc3c21b70138a165b2ee5`.
-- GitHub Actions run: `34830471085` — success.
-- Artifact: `HFAMapUniversal-v1.9.35-MainImageTruth` (ID `10341533093`).
-- Artifact digest: `sha256:3426aad904df4e0bb2a7a9510a6eb0d8d97593041abe01e29c6606be044d0a83`.
-- Binary: `HFAMapUniversal_v1.9.35_MainImageTruth.dylib`.
-- Architecture: arm64 Mach-O dylib.
-- Size: `175664` bytes.
-- SHA256: `93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f`.
+HFAMapUniversal is again a **parser/exporter only**. The runtime-consumer/Dobby merge from v1.9.37 and v1.9.37.1 is retired from the product direction after both builds crashed immediately on device injection.
 
-## Canonical contract
+The parser baseline is the previously validated v1.9.36 ArchitectureTruth commit `75f94da37221343b6839465ad365ddec2679e63a`. New JSONExport layers must preserve the v1.9.36 constructor, `run_full_scan()` and `HFAMapPatchExecutionTrace.m` resolver core exactly.
 
-The formal `.hfapatch.json` contract remains the static 15 MB shape:
+## Current build: v1.9.36.3 JSONExport
 
-`schema/name/package/targets/features`
-→ feature `id/title/group/defaultEnabled/patches`
-→ patch `target/offset/original/enabled`.
+- Branch: `feature/hfamap-v19361-json-export`.
+- Build-tested commit: `67e291c640f6bc503860b414d65c21dd8af8e153`.
+- GitHub Actions run: `34906163687` — success.
+- Artifact: `HFAMapUniversal-v1.9.36.3-JSONExport` (ID `10372078251`).
+- Artifact digest: `sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed`.
+- Binary: `HFAMapUniversal_v1.9.36.3_JSONExport.dylib`.
+- Architecture: arm64 Mach-O dylib, NOUNDEFS.
+- Size: `192432` bytes.
+- SHA256: `5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546`.
 
-Canonical offsets are Mach-O preferred VM addresses. Runtime addresses and file offsets are not written into this field.
+## Device evidence
 
-## What v1.9.34 device testing proved
+### v1.9.36.1 WayOfKings
 
-### Runtime-record / Dragons
+Device archive confirmed:
 
-Passed:
+- injection did not crash;
+- HFA parser/scan completed;
+- `com.hfa.igmm.runtime/v1` was generated;
+- normalized `com.hfa.menu.analysis/v1` was generated;
+- four menu features were exported.
 
-- crash-safe semantic scan;
-- selector descriptor discovery;
-- generic secret decrypt (`matches=1`, `rc=0`);
-- 3 groups / 8 valid mappings;
-- strict canonical structural check for 3 features / 8 patches.
+Observed controls:
 
-Failed:
+- `Damage Multiplier`: `modtext` -> `number`, default `1`;
+- `Defence Multiplier`: `modtext` -> `number`, default `1`;
+- `God Mode`: `customSwitch` -> `toggle`;
+- `Debug Menu`: source type `kTypeButton`; v1.9.36.1 incorrectly normalized this to `unknown`.
 
-- `@main` identity resolved to the injected `systemhook.dylib` rather than the actual `MH_EXECUTE` game image;
-- preferred text VM address was therefore reported as `0x0` instead of the game executable's preferred VM;
-- original-byte acquisition inherited the same `main -> dyld index 0` assumption and produced unrelated bytes, including ASCII-like data at statically confirmed executable offsets.
+Observed implementation evidence remains diagnostic only:
 
-Conclusion: the v1.9.34 runtime-record package is structurally canonical but not byte-truthworthy and must not be promoted.
+- Damage/Defence/God share handler evidence around `libpathofkings.dylib + 0x4128`, with trampoline evidence and target resolution toward `UnityFramework + 0x3BF6D94`;
+- Debug Menu has block evidence at `libpathofkings.dylib + 0x66B0`, nested handler `+0x66C4`, resolving to `UnityFramework + 0x3DEC9A0`.
 
-### iGMM / WayOfKings
+## v1.9.36.2
 
-Passed:
+Adds the proven control normalization `kTypeButton -> button`. CI run `34904404292` passed. Device validation was superseded by v1.9.36.3.
 
-- semantic menu discovery and scan stability;
-- per-feature execution-primitive classification;
-- diagnostic-only `com.hfa.igmm.runtime/v1` output;
-- no new canonical-looking `.hfapatch.json` from the iGMM fallback.
+## v1.9.36.3
 
-The iGMM path remains deliberately non-canonical until a real portable static equivalent is proven for an individual runtime primitive.
+Keeps source evidence intact but adds two analysis-layer improvements:
 
-## v1.9.35 MainImageTruth
+1. `normalizedExecutionPrimitive`: for an observed `buttonBlock`, the normalized analysis reports `runtimeAction` while the raw source `executionPrimitive` remains untouched.
+2. `targetIdentities`: every referenced Mach-O image is resolved read-only and annotated with UUID, cputype/cpusubtype, architecture, filetype, preferred `__TEXT` VM address and cryptid.
 
-The main-image resolver no longer assumes dyld image index 0.
+No runtime executor, Dobby, hook takeover, command polling or extra constructor is present.
 
-Resolution policy:
+## Output contract
 
-1. obtain `NSBundle.mainBundle.executablePath`;
-2. inspect loaded Mach-O images with `filetype == MH_EXECUTE`;
-3. prefer the executable whose path or basename matches the bundle executable;
-4. otherwise use a unique `MH_EXECUTE` only;
-5. fail closed on no match or ambiguity.
+Normal scan outputs may include:
 
-Both `main` and `@main` use this resolver. Named dylib/framework targets keep their existing name-based resolution.
+- `HFAMap_Learn.log`
+- `HFAMap_MenuMap.jsonl`
+- `HFAMap_JailpatchMap.jsonl`
+- canonical `*.hfapatch.json` only when a true static byte-patch contract is proven
+- `*.hfapatch.identity.json` when canonical target identity exists
+- `*.hfamap.igmm.json` for iGMM runtime diagnostics
+- `*.hfamap.analysis.json` for normalized analysis-only menu description
 
-The corrected image index feeds the unchanged v1.9.33 original readers and the v1.9.34 identity writer. Canonical export also refuses `@main` unless it resolves to `MH_EXECUTE`.
+The normalized analysis schema is `com.hfa.menu.analysis/v1` and must keep `analysisOnly=true`.
 
-## Required device validation
+## Next device test
 
-Delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files before testing.
+Inject `HFAMapUniversal_v1.9.36.3_JSONExport.dylib` into WayOfKings and run the same Full Scan. Require:
 
-Test the runtime-record sample first. Require:
+1. no injection crash;
+2. Full Scan completes;
+3. `Debug Menu` exports `control.kind = button`;
+4. `Debug Menu` exports raw source primitive plus `normalizedExecutionPrimitive = runtimeAction`;
+5. `targetIdentities` resolves `libpathofkings.dylib` and `UnityFramework`;
+6. UnityFramework identity matches the known target build evidence;
+7. no playback/runtime execution behavior is introduced.
 
-`[MAIN-IMAGE-RESOLVE] status=resolved`
-→ resolved image is the actual game executable and filetype is `MH_EXECUTE`
-→ each `[PACKAGE-ORIGINAL]` for module `main` reports that same executable and filetype `2`
-→ `[CANONICAL-CHECK] status=pass`
-→ identity sidecar resolves `@main` to the actual executable, not an injected dylib
-→ for the supplied Dragons sample, preferred `__TEXT` VM address should be `0x100000000`
-→ exported originals at the eight known executable offsets must be instruction bytes, not the prior unrelated ASCII-like values.
-
-Only after this passes, regression-test WayOfKings and confirm it still produces `.hfamap.igmm.json` without an iGMM `.hfapatch.json`.
-
-A later 15 MB run is still required before promoting v1.9.35 as the cross-family runtime candidate.
+After this, regression-test the canonical static-patch family and then the legacy ~15 MB family with the same parser-only build.
 
 ## Verification discipline
 
-- v1.9.34 device-tested: yes.
-- v1.9.34 iGMM diagnostic isolation: passed.
-- v1.9.34 runtime-record scan/decrypt/mapping: passed.
-- v1.9.34 canonical structure: passed.
-- v1.9.34 main target identity/original-byte truth: failed.
-- v1.9.35 source modified/committed: yes.
-- v1.9.35 compiled/linked/signed: yes.
-- v1.9.35 CI: passed on run `34830471085`.
-- v1.9.35 artifact independently re-hashed: passed.
-- v1.9.35 device-tested: no.
-- v1.9.35 15 MB runtime regression: no.
+- v1.9.36 parser baseline: frozen/reference baseline.
+- v1.9.36.1 WayOfKings device startup: passed.
+- v1.9.36.1 WayOfKings Full Scan: passed.
+- v1.9.36.1 normalized analysis export: passed.
+- v1.9.36.2 CI: passed.
+- v1.9.36.3 compile/link/sign: passed.
+- v1.9.36.3 CI: passed on run `34906163687`.
+- v1.9.36.3 artifact re-hash: passed.
+- v1.9.36.3 device validation: pending.
+- v1.9.37/v1.9.37.1 runtime-merge device startup: failed / retired from parser mainline.
 - project final closure: no.
