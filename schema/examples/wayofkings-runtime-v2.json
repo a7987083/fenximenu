@@ -1,0 +1,128 @@
+{
+  "schema": "com.hfa.feature/v2",
+  "name": "WayOfKings iGMM runtime model",
+  "offsetSemantics": "preferred-mach-o-vmaddr",
+  "package": {
+    "bundleIdentifier": "com.TornadoBear.WayOfKings",
+    "shortVersion": "1.4.0",
+    "buildVersion": "165",
+    "architectures": ["arm64"]
+  },
+  "targets": {
+    "UnityFramework": {"image": "UnityFramework"}
+  },
+  "runtimeGraphs": {
+    "combat_runtime": {
+      "bootstrap": "once",
+      "state": {
+        "damageMultiplier": {"type": "float32", "default": 1},
+        "defenceMultiplier": {"type": "float32", "default": 1},
+        "godMode": {"type": "bool", "default": false}
+      },
+      "stores": {
+        "protectedObjects": {"kind": "pointerSet", "maxEntries": 16}
+      },
+      "hooks": [
+        {
+          "id": "protected_producer_host50",
+          "target": "UnityFramework",
+          "offset": "0x3BFA200",
+          "original": "F657BDA9",
+          "behavior": {
+            "kind": "captureFieldPointer",
+            "baseRegister": "x0",
+            "fieldOffset": "0x50",
+            "store": "protectedObjects"
+          },
+          "evidence": {
+            "menuImage": "libpathofkings.dylib",
+            "replacement": "0x4050",
+            "originalSlot": "0x543CA8",
+            "continuation": "0x3BFA204"
+          }
+        },
+        {
+          "id": "protected_producer_item38",
+          "target": "UnityFramework",
+          "offset": "0x3DC3310",
+          "original": "F657BDA9",
+          "behavior": {
+            "kind": "captureFieldPointer",
+            "baseRegister": "x0",
+            "fieldOffset": "0x38",
+            "store": "protectedObjects"
+          },
+          "evidence": {
+            "menuImage": "libpathofkings.dylib",
+            "replacement": "0x40BC",
+            "originalSlot": "0x543CB0",
+            "continuation": "0x3DC3314"
+          }
+        },
+        {
+          "id": "damage_consumer",
+          "target": "UnityFramework",
+          "offset": "0x3BF6D90",
+          "original": "EB2BBA6D",
+          "behavior": {
+            "kind": "conditionalPipeline",
+            "subjectRegister": "x0",
+            "valueRegister": "x1",
+            "protectedStore": "protectedObjects",
+            "rules": [
+              {
+                "when": {"all": ["subjectIsProtected", {"state": "godMode", "equals": true}]},
+                "do": [{"kind": "return"}]
+              },
+              {
+                "when": {"all": ["subjectIsProtected", {"state": "defenceMultiplier", "notEquals": 1}]},
+                "do": [{"kind": "divideIntegerArgument", "register": "x1", "state": "defenceMultiplier"}]
+              },
+              {
+                "when": {"all": ["subjectIsNotProtected", {"state": "damageMultiplier", "notEquals": 1}]},
+                "do": [{"kind": "multiplyIntegerArgument", "register": "x1", "state": "damageMultiplier"}]
+              }
+            ],
+            "fallback": "callOriginal"
+          },
+          "evidence": {
+            "menuImage": "libpathofkings.dylib",
+            "replacement": "0x4128",
+            "originalSlot": "0x543CB8",
+            "continuation": "0x3BF6D94"
+          }
+        }
+      ]
+    }
+  },
+  "features": [
+    {
+      "id": "damage",
+      "title": "Damage Multiplier",
+      "group": "Combat",
+      "control": {"kind": "number", "valueType": "float32", "default": 1},
+      "execution": {"kind": "runtimeState", "graph": "combat_runtime", "binding": "damageMultiplier"}
+    },
+    {
+      "id": "defence",
+      "title": "Defence Multiplier",
+      "group": "Combat",
+      "control": {"kind": "number", "valueType": "float32", "default": 1},
+      "execution": {"kind": "runtimeState", "graph": "combat_runtime", "binding": "defenceMultiplier"}
+    },
+    {
+      "id": "god_mode",
+      "title": "God Mode",
+      "group": "Combat",
+      "control": {"kind": "toggle", "default": false},
+      "execution": {"kind": "runtimeState", "graph": "combat_runtime", "binding": "godMode"}
+    },
+    {
+      "id": "debug_menu",
+      "title": "Debug Menu",
+      "group": "Other",
+      "control": {"kind": "button"},
+      "execution": {"kind": "nativeCall", "target": "UnityFramework", "offset": "0x3DEC9A0"}
+    }
+  ]
+}
