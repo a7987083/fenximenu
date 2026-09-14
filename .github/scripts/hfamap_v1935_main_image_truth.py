@@ -53,9 +53,9 @@ def replace_function(text, signature, replacement, label):
 #
 # Device evidence from v1.9.34 invalidated the historical assumption that dyld
 # image index 0 is always the app executable. In the supplied injected runtime,
-# index 0 resolved to systemhook.dylib. The same assumption was shared by both
-# the new identity sidecar and the older "main" original-byte path, which let
-# executable patch offsets acquire unrelated ASCII bytes as "original" values.
+# index 0 resolved to an injected loader dylib. The same assumption was shared
+# by both the identity sidecar and the older "main" original-byte path, which
+# let executable patch offsets acquire unrelated non-code bytes as originals.
 #
 # Resolve @main/main by binary identity instead:
 #   1. prefer NSBundle.mainBundle.executablePath matched to an MH_EXECUTE image;
@@ -141,7 +141,7 @@ main_resolver = r'''static int HFAMainExecutableImageIndex(void) {
         if ((wantedPath && path && strcmp(wantedPath, path) == 0) ||
             (wantedBase && base && strcmp(wantedBase, base) == 0)) {
             cached = (int)i;
-            HFALog("[MAIN-IMAGE-RESOLVE] status=resolved mode=bundle-executable index=%u image=%s filetype=MH_EXECUTE\\n",
+            HFALog("[MAIN-IMAGE-RESOLVE] status=resolved mode=bundle-executable index=%u image=%s filetype=MH_EXECUTE\n",
                    i, base ? base : "?");
             return cached;
         }
@@ -150,13 +150,13 @@ main_resolver = r'''static int HFAMainExecutableImageIndex(void) {
     if (executeCount == 1 && uniqueExecute >= 0) {
         cached = uniqueExecute;
         const char *path = _dyld_get_image_name((uint32_t)uniqueExecute);
-        HFALog("[MAIN-IMAGE-RESOLVE] status=resolved mode=unique-mh-execute index=%d image=%s filetype=MH_EXECUTE\\n",
+        HFALog("[MAIN-IMAGE-RESOLVE] status=resolved mode=unique-mh-execute index=%d image=%s filetype=MH_EXECUTE\n",
                uniqueExecute, path ? HFABase(path) : "?");
         return cached;
     }
 
     cached = -1;
-    HFALog("[MAIN-IMAGE-RESOLVE] status=unresolved executeCount=%u bundleExecutable=%s\\n",
+    HFALog("[MAIN-IMAGE-RESOLVE] status=unresolved executeCount=%u bundleExecutable=%s\n",
            executeCount, wantedBase ? wantedBase : "?");
     return cached;
 }
@@ -189,32 +189,51 @@ s = replace_once(
     'route identity @main through executable resolver',
 )
 
-# Do not let a structurally valid package pass if a declared target cannot be
-# tied to a loaded image under the new resolver.
-old_preflight = '    if (!HFACanonical34Validate(features, targets)) return;\n'
-new_preflight = old_preflight + r'''    for (NSString *targetID in targets) {
+identity_anchor = 'static void HFACanonical34WriteIdentity(NSDictionary *targets) {\n'
+identity_helper = r'''static BOOL HFACanonical35TargetsResolved(NSDictionary *targets) {
+    if (![targets isKindOfClass:[NSDictionary class]] || !targets.count) return NO;
+    for (NSString *targetID in targets) {
         NSDictionary *target = [targets objectForKey:targetID];
         NSString *image = [target objectForKey:@"image"];
         int resolvedIndex = HFAImageIndexForName(image.UTF8String);
         if (resolvedIndex < 0) {
-            HFALog("[CANONICAL-CHECK] status=fail reason=target-image-unresolved target=%s image=%s\\n",
+            HFALog("[CANONICAL-CHECK] status=fail reason=target-image-unresolved target=%s image=%s\n",
                    targetID.UTF8String ?: "?", image.UTF8String ?: "?");
-            return;
+            return NO;
         }
         const struct mach_header *resolvedHeader =
             _dyld_get_image_header((uint32_t)resolvedIndex);
         if ([image isEqualToString:@"@main"] &&
             (!resolvedHeader || resolvedHeader->filetype != MH_EXECUTE)) {
-            HFALog("[CANONICAL-CHECK] status=fail reason=main-not-mh-execute target=%s index=%d\\n",
+            HFALog("[CANONICAL-CHECK] status=fail reason=main-not-mh-execute target=%s index=%d\n",
                    targetID.UTF8String ?: "?", resolvedIndex);
-            return;
+            return NO;
         }
     }
-'''
-s = replace_once(s, old_preflight, new_preflight, 'add target identity preflight')
+    return YES;
+}
 
-# Enrich the original-byte log so device evidence proves which Mach-O supplied
-# the slide/file fallback for each canonical patch.
+''' + identity_anchor
+s = replace_once(s, identity_anchor, identity_helper,
+                 'insert target identity preflight helper')
+
+old_gate = r'''        if (HFACanonical34Validate(exportFeatures, exportTargets)) {
+            HFACanonical34WriteIdentity(exportTargets);
+            HFAWritePatchPackage(exportFeatures, exportTargets);
+        } else {
+            HFALog("[CANONICAL-EXPORT-SKIP] reason=contract-validation-failed\n");
+        }
+'''
+new_gate = r'''        if (HFACanonical34Validate(exportFeatures, exportTargets) &&
+            HFACanonical35TargetsResolved(exportTargets)) {
+            HFACanonical34WriteIdentity(exportTargets);
+            HFAWritePatchPackage(exportFeatures, exportTargets);
+        } else {
+            HFALog("[CANONICAL-EXPORT-SKIP] reason=contract-or-target-validation-failed\n");
+        }
+'''
+s = replace_once(s, old_gate, new_gate, 'gate canonical package on resolved target')
+
 old_log = r'''                HFALog("[PACKAGE-ORIGINAL] title=\"%s\" module=%s offset=%s bytes=%u imageIndex=%d source=%s cryptid=%d status=%s\n",
                        title, descriptor->module[0] ? descriptor->module : "?",
                        normalizedOffset[0] ? normalizedOffset : "?",
