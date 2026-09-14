@@ -5,8 +5,8 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = HFAMapUniversal
 
-HFAMapUniversal_FILES = src/HFAMapLegacy.m src/HFAMapPatchExecutionTrace.m src/HFAMapSecretCallGraphProbe.m src/HFAMapGenericMenuResolver.m src/HFAMapJailpatchRuntimeProfiler.m src/HFAMapJailpatchSelectorResolver.m src/HFAMapFeatureV2UI.m src/HFAMapIGMMFeatureV2Exporter.m src/HFAPatchConsumerEmbed.m
-HFAMapUniversal_CFLAGS = -Oz -fno-stack-protector -fno-builtin -Wno-empty-body -Wno-deprecated-declarations -include mach/mach_vm.h -include stdlib.h
+HFAMapUniversal_FILES = src/HFAMapLegacy.m src/HFAMapPatchExecutionTrace.m src/HFAMapSecretCallGraphProbe.m src/HFAMapGenericMenuResolver.m src/HFAMapJailpatchRuntimeProfiler.m src/HFAMapJailpatchSelectorResolver.m src/HFAMapFeatureV2UI.m src/HFAMapIGMMFeatureV2ExporterEmbed.m src/HFAPatchConsumerEmbed.m
+HFAMapUniversal_CFLAGS = -Oz -fno-stack-protector -fno-builtin -Wno-empty-body -Wno-deprecated-declarations
 HFAMapUniversal_LDFLAGS += $(THEOS_PROJECT_DIR)/vendor/libdobby.a -lc++
 HFAMapUniversal_FRAMEWORKS = UIKit Foundation
 
