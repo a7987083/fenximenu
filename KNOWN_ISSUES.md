@@ -1,69 +1,75 @@
 # Known Issues
 
-## v1.9.32 CrashSafeFullScan
+## v1.9.33 OriginalByteResolver
 
-### v1.9.31 Auto Detect / Full Scan crashed on both supplied ~5 MB games
+### Runtime-record package is still incomplete under v1.9.32
 
-Status: root cause narrowed / mitigation built / v1.9.32 device validation pending.
+Status: open / current v1.9.33 validation target.
 
-The two v1.9.31 logs share the same failure shape: the actual semantic menu target was found in window index 0, but Full Scan continued into unrelated windows and terminated before `[AUTO-TRAVERSAL-END]` and `[AUTO-SCAN]`. One crashing game had `records=0`, so generic secret-decrypt invocation cannot be the common cause.
+The v1.9.32 runtime-record sample produced eight valid mappings across three features, and `HFAMap_Mapping.log` contains all eight. The exported `.hfapatch.json` contained only one feature/one patch because seven valid mappings logged `reason=identity-or-original-unavailable`.
 
-Historical source review found an unsafe scan path inherited from v1.9.24: `igmm_probe_target` could deep-traverse every custom control target and enumerate object ivars through UIKit/framework superclasses. Objective-C `@try/@catch` cannot catch an `EXC_BAD_ACCESS` caused by invalid raw object graph traversal.
+This is an exporter-input problem, not a selector/decrypt/mapping problem.
 
-v1.9.32 removes that deep probe from Auto Detect, uses semantic feature-array confirmation for early stop, and bounds superclass ivar traversal at framework classes. This is compiled and CI-verified but not yet device-confirmed.
+### v1.9.33 original-byte fallback is compiled but not device-confirmed
 
-### Generic 5 MB decrypt resolution is still not runtime-confirmed
+Status: open.
 
-Status: open / deferred until scan stability is proven.
+v1.9.33 tries live `vm_read_overwrite`, readable direct memory, then on-disk Mach-O segment translation. CI verifies the implementation and preserves previous scan/decrypt/package-writer functions, but only device evidence can show which source succeeds for the seven previously skipped mappings.
 
-v1.9.31 added image-local `__TEXT,__text` fingerprint resolution for the secret decrypt routine. The two Full Scan crashes happened before scan finalization, and one sample never entered the runtime-record decrypt path at all. Therefore the crash does not invalidate the decrypt resolver, but it also did not validate it. v1.9.32 preserves `HFAResolveSecretDecrypt` and `HFADecryptWrapper` byte-for-byte.
+Require `[PACKAGE-ORIGINAL]` evidence for every valid mapping before declaring the package path complete.
 
-After Full Scan is stable, require `[MAP-DECRYPT-RESOLVE] mode=text-fingerprint matches=1` and `[MAP-DECRYPT] rc=0` before declaring decrypt success.
+### On-disk original fallback refuses active FairPlay-encrypted ranges
 
-### Historical deep iGMM probe remains in source as inactive diagnostic code
+Status: intentional safety behavior.
 
-Status: intentionally inactive.
+The file fallback parses `LC_ENCRYPTION_INFO_64`. If the requested file bytes overlap a range whose `cryptid` is active, the fallback returns unavailable rather than exporting encrypted bytes as an "original" instruction sequence.
 
-The old `igmm_probe_target` implementation is retained for historical/diagnostic reference but is marked unused and is not called from Auto Detect. CI explicitly fails if `igmm_probe_target(o);` reappears in the generated Full Scan path.
+If a future sample is FairPlay-encrypted and live memory cannot be read, a verified decrypted image/dump will be required instead of weakening this check.
 
-### Semantic early stop depends on a populated feature array
+### Live bytes may already equal the enabled patch
 
-Status: expected design constraint.
+Status: handled conservatively.
 
-The crash-safe early stop only fires after the original menu has populated its feature array. Open the original menu before running `Auto Detect / Full Scan`. If no semantic feature array exists yet, the scan can continue looking for one.
+If live memory returns bytes identical to the enabled patch, v1.9.33 attempts a trustworthy unencrypted file original. If that is unavailable, the existing package logic still skips the patch rather than inventing an original value.
 
-### Two ~5 MB menu paths remain supported
+### v1.9.32 Full Scan crash is resolved on both supplied 5 MB games
 
-Status: understood / regression requirement.
+Status: device-confirmed resolved for the tested games.
 
-One supplied sample uses runtime records and the selector/decrypt path. Another supplied sample also exposes the stricter iGMM feature array and has previously generated a `.hfapatch.json` package through the existing iGMM implementation/target-chain exporter. v1.9.32 preserves `HFAWriteIGMMPackage` byte-for-byte and still calls `HFARegisterIGMMFeatureArray` when semantic iGMM validation succeeds.
+Both v1.9.32 captures reached `[AUTO-MENU-CANDIDATE]`, `[AUTO-TRAVERSAL-END]`, and `[AUTO-SCAN]` without crashing. The historical deep iGMM Auto Detect probe remains inactive.
+
+### Generic 5 MB decrypt resolution is runtime-confirmed on the tested runtime-record sample
+
+Status: resolved for current architecture evidence.
+
+v1.9.32 selected the image-local text fingerprint with `matches=1`; offset and patch-data decrypt calls returned `rc=0`; all eight full mappings were valid. Future binaries with zero or multiple fingerprint matches still fail closed.
+
+### WayOfKings iGMM path remains a separate supported architecture path
+
+Status: runtime-confirmed / regression requirement.
+
+Under v1.9.32, WayOfKings completed crash-safe Full Scan and exported a four-feature iGMM package. v1.9.33 changes only ordinary patch original-byte recovery and must not regress this path.
 
 ### Patch-data candidate inference requires uniqueness
 
-Status: intentionally conservative / confirmed for previously observed runtime records.
+Status: intentionally conservative / confirmed for current runtime records.
 
-The selector resolver registers patch data only when exactly one remaining `secret` wrapper exists after excluding `offset` and `signature`. Ambiguous cases remain evidence-only.
+Patch data is registered only when exactly one remaining `secret` wrapper exists after excluding offset/signature candidates. Ambiguous records remain evidence-only.
 
-### Important Jailpatch object ivars use stripped type metadata
+### Relevant Jailpatch ivars may use stripped type metadata
 
 Status: understood / handled.
 
-Relevant object ivars may be declared as `@"?"`. Current discovery relies on semantic selectors, live object behavior, and bounded runtime structure rather than declared class names.
+Discovery relies on stable selectors, live object behavior, and bounded runtime structure rather than randomized class/ivar names or declared object types.
 
-### v1.9.32 has not been runtime-regression-tested on ~15 MB
+### v1.9.33 has not been runtime-regression-tested on ~15 MB
 
 Status: open / low priority.
 
-The legacy 15 MB architecture remains runtime-confirmed under v1.9.28. CI preserves the legacy mapping/exporter and v1.9.31 decrypt functions, but v1.9.32 itself has not been injected into a 15 MB target; do not claim a v1.9.32-on-15MB runtime regression pass.
-
-### CI first attempt failed on inactive-function warning
-
-Status: resolved.
-
-Run `34790683599` passed behavior/invariant checks but failed compilation because removing the old Auto Detect call made `igmm_probe_target` an unused static function under `-Werror`. The function was marked `__attribute__((unused))` without reactivating it. Final run `34790789928` passed compile/link/sign/hash/artifact upload.
+The legacy 15 MB architecture remains runtime-confirmed under v1.9.28. CI preserves the legacy mapping/decrypt/export paths, but v1.9.33 itself has not been injected into the 15 MB sample.
 
 ### CI delivery remains artifact-only
 
-Status: resolved / intentional.
+Status: intentional.
 
-The repository Actions token has read-only Contents permission. Verified binaries are distributed through GitHub Actions artifacts rather than workflow pushes back into the branch.
+Verified binaries are distributed through GitHub Actions artifacts because the workflow token has read-only Contents permission.
