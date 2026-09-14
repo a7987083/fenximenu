@@ -1,6 +1,6 @@
 # Development Changelog
 
-## v1.9.33 OriginalByteResolver — device runtime confirmed
+## v1.9.33 OriginalByteResolver — device runtime confirmed / unified export pending
 
 Branch: `feature/hfamap-v1933-original-byte-resolver`
 Build-tested commit: `8845d84b2adbada07fdd46a1de0243ff8ae4165b`
@@ -20,17 +20,25 @@ Runtime-record sample:
 - `MAP-DECRYPT-RESOLVE` selected `mode=text-fingerprint matches=1`.
 - `MAP-DECRYPT` returned `rc=0`.
 - `FULL-SCAN-END` reported `groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3`.
-- All eight `PACKAGE-ORIGINAL` records reported `source=vm-read status=ok`.
-- The generated package contains exactly 3 features with patch counts `1 + 6 + 1 = 8`.
-- Each patch contains `target`, `offset`, `original`, and `enabled`; original/enabled byte lengths match and the byte sequences differ.
-
-This closes the v1.9.32 package gap where seven valid mappings were skipped for missing original bytes.
+- The generated 5 MB runtime-record package contains 3 features / 8 static patches with `target`, `offset`, `original`, and `enabled`.
 
 WayOfKings/iGMM sample:
 
 - `AUTO-MENU-CANDIDATE source=igmm-feature-array` reached `AUTO-TRAVERSAL-END` / `AUTO-SCAN` without a crash.
-- The iGMM package still exports 4 runtime-definition features.
-- `patches=[]` is expected for the iGMM runtime-definition backend; behavior is represented through runtime implementation metadata rather than static byte patches.
+- The generated 5 MB iGMM package contains 4 runtime-definition features with runtime/config/backend metadata; static `patches` arrays are empty by this backend's current design.
+
+### Scope correction
+
+The above proves that both supplied 5 MB backends complete their own runtime discovery/export pipelines. It does **not** prove that the exported 5 MB JSON is identical in structure and semantics to the canonical 15 MB JSON.
+
+Project-level completion must therefore remain open until:
+
+1. the canonical 15 MB `.hfapatch.json` is compared field-by-field against both 5 MB outputs;
+2. one consumer-facing JSON contract is defined;
+3. 5 MB runtime-record and iGMM outputs are normalized or adapted to that contract;
+4. 15 MB + both 5 MB paths pass regression under the unified exporter.
+
+Do not describe v1.9.33 as final cross-family JSON closure. Describe it as **5 MB runtime-confirmed, unified-export pending**.
 
 ### Important scope note
 
