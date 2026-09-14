@@ -1,0 +1,176 @@
+name: HFAMapUniversal v1.9.34 CanonicalTruthGate
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v1934-unified-canonical-exporter
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v1933_chain.py'
+      - '.github/scripts/apply_hfamap_v1934_chain.py'
+      - '.github/workflows/theos-hfamap-v1934-canonical-truth-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Replay history and apply v1.9.34
+        run: |
+          python3 .github/scripts/apply_hfamap_v1934_chain.py
+          git diff --check -- \
+            hfamap/src/HFAMapPatchExecutionTrace.m \
+            hfamap/src/HFAMapLegacy.m \
+            hfamap/src/HFAMapGenericMenuResolver.m \
+            hfamap/src/HFAMapJailpatchRuntimeProfiler.m \
+            hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify proven runtime paths remain intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def extract(text, signature):
+              start = text.index(signature)
+              brace = text.index('{', start)
+              depth = 0
+              for i in range(brace, len(text)):
+                  if text[i] == '{': depth += 1
+                  elif text[i] == '}':
+                      depth -= 1
+                      if depth == 0: return text[start:i+1]
+              raise RuntimeError(signature)
+
+          before = Path('/tmp/HFAMapPatchExecutionTrace.before1934.m').read_text()
+          after = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          for sig in (
+              'static void HFAWritePatchPackage(NSArray *features, NSDictionary *targets)',
+              'static uintptr_t HFAResolveSecretDecrypt(IMP getter, Dl_info *getterInfoOut,',
+              'static int HFADecryptWrapper(id wrapper, char *out, size_t outCap, const char *label)',
+              'static NSData *HFAReadOriginalBytesFromFile(uint32_t imageIndex, uint64_t vmaddr,',
+              'static NSData *HFAReadOriginalBytes(uint32_t imageIndex, uint64_t vmaddr,',
+              'static void HFAWriteCompactMapping(const char *feature, const char *module,',
+          ):
+              if extract(before, sig) != extract(after, sig):
+                  raise SystemExit(f'protected function changed: {sig}')
+
+          before_legacy = Path('/tmp/HFAMapLegacy.before1934.m').read_text()
+          after_legacy = Path('hfamap/src/HFAMapLegacy.m').read_text()
+          sig = 'static unsigned int run_full_scan(void)'
+          if extract(before_legacy, sig) != extract(after_legacy, sig):
+              raise SystemExit('crash-safe full scan changed')
+          print('v1.9.32 scan + v1.9.31 decrypt + v1.9.33 original-byte resolver preserved')
+          PY
+          grep -q '\[AUTO-MENU-CANDIDATE\]' hfamap/src/HFAMapLegacy.m
+          grep -q '\[MAP-DECRYPT-RESOLVE\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[PACKAGE-ORIGINAL\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[FULL-MAPPING\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[JAILPATCH-SELECTOR-DESCRIPTOR\]' hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify canonical truth gate invariants
+        run: |
+          grep -q 'HFALearn v1.9.34 CanonicalTruthGate' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFALearn UI v1.9.34 CanonicalTruthGate' hfamap/src/HFAMapLegacy.m
+          grep -q '\[DUAL-IOSGODS-MODE\].*canonical=strict-v1.*identity=sidecar' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFACanonical34Validate' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[CANONICAL-CHECK\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'preferred-mach-o-vmaddr' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'LC_UUID' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[TARGET-IDENTITY\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[TARGET-IDENTITY-EXPORT\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'com.hfa.patch.identity/v1' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[IGMM-PRIMITIVE\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[IGMM-RUNTIME-EXPORT\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def extract(text, signature):
+              start = text.index(signature)
+              brace = text.index('{', start)
+              depth = 0
+              for i in range(brace, len(text)):
+                  if text[i] == '{': depth += 1
+                  elif text[i] == '}':
+                      depth -= 1
+                      if depth == 0: return text[start:i+1]
+              raise RuntimeError(signature)
+
+          text = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          canonical = extract(text, 'static void HFAWritePatchPackage(NSArray *features, NSDictionary *targets)')
+          if '@"schema": @"com.hfa.patch/v1"' not in canonical:
+              raise SystemExit('canonical writer lost com.hfa.patch/v1')
+          igmm = extract(text, 'static void HFAWriteIGMMPackage(id menuTarget, NSArray *rawFeatures)')
+          required = (
+              '@"schema": @"com.hfa.igmm.runtime/v1"',
+              '.hfamap.igmm.json',
+              '@"canonicalEligible": @NO',
+              'HFAIGMM26ResolveImplementation',
+          )
+          for token in required:
+              if token not in igmm: raise SystemExit(f'iGMM diagnostic missing: {token}')
+          if '.hfapatch.json' in igmm:
+              raise SystemExit('iGMM diagnostic still writes a canonical-looking filename')
+          if '@"schema": @"com.hfa.patch/v1"' in igmm:
+              raise SystemExit('iGMM diagnostic still claims canonical patch schema')
+          print('canonical package and iGMM diagnostic surfaces are separated')
+          PY
+          for forbidden in \
+            'libRiseofBerk' 'libpathofkings' 'Dragons-prod-remote-nocheat' 'WayOfKings' \
+            'Freeze Currencies' 'Free Purchase' 'Free Subscriptions' \
+            'Damage Multiplier' 'Defence Multiplier' 'God Mode' \
+            '0x1007E5390' '0x1002307F8' '0x3BF6D94' '0x4128'; do
+            if grep -q "$forbidden" \
+              .github/scripts/hfamap_v1934_canonical_truth_gate.py \
+              .github/scripts/apply_hfamap_v1934_chain.py; then
+              echo "hardcoded sample token: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Build and verify HFAMapUniversal v1.9.34
+        run: |
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.34.txt
+          strings "$out" | grep -q "HFALearn v1.9.34 CanonicalTruthGate"
+          strings "$out" | grep -q "HFALearn UI v1.9.34 CanonicalTruthGate"
+          strings "$out" | grep -q "HFAMap v1.9.34 CanonicalTruthGate"
+          strings "$out" | grep -q "\[CANONICAL-CHECK\]"
+          strings "$out" | grep -q "\[TARGET-IDENTITY-EXPORT\]"
+          strings "$out" | grep -q "\[IGMM-RUNTIME-EXPORT\]"
+          strings "$out" | grep -q "\[MAP-DECRYPT-RESOLVE\]"
+          strings "$out" | grep -q "\[PACKAGE-ORIGINAL\]"
+          ls -lh "$out"
+
+      - name: Verify distributable files
+        run: |
+          cd hfamap
+          test -f dist/HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib
+          test -f dist/SHA256_v1.9.34.txt
+          shasum -a 256 -c dist/SHA256_v1.9.34.txt
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.34-CanonicalTruthGate
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib
+            hfamap/dist/SHA256_v1.9.34.txt
+          if-no-files-found: error
