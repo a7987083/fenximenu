@@ -1,0 +1,111 @@
+                result = [HFAPCResultBase(@"pass", action, nil) mutableCopy];
+                result[@"graph"] = graphName ?: @"";
+                result[@"binding"] = binding ?: @"";
+                result[@"bootstrapped"] = @YES;
+                if ([action isEqualToString:@"set"]) result[@"value"] = command[@"value"] ?: [NSNull null];
+            }
+        }
+    } else if ([action isEqualToString:@"invoke"]) {
+        if (![executionKind isEqualToString:@"nativeCall"] || ![control[@"kind"] isEqualToString:@"button"]) {
+            return HFAPCResultBase(@"fail", action, @"runtime-invoke-requires-button-nativeCall");
+        }
+        NSString *abi = [execution[@"abi"] isKindOfClass:[NSString class]] ? execution[@"abi"] : @"void()";
+        if (![abi isEqualToString:@"void()"]) return HFAPCResultBase(@"fail", action, @"nativecall-abi-unsupported");
+        mach_vm_address_t runtime = 0;
+        NSMutableDictionary *targetRecord = nil;
+        if (!HFAPCRTResolveRuntimeAddress(package, identity, execution[@"target"], execution[@"offset"], &runtime, &targetRecord, &error)) {
+            result = [HFAPCResultBase(@"fail", action, error) mutableCopy];
+        } else {
+            if (targetRecord) [targetRecords addObject:targetRecord];
+            NSString *originalHex = [execution[@"original"] isKindOfClass:[NSString class]] ? execution[@"original"] : nil;
+            if (originalHex.length) {
+                NSData *expected = HFAPCHexData(originalHex);
+                NSData *actual = expected ? HFAPCReadMemory(runtime, expected.length, &error) : nil;
+                if (!expected || !actual || ![actual isEqualToData:expected]) {
+                    error = error ?: [NSString stringWithFormat:@"nativecall-preflight-byte-mismatch expected=%@ actual=%@",
+                                      HFAPCHexString(expected), HFAPCHexString(actual)];
+                }
+            }
+            if (error.length) {
+                result = [HFAPCResultBase(@"fail", action, error) mutableCopy];
+            } else {
+                void (*fn)(void) = (void (*)(void))(uintptr_t)runtime;
+                if ([NSThread isMainThread]) fn();
+                else dispatch_sync(dispatch_get_main_queue(), ^{ fn(); });
+                result = [HFAPCResultBase(@"pass", action, nil) mutableCopy];
+                result[@"runtimeAddress"] = [NSString stringWithFormat:@"0x%llX", runtime];
+                result[@"abi"] = abi;
+            }
+        }
+    } else {
+        return HFAPCResultBase(@"fail", action, @"runtime-action-unsupported");
+    }
+
+    result[@"package"] = packageName ?: @"";
+    result[@"identity"] = identityName ?: @"";
+    result[@"packageSchema"] = package[@"schema"] ?: @"";
+    result[@"featureId"] = featureId;
+    result[@"featureTitle"] = feature[@"title"] ?: @"";
+    result[@"executionKind"] = executionKind ?: @"";
+    result[@"targets"] = targetRecords;
+    result[@"behaviorConfirmed"] = @NO;
+    result[@"behaviorNote"] = @"Runtime executor verifies identity/state/hook installation or call dispatch; gameplay behavior still requires device observation.";
+    return result;
+}
+
+'''
+
+anchor = '@interface HFAPCPatchPlan : NSObject\n'
+if s.count(anchor) != 1:
+    raise SystemExit(f"runtime block anchor: expected 1 match, got {s.count(anchor)}")
+s = s.replace(anchor, runtime_block + anchor, 1)
+
+s = replace_once(
+    s,
+'''        if (![action isEqualToString:@"preflight"] && ![action isEqualToString:@"apply"] && ![action isEqualToString:@"restore"]) {
+            error = @"action-must-be-preflight-apply-or-restore";
+''',
+'''        BOOL patchAction = [action isEqualToString:@"preflight"] || [action isEqualToString:@"apply"] || [action isEqualToString:@"restore"];
+        BOOL runtimeAction = [action isEqualToString:@"prepare"] || [action isEqualToString:@"set"] || [action isEqualToString:@"invoke"];
+        if (!patchAction && !runtimeAction) {
+            error = @"action-must-be-preflight-apply-restore-prepare-set-or-invoke";
+''',
+    'command action gate',
+)
+
+runtime_dispatch_old = '''        if (!HFAPCPackageMatchesBundle(package, &error) || !HFAPCIdentityPackageMatchesCanonical(package, identity, &error)) {
+            HFAPCWriteJSON(HFAPCResultBase(@"fail", action, error), HFAPCPath(HFAPCResultName));
+            return;
+        }
+        NSArray *featureIds = [command[@"featureIds"] isKindOfClass:[NSArray class]] ? command[@"featureIds"] : @[];
+'''
+runtime_dispatch_new = '''        if (!HFAPCPackageMatchesBundle(package, &error) || !HFAPCIdentityPackageMatchesCanonical(package, identity, &error)) {
+            HFAPCWriteJSON(HFAPCResultBase(@"fail", action, error), HFAPCPath(HFAPCResultName));
+            return;
+        }
+        if (runtimeAction) {
+            if (![packageSchema isEqualToString:@"com.hfa.feature/v2"]) {
+                HFAPCWriteJSON(HFAPCResultBase(@"fail", action, @"runtime-action-requires-com.hfa.feature/v2"), HFAPCPath(HFAPCResultName));
+                return;
+            }
+            NSDictionary *runtimeResult = HFAPCRTProcessCommand(package, identity, command, packageName, identityName, action);
+            HFAPCWriteJSON(runtimeResult, HFAPCPath(HFAPCResultName));
+            HFAPCLog(@"[RUNTIME] action=%@ status=%@ feature=%@ reason=%@", action,
+                     runtimeResult[@"status"] ?: @"?", runtimeResult[@"featureId"] ?: @"?",
+                     runtimeResult[@"reason"] ?: @"none");
+            return;
+        }
+        NSArray *featureIds = [command[@"featureIds"] isKindOfClass:[NSArray class]] ? command[@"featureIds"] : @[];
+'''
+s = replace_once(s, runtime_dispatch_old, runtime_dispatch_new, 'runtime command dispatch')
+
+m = replace_once(
+    m,
+    'HFAPatchConsumerPlayback_CFLAGS = -Oz -fno-stack-protector -Wno-deprecated-declarations -include src/HFAPatchVMCompat.h\n',
+    'HFAPatchConsumerPlayback_CFLAGS = -Oz -fno-stack-protector -Wno-deprecated-declarations -include src/HFAPatchVMCompat.h\nHFAPatchConsumerPlayback_LDFLAGS += $(THEOS_PROJECT_DIR)/vendor/libdobby.a -lc++\n',
+    'link dobby static library',
+)
+
+p.write_text(s)
+make_path.write_text(m)
+print("patched HFAPatchConsumer.m for v2 runtimeState/runtimeGraph/nativeCall execution")
