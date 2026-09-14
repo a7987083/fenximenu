@@ -1,0 +1,132 @@
+name: HFAMapUniversal v1.9.37 FeatureV2 AutoLoad
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v1937-feature-v2-ui
+    paths:
+      - 'hfamap/**'
+      - 'hfapatch-consumer/**'
+      - 'schema/**'
+      - 'tools/**'
+      - 'tests/**'
+      - '.github/scripts/hfamap_v1937_feature_v2_ui.py'
+      - '.github/scripts/apply_hfamap_v1937_chain.py'
+      - '.github/scripts/hfapatch_consumer_v2_compat.py'
+      - '.github/scripts/hfapatch_consumer_v2_runtime.py'
+      - '.github/scripts/runtime_v2_parts/**'
+      - '.github/workflows/theos-hfamap-v1937-feature-v2-ui.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Feature v2 schemas
+        run: |
+          python3 tools/validate_hfa_feature_v2.py \
+            schema/examples/legacy-v1-compat.json \
+            schema/examples/dragons-bytepatch-v2.json \
+            schema/examples/wayofkings-runtime-v2.json
+          python3 tools/validate_hfa_feature_v2_runtime.py \
+            schema/examples/wayofkings-runtime-v2.json
+          python3 -m unittest discover -s tests -p 'test_hfa_feature_v2.py' -v
+
+      - name: Generate HFAMap v1.9.37 source
+        run: |
+          python3 -m py_compile .github/scripts/apply_hfamap_v1937_chain.py
+          python3 -m py_compile .github/scripts/hfamap_v1937_feature_v2_ui.py
+          python3 .github/scripts/apply_hfamap_v1937_chain.py
+          python3 .github/scripts/hfapatch_consumer_v2_compat.py
+          python3 .github/scripts/hfapatch_consumer_v2_runtime.py
+          git diff --check
+
+      - name: Verify unified source invariants
+        run: |
+          set -euo pipefail
+          grep -q 'HFALearn UI v1.9.37 FeatureV2AutoLoad' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMapFeatureUIAttach' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMapFeatureUIReloadLatest' hfamap/src/HFAMapLegacy.m
+          grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'com.hfa.feature/v2' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'runtimeState' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'nativeCall' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'HFAPatchPlayback.command.json' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'HFAPCVersion = @"1.2.0"' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'DobbyHook' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'HFAPatchConsumerEmbed.m' hfamap/Makefile
+          grep -q 'vendor/libdobby.a' hfamap/Makefile
+
+      - name: Install build dependencies
+        run: brew install ldid cmake
+
+      - name: Build pinned Dobby static backend
+        run: |
+          set -euo pipefail
+          DOBBY_COMMIT=9d271803881f467aabfc24593c7dcaeb710fe861
+          git clone --recursive https://github.com/BepInEx/Dobby.git third_party/Dobby
+          git -C third_party/Dobby checkout "$DOBBY_COMMIT"
+          test "$(git -C third_party/Dobby rev-parse HEAD)" = "$DOBBY_COMMIT"
+          cmake -S third_party/Dobby -B third_party/Dobby/build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DDOBBY_GENERATE_SHARED=OFF \
+            -DDOBBY_DEBUG=OFF \
+            -DDynamicBinaryInstrument=OFF \
+            -DPlugin.SymbolResolver=OFF \
+            -DPlugin.GlobalOffsetTableHook=OFF \
+            -DNearBranch=ON
+          cmake --build third_party/Dobby/build-ios --config Release --target dobby
+          mkdir -p hfamap/vendor
+          lib="$(find third_party/Dobby/build-ios -type f -name 'libdobby.a' | head -n1)"
+          test -n "$lib" -a -f "$lib"
+          cp "$lib" hfamap/vendor/libdobby.a
+          cp third_party/Dobby/LICENSE hfamap/vendor/DOBBY_LICENSE.txt
+          shasum -a 256 hfamap/vendor/libdobby.a | tee hfamap/vendor/SHA256_DOBBY.txt
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build unified HFAMapUniversal
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAMapUniversal_v1.9.37_FeatureV2AutoLoad.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.txt
+          strings "$out" | grep -q 'FeatureV2AutoLoad'
+          strings "$out" | grep -q 'com.hfa.feature/v2'
+          strings "$out" | grep -q 'HFAPatchPlayback.command.json'
+          strings "$out" | grep -q 'runtime-hook-install-failed'
+          nm -g "$out" | grep '_DobbyHook'
+          if nm -u "$out" | grep -q '_DobbyHook'; then
+            echo 'DobbyHook is undefined after static link'; exit 1
+          fi
+
+      - name: Upload unified artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37-FeatureV2AutoLoad
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37_FeatureV2AutoLoad.dylib
+            hfamap/dist/SHA256_v1.9.37.txt
+            hfamap/vendor/DOBBY_LICENSE.txt
+            hfamap/vendor/SHA256_DOBBY.txt
+            schema/hfa-feature-v2.schema.json
+            schema/examples/wayofkings-runtime-v2.json
+            schema/examples/wayofkings-runtime-v2.identity.json
+          if-no-files-found: error
