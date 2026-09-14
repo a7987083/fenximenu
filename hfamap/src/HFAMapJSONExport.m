@@ -1,5 +1,9 @@
 #import <Foundation/Foundation.h>
+#import <mach-o/dyld.h>
+#import <mach-o/loader.h>
+#import <mach/machine.h>
 #include <stdio.h>
+#include <string.h>
 
 static NSString *HFAJSONDocuments(void) {
     return [NSHomeDirectory() stringByAppendingPathComponent:@"Documents"];
@@ -28,6 +32,136 @@ static NSDictionary *HFAJSONRead(NSString *path) {
     return root;
 }
 
+static const char *HFAJSONBase(const char *path) {
+    if (!path) return "";
+    const char *slash = strrchr(path, '/');
+    return slash ? slash + 1 : path;
+}
+
+static int HFAJSONImageIndexForName(NSString *declaredImage) {
+    if (![declaredImage isKindOfClass:[NSString class]] || !declaredImage.length) return -1;
+    BOOL wantsMain = [declaredImage isEqualToString:@"@main"] || [declaredImage isEqualToString:@"main"];
+    NSString *mainPath = NSBundle.mainBundle.executablePath;
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; i++) {
+        const char *rawPath = _dyld_get_image_name(i);
+        if (!rawPath) continue;
+        NSString *path = [NSString stringWithUTF8String:rawPath];
+        if (wantsMain) {
+            if (mainPath.length && [path isEqualToString:mainPath]) return (int)i;
+            const struct mach_header *header = _dyld_get_image_header(i);
+            if (header && header->filetype == MH_EXECUTE) return (int)i;
+            continue;
+        }
+        NSString *base = [NSString stringWithUTF8String:HFAJSONBase(rawPath)];
+        if ([declaredImage isEqualToString:base] ||
+            [declaredImage isEqualToString:base.stringByDeletingPathExtension])
+            return (int)i;
+    }
+    return -1;
+}
+
+static NSString *HFAJSONUUID(const struct mach_header_64 *header) {
+    if (!header) return nil;
+    const uint8_t *cursor = (const uint8_t *)(header + 1);
+    const uint8_t *end = cursor + header->sizeofcmds;
+    for (uint32_t i = 0; i < header->ncmds; i++) {
+        if (cursor + sizeof(struct load_command) > end) return nil;
+        const struct load_command *lc = (const struct load_command *)cursor;
+        if (lc->cmdsize < sizeof(*lc) || cursor + lc->cmdsize > end) return nil;
+        if (lc->cmd == LC_UUID && lc->cmdsize >= sizeof(struct uuid_command)) {
+            const struct uuid_command *uc = (const struct uuid_command *)cursor;
+            NSMutableString *result = [NSMutableString stringWithCapacity:36];
+            for (unsigned j = 0; j < 16; j++) {
+                if (j == 4 || j == 6 || j == 8 || j == 10) [result appendString:@"-"];
+                [result appendFormat:@"%02X", uc->uuid[j]];
+            }
+            return result;
+        }
+        cursor += lc->cmdsize;
+    }
+    return nil;
+}
+
+static NSDictionary *HFAJSONImageIdentity(NSString *declaredImage) {
+    int imageIndex = HFAJSONImageIndexForName(declaredImage);
+    if (imageIndex < 0)
+        return @{ @"declaredImage": declaredImage ?: @"?", @"status": @"unresolved" };
+
+    const struct mach_header *mh = _dyld_get_image_header((uint32_t)imageIndex);
+    const char *rawPath = _dyld_get_image_name((uint32_t)imageIndex);
+    if (!mh || mh->magic != MH_MAGIC_64)
+        return @{ @"declaredImage": declaredImage ?: @"?", @"status": @"unsupported-header" };
+
+    const struct mach_header_64 *header = (const struct mach_header_64 *)mh;
+    uint64_t textVMAddr = 0;
+    int cryptid = -1;
+    const uint8_t *cursor = (const uint8_t *)(header + 1);
+    const uint8_t *end = cursor + header->sizeofcmds;
+    for (uint32_t i = 0; i < header->ncmds; i++) {
+        if (cursor + sizeof(struct load_command) > end) break;
+        const struct load_command *lc = (const struct load_command *)cursor;
+        if (lc->cmdsize < sizeof(*lc) || cursor + lc->cmdsize > end) break;
+        if (lc->cmd == LC_SEGMENT_64 && lc->cmdsize >= sizeof(struct segment_command_64)) {
+            const struct segment_command_64 *segment = (const struct segment_command_64 *)cursor;
+            if (strncmp(segment->segname, "__TEXT", sizeof(segment->segname)) == 0)
+                textVMAddr = segment->vmaddr;
+        } else if (lc->cmd == LC_ENCRYPTION_INFO_64 &&
+                   lc->cmdsize >= sizeof(struct encryption_info_command_64)) {
+            cryptid = (int)((const struct encryption_info_command_64 *)cursor)->cryptid;
+        }
+        cursor += lc->cmdsize;
+    }
+
+    cpu_subtype_t subtype = header->cpusubtype & ~CPU_SUBTYPE_MASK;
+    NSString *architecture = @"unknown";
+    if (header->cputype == CPU_TYPE_ARM64) {
+#ifdef CPU_SUBTYPE_ARM64E
+        architecture = subtype == CPU_SUBTYPE_ARM64E ? @"arm64e" : @"arm64";
+#else
+        architecture = @"arm64";
+#endif
+    }
+
+    NSString *resolvedImage = rawPath
+        ? [NSString stringWithUTF8String:HFAJSONBase(rawPath)] : @"?";
+    return @{
+        @"declaredImage": declaredImage ?: @"?",
+        @"resolvedImage": resolvedImage,
+        @"status": @"resolved",
+        @"uuid": HFAJSONUUID(header) ?: @"?",
+        @"cputype": @((int)header->cputype),
+        @"cpusubtype": @((int)subtype),
+        @"architecture": architecture,
+        @"filetype": @((unsigned)header->filetype),
+        @"preferredTextVMAddr": [NSString stringWithFormat:@"0x%llX", (unsigned long long)textVMAddr],
+        @"cryptid": @(cryptid)
+    };
+}
+
+static void HFAJSONCollectImages(id value, NSMutableSet<NSString *> *images) {
+    if (!value || value == [NSNull null]) return;
+    if ([value isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *dictionary = (NSDictionary *)value;
+        for (id key in dictionary) {
+            id child = dictionary[key];
+            if ([key isKindOfClass:[NSString class]] && [child isKindOfClass:[NSString class]]) {
+                NSString *keyString = (NSString *)key;
+                NSString *image = (NSString *)child;
+                if (([keyString isEqualToString:@"image"] ||
+                     [keyString isEqualToString:@"menuImage"] ||
+                     [keyString isEqualToString:@"declaredImage"] ||
+                     [keyString isEqualToString:@"resolvedImage"]) &&
+                    image.length && ![image isEqualToString:@"?"])
+                    [images addObject:image];
+            }
+            HFAJSONCollectImages(child, images);
+        }
+    } else if ([value isKindOfClass:[NSArray class]]) {
+        for (id child in (NSArray *)value) HFAJSONCollectImages(child, images);
+    }
+}
+
 static NSString *HFAJSONControlKind(NSDictionary *feature) {
     NSString *type = [feature[@"type"] isKindOfClass:[NSString class]] ? feature[@"type"] : @"";
     NSString *primitive = [feature[@"executionPrimitive"] isKindOfClass:[NSString class]]
@@ -50,6 +184,27 @@ static NSString *HFAJSONControlKind(NSDictionary *feature) {
         return @"number";
 
     return @"unknown";
+}
+
+static NSString *HFAJSONNormalizedExecutionPrimitive(NSDictionary *feature, NSString *controlKind) {
+    NSString *raw = [feature[@"executionPrimitive"] isKindOfClass:[NSString class]]
+        ? feature[@"executionPrimitive"] : @"";
+    NSDictionary *runtime = [feature[@"runtime"] isKindOfClass:[NSDictionary class]] ? feature[@"runtime"] : nil;
+    NSDictionary *implementation = [runtime[@"implementation"] isKindOfClass:[NSDictionary class]]
+        ? runtime[@"implementation"] : nil;
+    NSDictionary *handler = [runtime[@"handler"] isKindOfClass:[NSDictionary class]] ? runtime[@"handler"] : nil;
+    NSString *implementationKind = [implementation[@"kind"] isKindOfClass:[NSString class]]
+        ? implementation[@"kind"] : @"";
+    NSString *handlerKind = [handler[@"kind"] isKindOfClass:[NSString class]] ? handler[@"kind"] : @"";
+
+    if ([controlKind isEqualToString:@"button"] &&
+        ([implementationKind isEqualToString:@"buttonBlock"] ||
+         [handlerKind isEqualToString:@"block"] ||
+         [raw isEqualToString:@"runtimeAction"] ||
+         [raw isEqualToString:@"blockHandler"]))
+        return @"runtimeAction";
+
+    return raw.length ? raw : @"unresolved";
 }
 
 static NSArray *HFAJSONCanonicalFeatures(NSDictionary *package) {
@@ -97,6 +252,8 @@ static NSArray *HFAJSONIGMMFeatures(NSDictionary *report) {
         if ([feature[@"backend"] isKindOfClass:[NSString class]]) record[@"backend"] = feature[@"backend"];
         if ([feature[@"executionPrimitive"] isKindOfClass:[NSString class]])
             record[@"executionPrimitive"] = feature[@"executionPrimitive"];
+        NSString *normalizedPrimitive = HFAJSONNormalizedExecutionPrimitive(feature, kind);
+        record[@"normalizedExecutionPrimitive"] = normalizedPrimitive;
         record[@"canonicalEligible"] = @([feature[@"canonicalEligible"] boolValue]);
         if ([feature[@"canonicalReason"] isKindOfClass:[NSString class]])
             record[@"canonicalReason"] = feature[@"canonicalReason"];
@@ -147,6 +304,16 @@ BOOL HFAMapJSONExportLatest(void) {
             return NO;
         }
 
+        NSMutableSet<NSString *> *imageNames = [NSMutableSet set];
+        HFAJSONCollectImages(canonical, imageNames);
+        HFAJSONCollectImages(igmm, imageNames);
+        NSMutableDictionary *targetIdentities = [NSMutableDictionary dictionary];
+        NSArray<NSString *> *sortedImages = [[imageNames allObjects] sortedArrayUsingSelector:@selector(compare:)];
+        for (NSString *image in sortedImages) {
+            NSDictionary *identity = HFAJSONImageIdentity(image);
+            if (identity) targetIdentities[image] = identity;
+        }
+
         NSDictionary *package = @{
             @"bundleIdentifier": bundleID,
             @"shortVersion": shortVersion,
@@ -154,12 +321,13 @@ BOOL HFAMapJSONExportLatest(void) {
         };
         NSMutableDictionary *root = [@{
             @"schema": @"com.hfa.menu.analysis/v1",
-            @"analyzer": @"HFAMapUniversal v1.9.36.2 JSONExport",
+            @"analyzer": @"HFAMapUniversal v1.9.36.3 JSONExport",
             @"analysisOnly": @YES,
             @"package": package,
             @"sources": sources,
             @"features": features
         } mutableCopy];
+        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;
         if (haveIdentity) root[@"identityFile"] = identityName;
         if ([igmm[@"menu"] isKindOfClass:[NSDictionary class]]) root[@"menu"] = igmm[@"menu"];
 
@@ -177,9 +345,9 @@ BOOL HFAMapJSONExportLatest(void) {
                         name, error.localizedDescription ?: @"unknown"]);
             return NO;
         }
-        HFAJSONLog([NSString stringWithFormat:@"[JSON-EXPORT] status=pass file=%@ features=%lu sources=%lu identity=%@",
+        HFAJSONLog([NSString stringWithFormat:@"[JSON-EXPORT] status=pass file=%@ features=%lu sources=%lu identity=%@ targetIdentities=%lu",
                     name, (unsigned long)features.count, (unsigned long)sources.count,
-                    haveIdentity ? @"yes" : @"no"]);
+                    haveIdentity ? @"yes" : @"no", (unsigned long)targetIdentities.count]);
         return YES;
     }
 }
