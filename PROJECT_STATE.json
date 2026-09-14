@@ -1,6 +1,6 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.36.3",
+  "version": "1.9.36.4",
   "phase": "pure-parser-json-export-device-validation",
   "branch": "feature/hfamap-v19361-json-export",
   "base_commit": "75f94da37221343b6839465ad365ddec2679e63a",
@@ -13,15 +13,15 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34906163687,
-    "build_commit": "67e291c640f6bc503860b414d65c21dd8af8e153",
-    "artifact_id": 10372078251,
-    "artifact": "HFAMapUniversal-v1.9.36.3-JSONExport",
-    "artifact_digest": "sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed",
-    "binary": "HFAMapUniversal_v1.9.36.3_JSONExport.dylib",
+    "run_id": 34907671999,
+    "build_commit": "c62b378220d1908c2788a5a359083b484b187c66",
+    "artifact_id": 10372928333,
+    "artifact": "HFAMapUniversal-v1.9.36.4-JSONExport",
+    "artifact_digest": "sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce",
+    "binary": "HFAMapUniversal_v1.9.36.4_JSONExport.dylib",
     "architecture": "arm64",
     "size_bytes": 192432,
-    "sha256": "5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546"
+    "sha256": "a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5"
   },
   "verification": {
     "v1936_constructor_preserved": true,
@@ -32,30 +32,35 @@
     "no_hfapatch_consumer": true,
     "no_command_polling": true,
     "wayofkings_control_fixture": "passed",
-    "button_kTypeButton_normalization": "passed",
-    "target_identity_export_compile_check": "passed",
-    "v19361_wayofkings_device_startup": "passed",
-    "v19361_wayofkings_full_scan": "passed",
-    "v19361_wayofkings_analysis_json_export": "passed",
-    "v19363_device_validation": "pending"
+    "button_kTypeButton_normalization": "device-confirmed-in-v1.9.36.3",
+    "target_identity_export": "device-confirmed-in-v1.9.36.3",
+    "v19363_wayofkings_device_startup": "passed",
+    "v19363_wayofkings_full_scan": "passed",
+    "v19363_wayofkings_analysis_json_export": "passed",
+    "v19364_ci": "passed",
+    "v19364_device_validation": "pending"
   },
   "runtime_evidence": {
-    "wayofkings_v19361": "Device archive confirmed no injection crash, successful Full Scan, com.hfa.igmm.runtime/v1 generation and com.hfa.menu.analysis/v1 generation with 4 features.",
+    "wayofkings_v19363": "Device archive confirmed stable injection, Full Scan completion, com.hfa.igmm.runtime/v1 generation and com.hfa.menu.analysis/v1 generation with 4 features.",
     "wayofkings_controls": {
       "Damage Multiplier": "modtext -> number, default 1",
       "Defence Multiplier": "modtext -> number, default 1",
       "God Mode": "customSwitch -> toggle",
-      "Debug Menu": "kTypeButton observed; v1.9.36.1 normalized it as unknown and v1.9.36.2+ maps it to button"
+      "Debug Menu": "kTypeButton -> button; raw executionPrimitive=nativeHook preserved; normalizedExecutionPrimitive=runtimeAction"
     },
-    "wayofkings_runtime_evidence": "Damage/Defence/God share iGMM handler evidence at libpathofkings+0x4128 resolving through trampoline evidence toward UnityFramework+0x3BF6D94. Debug Menu has block evidence at libpathofkings+0x66B0 / nested +0x66C4 resolving to UnityFramework+0x3DEC9A0.",
+    "wayofkings_target_identities": {
+      "libpathofkings.dylib": "UUID 4C4C448B-5555-3144-A14F-4905D9ED4E59, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0",
+      "UnityFramework": "UUID E0039512-CCB0-33E3-A69A-3DBEBFF3641B, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0"
+    },
+    "wayofkings_runtime_evidence": "Damage/Defence/God share iGMM handler evidence at libpathofkings+0x4128 resolving through trampoline evidence toward UnityFramework+0x3BF6D94. Debug Menu has buttonBlock evidence at libpathofkings+0x66B0 / nested +0x66C4 resolving to UnityFramework+0x3DEC9A0.",
     "retired_runtime_merge": "v1.9.37 and v1.9.37.1 injected runtime-consumer/Dobby builds crashed on device and are not the HFAMapUniversal parser baseline."
   },
-  "v19363_changes": [
-    "Keep raw executionPrimitive evidence unchanged.",
-    "Add normalizedExecutionPrimitive derived from control + runtime evidence; buttonBlock becomes runtimeAction without rewriting source diagnostics.",
-    "Add read-only targetIdentities for referenced Mach-O images using UUID, cputype/cpusubtype, architecture, filetype, preferred __TEXT VM address and cryptid.",
-    "Keep schema com.hfa.menu.analysis/v1 and analysisOnly=true.",
-    "No playback engine, Dobby, runtime takeover or extra constructor."
+  "v19364_changes": [
+    "Keep raw executionPrimitive and raw canonicalReason evidence unchanged.",
+    "Add normalizedCanonicalReason alongside normalizedExecutionPrimitive.",
+    "For observed buttonBlock/runtimeAction, normalizedCanonicalReason becomes runtime-action-not-static-bytes.",
+    "Keep targetIdentities read-only and analysisOnly=true.",
+    "No playback engine, Dobby, runtime takeover, command polling or extra constructor."
   ],
   "outputs": [
     "Documents/HFAMap_Learn.log",
@@ -66,5 +71,5 @@
     "*.hfamap.igmm.json for iGMM runtime diagnostics",
     "*.hfamap.analysis.json for normalized analysis-only menu description"
   ],
-  "next_task": "Device-test HFAMapUniversal_v1.9.36.3_JSONExport.dylib on WayOfKings. Confirm injection remains stable, Full Scan completes, Debug Menu exports control.kind=button and normalizedExecutionPrimitive=runtimeAction, and targetIdentities resolves both libpathofkings.dylib and UnityFramework with the expected UUID/architecture/text-vm evidence. Then regression-test the canonical static-patch family and legacy ~15 MB family without adding an execution engine to HFAMapUniversal."
+  "next_task": "Device-test HFAMapUniversal_v1.9.36.4_JSONExport.dylib on WayOfKings and confirm normalizedCanonicalReason=runtime-action-not-static-bytes for Debug Menu while raw canonicalReason remains preserved. Then regression-test the runtime-record/static 5 MB family and legacy ~15 MB family without adding an execution engine to HFAMapUniversal."
 }
