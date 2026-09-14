@@ -1,0 +1,220 @@
+        store->maxEntries = (uint32_t)maxEntries.unsignedIntegerValue;
+        graph->storeCount++;
+    }
+    return YES;
+}
+
+static BOOL HFAPCRTResolveRuntimeAddress(NSDictionary *package,
+                                         NSDictionary *identity,
+                                         NSString *targetKey,
+                                         NSString *offsetText,
+                                         mach_vm_address_t *runtimeOut,
+                                         NSMutableDictionary **targetRecordOut,
+                                         NSString **errorOut) {
+    NSDictionary *targets = package[@"targets"];
+    NSDictionary *targetDef = [targetKey isKindOfClass:[NSString class]] ? targets[targetKey] : nil;
+    NSString *declaredImage = [targetDef isKindOfClass:[NSDictionary class]] ? targetDef[@"image"] : nil;
+    uint64_t preferred = 0;
+    if (![declaredImage isKindOfClass:[NSString class]] || !declaredImage.length ||
+        !HFAPCParseHexU64(offsetText, &preferred)) {
+        if (errorOut) *errorOut = @"runtime-target-record-invalid";
+        return NO;
+    }
+    int index = HFAPCImageIndexForDeclaredImage(declaredImage);
+    if (index < 0) {
+        if (errorOut) *errorOut = [NSString stringWithFormat:@"target-unresolved:%@ image=%@", targetKey, declaredImage];
+        return NO;
+    }
+    HFAPCImageIdentity actual = HFAPCIdentityForImageIndex((uint32_t)index);
+    NSMutableDictionary *record = [NSMutableDictionary dictionary];
+    if (!HFAPCIdentityMatches(targetKey, declaredImage, identity, actual, record, errorOut)) return NO;
+    if (runtimeOut) *runtimeOut = (mach_vm_address_t)(preferred + actual.slide);
+    if (targetRecordOut) *targetRecordOut = record;
+    return YES;
+}
+
+static BOOL HFAPCRTParseProtectedCondition(NSArray *all, BOOL *protectedOut, NSString **stateOut, NSString **errorOut) {
+    BOOL hasProtected = NO;
+    BOOL protectedValue = NO;
+    NSString *stateName = nil;
+    for (id cond in all) {
+        if ([cond isKindOfClass:[NSString class]]) {
+            if ([cond isEqualToString:@"subjectIsProtected"]) { hasProtected = YES; protectedValue = YES; }
+            else if ([cond isEqualToString:@"subjectIsNotProtected"]) { hasProtected = YES; protectedValue = NO; }
+            else { if (errorOut) *errorOut = @"runtime-condition-string-unsupported"; return NO; }
+        } else if ([cond isKindOfClass:[NSDictionary class]]) {
+            NSString *state = cond[@"state"];
+            if (![state isKindOfClass:[NSString class]] || !state.length) {
+                if (errorOut) *errorOut = @"runtime-condition-state-invalid";
+                return NO;
+            }
+            stateName = state;
+        } else {
+            if (errorOut) *errorOut = @"runtime-condition-invalid";
+            return NO;
+        }
+    }
+    if (!hasProtected || !stateName.length) {
+        if (errorOut) *errorOut = @"runtime-condition-incomplete";
+        return NO;
+    }
+    if (protectedOut) *protectedOut = protectedValue;
+    if (stateOut) *stateOut = stateName;
+    return YES;
+}
+
+static BOOL HFAPCRTConfigurePipelineSlot(HFAPCRTPipelineSlot *slot,
+                                         HFAPCRuntimeGraphContext *graph,
+                                         NSDictionary *behavior,
+                                         NSString **errorOut) {
+    if (![behavior[@"subjectRegister"] isEqual:@"x0"] ||
+        ![behavior[@"valueRegister"] isEqual:@"x1"] ||
+        ![behavior[@"fallback"] isEqual:@"callOriginal"]) {
+        if (errorOut) *errorOut = @"runtime-pipeline-register-or-fallback-unsupported";
+        return NO;
+    }
+    NSString *storeName = behavior[@"protectedStore"];
+    int storeIndex = HFAPCRTStoreIndex(graph, storeName);
+    if (storeIndex < 0) {
+        if (errorOut) *errorOut = @"runtime-pipeline-store-unresolved";
+        return NO;
+    }
+    slot->graph = graph;
+    slot->storeIndex = (uint32_t)storeIndex;
+
+    NSArray *rules = behavior[@"rules"];
+    if (![rules isKindOfClass:[NSArray class]] || !rules.count) {
+        if (errorOut) *errorOut = @"runtime-pipeline-rules-missing";
+        return NO;
+    }
+    for (NSDictionary *rule in rules) {
+        NSDictionary *when = [rule[@"when"] isKindOfClass:[NSDictionary class]] ? rule[@"when"] : nil;
+        NSArray *all = [when[@"all"] isKindOfClass:[NSArray class]] ? when[@"all"] : nil;
+        NSArray *actions = [rule[@"do"] isKindOfClass:[NSArray class]] ? rule[@"do"] : nil;
+        if (!all || actions.count != 1 || ![actions[0] isKindOfClass:[NSDictionary class]]) {
+            if (errorOut) *errorOut = @"runtime-pipeline-rule-shape-unsupported";
+            return NO;
+        }
+        BOOL requiresProtected = NO;
+        NSString *conditionState = nil;
+        if (!HFAPCRTParseProtectedCondition(all, &requiresProtected, &conditionState, errorOut)) return NO;
+        NSDictionary *action = actions[0];
+        NSString *kind = action[@"kind"];
+        NSDictionary *stateCondition = nil;
+        for (id cond in all) if ([cond isKindOfClass:[NSDictionary class]]) { stateCondition = cond; break; }
+        if (!stateCondition) {
+            if (errorOut) *errorOut = @"runtime-pipeline-state-condition-missing";
+            return NO;
+        }
+        NSString *actionState = action[@"state"];
+        NSString *stateName = [actionState isKindOfClass:[NSString class]] && actionState.length ? actionState : conditionState;
+        int stateIndex = HFAPCRTStateIndex(graph, stateName);
+        if (stateIndex < 0) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-pipeline-state-unresolved:%@", stateName ?: @"?"];
+            return NO;
+        }
+        if ([kind isEqualToString:@"return"] && requiresProtected) {
+            if (![stateCondition[@"equals"] isKindOfClass:[NSNumber class]] || ![stateCondition[@"equals"] boolValue]) {
+                if (errorOut) *errorOut = @"runtime-pipeline-return-condition-unsupported";
+                return NO;
+            }
+            if (graph->states[stateIndex].type != HFAPCRTStateBool) {
+                if (errorOut) *errorOut = @"runtime-pipeline-return-state-not-bool";
+                return NO;
+            }
+            slot->godStateIndex = stateIndex;
+        } else if ([kind isEqualToString:@"divideIntegerArgument"] && requiresProtected && [action[@"register"] isEqual:@"x1"]) {
+            NSNumber *notEquals = [stateCondition[@"notEquals"] isKindOfClass:[NSNumber class]] ? stateCondition[@"notEquals"] : nil;
+            if (!notEquals || notEquals.doubleValue != 1.0) {
+                if (errorOut) *errorOut = @"runtime-pipeline-divide-condition-unsupported";
+                return NO;
+            }
+            slot->defenceStateIndex = stateIndex;
+        } else if ([kind isEqualToString:@"multiplyIntegerArgument"] && !requiresProtected && [action[@"register"] isEqual:@"x1"]) {
+            NSNumber *notEquals = [stateCondition[@"notEquals"] isKindOfClass:[NSNumber class]] ? stateCondition[@"notEquals"] : nil;
+            if (!notEquals || notEquals.doubleValue != 1.0) {
+                if (errorOut) *errorOut = @"runtime-pipeline-multiply-condition-unsupported";
+                return NO;
+            }
+            slot->damageStateIndex = stateIndex;
+        } else {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-pipeline-action-unsupported:%@", kind ?: @"?"];
+            return NO;
+        }
+    }
+    if (slot->godStateIndex < 0 || slot->defenceStateIndex < 0 || slot->damageStateIndex < 0) {
+        if (errorOut) *errorOut = @"runtime-pipeline-required-rules-missing";
+        return NO;
+    }
+    return YES;
+}
+
+static void HFAPCRTRollbackGraph(HFAPCRuntimeGraphContext *graph) {
+    if (!graph) return;
+    for (NSInteger i = (NSInteger)graph->installedCount - 1; i >= 0; i--) {
+        void *target = graph->installedTargets[i];
+        int rc = target ? DobbyDestroy(target) : -1;
+        HFAPCLog(@"[RUNTIME-ROLLBACK] graph=%s target=%p rc=%d", graph->name, target, rc);
+        HFAPCRTReleaseHookSlot(graph->installedKinds[i], graph->installedSlots[i]);
+    }
+    graph->installedCount = 0;
+    graph->bootstrapped = NO;
+}
+
+static BOOL HFAPCRTEnsureGraph(NSDictionary *package,
+                               NSDictionary *identity,
+                               NSString *graphName,
+                               NSMutableArray *targetRecords,
+                               NSString **errorOut) {
+    NSDictionary *graphs = package[@"runtimeGraphs"];
+    NSDictionary *graphDef = [graphs isKindOfClass:[NSDictionary class]] ? graphs[graphName] : nil;
+    if (![graphDef isKindOfClass:[NSDictionary class]]) {
+        if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-graph-unresolved:%@", graphName ?: @"?"];
+        return NO;
+    }
+    NSString *packageKey = HFAPCRTPackageKey(package);
+    if (!packageKey.length) {
+        if (errorOut) *errorOut = @"runtime-package-key-invalid";
+        return NO;
+    }
+
+    pthread_mutex_lock(&gHFAPCRTRegistryLock);
+    HFAPCRuntimeGraphContext *graph = HFAPCRTFindGraph(packageKey, graphName);
+    if (graph && graph->bootstrapped) {
+        pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+        return YES;
+    }
+    if (!graph) graph = HFAPCRTClaimGraph(packageKey, graphName, errorOut);
+    if (!graph) {
+        pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+        return NO;
+    }
+    if (!HFAPCRTLoadGraphStateAndStores(graph, graphDef, errorOut)) {
+        graph->inUse = NO;
+        pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+        return NO;
+    }
+
+    NSArray *hooks = [graphDef[@"hooks"] isKindOfClass:[NSArray class]] ? graphDef[@"hooks"] : nil;
+    if (!hooks.count || hooks.count > HFAPC_RT_MAX_HOOKS) {
+        if (errorOut) *errorOut = @"runtime-hooks-missing-or-too-many";
+        graph->inUse = NO;
+        pthread_mutex_unlock(&gHFAPCRTRegistryLock);
+        return NO;
+    }
+
+    HFAPCRTHookPlan plans[HFAPC_RT_MAX_HOOKS];
+    memset(plans, 0, sizeof(plans));
+    uint32_t planCount = 0;
+    NSMutableSet *seenTargets = [NSMutableSet set];
+    BOOL planOK = YES;
+
+    for (NSDictionary *hook in hooks) {
+        NSString *target = hook[@"target"];
+        NSString *offset = hook[@"offset"];
+        NSString *originalHex = hook[@"original"];
+        NSDictionary *behavior = [hook[@"behavior"] isKindOfClass:[NSDictionary class]] ? hook[@"behavior"] : nil;
+        NSString *behaviorKind = behavior[@"kind"];
+        NSString *addressKey = [NSString stringWithFormat:@"%@:%@", target ?: @"?", offset ?: @"?"];
+        if ([seenTargets containsObject:addressKey]) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-duplicate-hook-address:%@", addressKey];
