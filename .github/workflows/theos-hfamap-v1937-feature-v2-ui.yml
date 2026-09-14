@@ -1,9 +1,9 @@
-name: HFAMapUniversal v1.9.37 FeatureV2 AutoLoad
+name: HFAMapUniversal v1.9.37.1 SafeStart
 
 on:
   push:
     branches:
-      - feature/hfamap-v1937-feature-v2-ui
+      - feature/hfamap-v1937-safe-start
     paths:
       - 'hfamap/**'
       - 'hfapatch-consumer/**'
@@ -12,6 +12,7 @@ on:
       - 'tests/**'
       - '.github/scripts/hfamap_v1937_feature_v2_ui.py'
       - '.github/scripts/hfamap_v1937_runtime_takeover.py'
+      - '.github/scripts/hfamap_v1937_safe_start.py'
       - '.github/scripts/apply_hfamap_v1937_chain.py'
       - '.github/scripts/hfapatch_consumer_v2_compat.py'
       - '.github/scripts/hfapatch_consumer_v2_runtime.py'
@@ -39,18 +40,20 @@ jobs:
             schema/examples/wayofkings-runtime-v2.json
           python3 -m unittest discover -s tests -p 'test_hfa_feature_v2.py' -v
 
-      - name: Generate HFAMap v1.9.37 source
+      - name: Generate HFAMap v1.9.37.1 SafeStart source
         run: |
           python3 -m py_compile .github/scripts/apply_hfamap_v1937_chain.py
           python3 -m py_compile .github/scripts/hfamap_v1937_feature_v2_ui.py
           python3 -m py_compile .github/scripts/hfamap_v1937_runtime_takeover.py
+          python3 -m py_compile .github/scripts/hfamap_v1937_safe_start.py
           python3 .github/scripts/apply_hfamap_v1937_chain.py
           python3 .github/scripts/hfapatch_consumer_v2_compat.py
           python3 .github/scripts/hfapatch_consumer_v2_runtime.py
           python3 .github/scripts/hfamap_v1937_runtime_takeover.py
+          python3 .github/scripts/hfamap_v1937_safe_start.py
           git diff --check
 
-      - name: Verify unified source invariants
+      - name: Verify SafeStart source invariants
         run: |
           set -euo pipefail
           grep -q 'HFALearn UI v1.9.37 FeatureV2AutoLoad' hfamap/src/HFAMapLegacy.m
@@ -58,10 +61,14 @@ jobs:
           grep -q 'HFAMapFeatureUIReloadLatest' hfamap/src/HFAMapLegacy.m
           grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'com.hfa.feature/v2' hfamap/src/HFAMapFeatureV2UI.m
+          grep -q 'HFAPCStartPlaybackEngine' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'runtimeState' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'nativeCall' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'HFAPatchPlayback.command.json' hfamap/src/HFAMapFeatureV2UI.m
           grep -q 'HFAPCVersion = @"1.2.1-unified"' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'void HFAPCStartPlaybackEngine(void)' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q '#ifndef HFA_PATCH_CONSUMER_EMBEDDED' hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'HFA_PATCH_CONSUMER_EMBEDDED 1' hfamap/src/HFAPatchConsumerEmbed.m
           grep -q 'RUNTIME-TAKEOVER' hfapatch-consumer/src/HFAPatchConsumer.m
           grep -q 'preexisting' hfapatch-consumer/src/HFAPatchConsumer.m
           grep -q 'DobbyHook' hfapatch-consumer/src/HFAPatchConsumer.m
@@ -102,37 +109,38 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build unified HFAMapUniversal
+      - name: Build SafeStart HFAMapUniversal
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out="dist/HFAMapUniversal_v1.9.37_FeatureV2AutoLoad.dylib"
+          out="dist/HFAMapUniversal_v1.9.37.1_SafeStart.dylib"
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.txt
-          strings "$out" > dist/strings_v1.9.37.txt
-          grep -q 'FeatureV2AutoLoad' dist/strings_v1.9.37.txt
-          grep -q 'com.hfa.feature/v2' dist/strings_v1.9.37.txt
-          grep -q 'HFAPatchPlayback.command.json' dist/strings_v1.9.37.txt
-          grep -q 'runtime-hook-install-failed' dist/strings_v1.9.37.txt
-          grep -q 'RUNTIME-TAKEOVER' dist/strings_v1.9.37.txt
-          nm -g "$out" > dist/nm_global_v1.9.37.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.37.txt
-          grep '_DobbyHook' dist/nm_global_v1.9.37.txt
-          if grep -q '_DobbyHook' dist/nm_undefined_v1.9.37.txt; then
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.1.txt
+          strings "$out" > dist/strings_v1.9.37.1.txt
+          grep -q 'FeatureV2AutoLoad' dist/strings_v1.9.37.1.txt
+          grep -q 'com.hfa.feature/v2' dist/strings_v1.9.37.1.txt
+          grep -q 'HFAPatchPlayback.command.json' dist/strings_v1.9.37.1.txt
+          grep -q 'runtime-hook-install-failed' dist/strings_v1.9.37.1.txt
+          grep -q 'RUNTIME-TAKEOVER' dist/strings_v1.9.37.1.txt
+          grep -q 'mode=lazy' dist/strings_v1.9.37.1.txt
+          nm -g "$out" > dist/nm_global_v1.9.37.1.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.1.txt
+          grep '_DobbyHook' dist/nm_global_v1.9.37.1.txt
+          if grep -q '_DobbyHook' dist/nm_undefined_v1.9.37.1.txt; then
             echo 'DobbyHook is undefined after static link'; exit 1
           fi
 
-      - name: Upload unified artifact
+      - name: Upload SafeStart artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.37-FeatureV2AutoLoad
+          name: HFAMapUniversal-v1.9.37.1-SafeStart
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.37_FeatureV2AutoLoad.dylib
-            hfamap/dist/SHA256_v1.9.37.txt
+            hfamap/dist/HFAMapUniversal_v1.9.37.1_SafeStart.dylib
+            hfamap/dist/SHA256_v1.9.37.1.txt
             hfamap/vendor/DOBBY_LICENSE.txt
             hfamap/vendor/SHA256_DOBBY.txt
             schema/hfa-feature-v2.schema.json
