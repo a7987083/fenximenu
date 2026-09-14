@@ -113,13 +113,16 @@ jobs:
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
           shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.txt
-          strings "$out" | grep -q 'FeatureV2AutoLoad'
-          strings "$out" | grep -q 'com.hfa.feature/v2'
-          strings "$out" | grep -q 'HFAPatchPlayback.command.json'
-          strings "$out" | grep -q 'runtime-hook-install-failed'
-          strings "$out" | grep -q 'RUNTIME-TAKEOVER'
-          nm -g "$out" | grep '_DobbyHook'
-          if nm -u "$out" | grep -q '_DobbyHook'; then
+          strings "$out" > dist/strings_v1.9.37.txt
+          grep -q 'FeatureV2AutoLoad' dist/strings_v1.9.37.txt
+          grep -q 'com.hfa.feature/v2' dist/strings_v1.9.37.txt
+          grep -q 'HFAPatchPlayback.command.json' dist/strings_v1.9.37.txt
+          grep -q 'runtime-hook-install-failed' dist/strings_v1.9.37.txt
+          grep -q 'RUNTIME-TAKEOVER' dist/strings_v1.9.37.txt
+          nm -g "$out" > dist/nm_global_v1.9.37.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.txt
+          grep '_DobbyHook' dist/nm_global_v1.9.37.txt
+          if grep -q '_DobbyHook' dist/nm_undefined_v1.9.37.txt; then
             echo 'DobbyHook is undefined after static link'; exit 1
           fi
 
