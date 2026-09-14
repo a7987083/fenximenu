@@ -162,7 +162,10 @@ jobs:
           strings "$out" | grep -q 'runtime-hook-install-failed'
           strings "$out" | grep -q 'nativecall-preflight-byte-mismatch'
           strings "$out" | grep -q '\[RUNTIME-GRAPH\]'
-          nm -gU "$out" | grep -q '_DobbyHook' && { echo 'DobbyHook unexpectedly unresolved'; exit 1; } || true
+          nm -g "$out" | grep '_DobbyHook'
+          if nm -u "$out" | grep -q '_DobbyHook'; then
+            echo 'DobbyHook is undefined after static link'; exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
