@@ -1,0 +1,10 @@
+ced95bd553f68f3cb41e4107754805d7834f7f1aa68d28936414ef61d3922e86  ./.github/workflows/hfa-feature-v2-schema.yml
+2f5e702d0a62f3032f48c961d1fcad210151994cd3be6054f4c27f5642e5f639  ./DEV_STATUS.md
+aae14f2abc746eaf2523d4c2744d0549d6cba11937de954fc08dcb64822d8283  ./schema/README.md
+eed15f9fd4916bde9d04fe249a54b21a34f309e3605e3137f31480db17c699cd  ./schema/examples/dragons-bytepatch-v2.json
+f0cfe00e51d7375c02ce10d2aa181b88da3a9aba1f51b56bac12af509c66502e  ./schema/examples/legacy-v1-compat.json
+c1205a4499c77e4b955218527a6b4c0ab414a3ffaff808083e56987399724b6e  ./schema/examples/wayofkings-runtime-v2.json
+b27344deb1ef4f34d9f5b6a3848e97a7dc5c1a9790d98a860bc319ce2c5aa63c  ./schema/hfa-feature-v2.schema.json
+a96c4873093acdf12a19dde2ad627bdf0205bf1e447bc267a5d98173f2837c78  ./tests/test_hfa_feature_v2.py
+c4466fb3343babbf8501c328fa8a21f1494cdbd5e807902476dcf4b6e4205f74  ./tools/hfa_feature_bridge.py
+23e6beab0a96339910314416cbe019b0f6cfb3369096b4826c728228bffe1462  ./tools/validate_hfa_feature_v2.py
