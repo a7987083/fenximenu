@@ -1,0 +1,189 @@
+name: HFAPatch Consumer v1.2.0 runtime v2
+
+on:
+  push:
+    branches:
+      - feature/hfa-feature-v2-unified-schema
+    paths:
+      - 'hfapatch-consumer/**'
+      - 'schema/**'
+      - 'tools/**'
+      - 'tests/**'
+      - '.github/scripts/hfapatch_consumer_v2_compat.py'
+      - '.github/scripts/hfapatch_consumer_v2_runtime.py'
+      - '.github/scripts/runtime_v2_parts/**'
+      - '.github/workflows/hfapatch-consumer-v2-runtime.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Protect frozen v1.9.36 generator
+        run: |
+          git diff --exit-code a1c98bbac3d496d1038beddbaef2d0e7b75e6b6f -- \
+            hfamap/src hfamap/Makefile \
+            .github/scripts/hfamap_v1936_architecture_truth.py \
+            .github/scripts/apply_hfamap_v1936_chain.py
+
+      - name: Validate v2 package model
+        run: |
+          python3 tools/validate_hfa_feature_v2.py \
+            schema/examples/legacy-v1-compat.json \
+            schema/examples/dragons-bytepatch-v2.json \
+            schema/examples/wayofkings-runtime-v2.json
+          python3 tools/validate_hfa_feature_v2_runtime.py \
+            schema/examples/wayofkings-runtime-v2.json
+          python3 -m unittest discover -s tests -p 'test_hfa_feature_v2.py' -v
+          python3 - <<'PY'
+          import json
+          p='schema/examples/wayofkings-runtime-v2.identity.json'
+          x=json.load(open(p))
+          assert x['schema']=='com.hfa.patch.identity/v1'
+          assert x['offsetSemantics']=='preferred-mach-o-vmaddr'
+          t=x['targets']['UnityFramework']
+          assert t['status']=='resolved'
+          assert t['architecture']=='arm64'
+          assert t['uuid']=='E0039512-CCB0-33E3-A69A-3DBEBFF3641B'
+          assert t['preferredTextVMAddr']=='0x0'
+          assert t['cryptid']==0
+          print('WayOfKings identity fixture passed')
+          PY
+
+      - name: Apply consumer v2 patch chain
+        run: |
+          python3 -m py_compile .github/scripts/hfapatch_consumer_v2_compat.py
+          python3 -m py_compile .github/scripts/hfapatch_consumer_v2_runtime.py
+          python3 .github/scripts/hfapatch_consumer_v2_compat.py
+          python3 .github/scripts/hfapatch_consumer_v2_runtime.py
+          git diff --check
+
+      - name: Verify runtime executor invariants
+        run: |
+          set -euo pipefail
+          src=hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'HFAPCVersion = @"1.2.0"' "$src"
+          grep -q 'com.hfa.patch/v1' "$src"
+          grep -q 'com.hfa.feature/v2' "$src"
+          grep -q 'DobbyHook' "$src"
+          grep -q 'runtime-hook-preflight-byte-mismatch' "$src"
+          grep -q 'runtime-hook-install-failed' "$src"
+          grep -q 'runtime-hook-readback-unchanged' "$src"
+          grep -q 'captureFieldPointer' "$src"
+          grep -q 'conditionalPipeline' "$src"
+          grep -q 'nativecall-preflight-byte-mismatch' "$src"
+          grep -q 'nativecall-abi-unsupported' "$src"
+          grep -q 'dispatch_get_main_queue' "$src"
+          grep -q 'preflight-byte-mismatch' "$src"
+          grep -q 'identity-mismatch' "$src"
+          grep -q 'duplicate-patch-address' "$src"
+          grep -q '\[ROLLBACK-BEGIN\]' "$src"
+          grep -q '\[RUNTIME-GRAPH\]' "$src"
+          grep -q 'vendor/libdobby.a' hfapatch-consumer/Makefile
+          for forbidden in \
+            'Dragons-prod-remote-nocheat' 'UnityFramework' 'libpathofkings.dylib' \
+            '7E74523C-90F5-3D72-9A9C-108BDE23A4A8' 'E0039512-CCB0-33E3-A69A-3DBEBFF3641B' \
+            '0x1007E5390' '0x3BF6D90' '0x3BFA200' '0x3DC3310' '0x3DEC9A0'; do
+            if grep -q "$forbidden" "$src"; then
+              echo "sample hardcode found: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Validate runtime command examples
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          paths=sorted(Path('hfapatch-consumer').glob('example.v2-runtime-*.command.json'))
+          assert len(paths)==6, paths
+          for p in paths:
+              x=json.load(open(p))
+              assert x['action'] in {'prepare','set','invoke'}
+              assert isinstance(x['package'], str) and x['package']
+              assert x['identity'].endswith('.identity.json')
+              assert isinstance(x['featureId'], str) and x['featureId']
+              if x['action']=='set': assert 'value' in x
+              print('runtime command contract passed', p)
+          PY
+
+      - name: Install build dependencies
+        run: brew install ldid cmake
+
+      - name: Build pinned Dobby static backend
+        run: |
+          set -euo pipefail
+          DOBBY_COMMIT=9d271803881f467aabfc24593c7dcaeb710fe861
+          git clone --recursive https://github.com/BepInEx/Dobby.git third_party/Dobby
+          git -C third_party/Dobby checkout "$DOBBY_COMMIT"
+          test "$(git -C third_party/Dobby rev-parse HEAD)" = "$DOBBY_COMMIT"
+          cmake -S third_party/Dobby -B third_party/Dobby/build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DDOBBY_GENERATE_SHARED=OFF \
+            -DDOBBY_DEBUG=OFF \
+            -DDynamicBinaryInstrument=OFF \
+            -DPlugin.SymbolResolver=OFF \
+            -DPlugin.GlobalOffsetTableHook=OFF \
+            -DNearBranch=ON
+          cmake --build third_party/Dobby/build-ios --config Release --target dobby
+          mkdir -p hfapatch-consumer/vendor
+          lib="$(find third_party/Dobby/build-ios -type f -name 'libdobby.a' | head -n1)"
+          test -n "$lib" -a -f "$lib"
+          cp "$lib" hfapatch-consumer/vendor/libdobby.a
+          cp third_party/Dobby/LICENSE hfapatch-consumer/vendor/DOBBY_LICENSE.txt
+          file hfapatch-consumer/vendor/libdobby.a
+          shasum -a 256 hfapatch-consumer/vendor/libdobby.a | tee hfapatch-consumer/vendor/SHA256_DOBBY.txt
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build consumer v1.2.0
+        run: |
+          cd hfapatch-consumer
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAPatchConsumerPlayback_v1.2.0.dylib"
+          cp .theos/obj/HFAPatchConsumerPlayback.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.2.0.txt
+          strings "$out" | grep -q 'HFAPatchConsumerPlayback'
+          strings "$out" | grep -q 'com.hfa.feature/v2'
+          strings "$out" | grep -q 'runtime-hook-install-failed'
+          strings "$out" | grep -q 'nativecall-preflight-byte-mismatch'
+          strings "$out" | grep -q '\[RUNTIME-GRAPH\]'
+          nm -gU "$out" | grep -q '_DobbyHook' && { echo 'DobbyHook unexpectedly unresolved'; exit 1; } || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAPatchConsumerPlayback-v1.2.0-runtime-v2
+          path: |
+            hfapatch-consumer/dist/HFAPatchConsumerPlayback_v1.2.0.dylib
+            hfapatch-consumer/dist/SHA256_v1.2.0.txt
+            hfapatch-consumer/README.md
+            hfapatch-consumer/README_V2.md
+            hfapatch-consumer/README_RUNTIME_V2.md
+            hfapatch-consumer/example.v2-runtime-prepare.command.json
+            hfapatch-consumer/example.v2-runtime-damage.command.json
+            hfapatch-consumer/example.v2-runtime-defence.command.json
+            hfapatch-consumer/example.v2-runtime-god-on.command.json
+            hfapatch-consumer/example.v2-runtime-god-off.command.json
+            hfapatch-consumer/example.v2-runtime-debug.command.json
+            hfapatch-consumer/vendor/DOBBY_LICENSE.txt
+            hfapatch-consumer/vendor/SHA256_DOBBY.txt
+            schema/README.md
+            schema/hfa-feature-v2.schema.json
+            schema/examples/wayofkings-runtime-v2.json
+            schema/examples/wayofkings-runtime-v2.identity.json
+          if-no-files-found: error
