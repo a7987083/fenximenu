@@ -39,6 +39,19 @@ v1.9.36 preserved the proven scan/decrypt/mapping/main-image/original-byte path 
 - Persisted package `architectures=["arm64"]`.
 - The 8 originals remain the same values previously verified byte-for-byte against the same-UUID supplied Mach-O.
 
+### Runtime-record source-menu ON/OFF roundtrip
+
+A later Dragons archive captures the original Jailpatch menu toggling all three static features ON and then OFF:
+
+- event 1: Freeze Currencies `active=1`;
+- event 2: Free Purchase / Free Store, all 6 mappings `active=1`;
+- event 3: Free Subscriptions / Rider Club `active=1`;
+- event 4: Free Purchase / Free Store, all 6 mappings `active=0`;
+- event 5: Freeze Currencies `active=0`;
+- event 6: Free Subscriptions / Rider Club `active=0`.
+
+Every event ends with `GROUP ... status=EXECUTED`. This confirms the source menu's own apply/revert path uses the same 1+6+1 mappings exported into the canonical package. It is not independent consumer playback: the archive contains no separate consumer reading `.hfapatch.json`, no consumer-side pre/post byte verification, and no consumer apply/revert log.
+
 ### iGMM / WayOfKings regression
 
 v1.9.36 preserved diagnostic-only behavior:
@@ -60,10 +73,10 @@ These provide extra current-build coverage but do not replace the legacy baselin
 
 ### Remaining gate
 
-- Consumer-level playback of a v1.9.36 canonical static package is still pending.
+- Independent consumer-level playback of a v1.9.36 canonical static package is still pending.
 - iGMM runtime primitives remain non-canonical until a real portable static equivalent is proven.
 
-Do not create a new implementation version merely because the 15 MB regression completed. Freeze v1.9.36 and proceed to consumer apply/revert validation; open a new branch only if playback exposes a concrete defect.
+Do not create a new implementation version merely because the source-menu roundtrip or 15 MB regression completed. Freeze v1.9.36 and proceed to independent consumer apply/revert validation; open a new branch only if playback exposes a concrete defect.
 
 ## Earlier checkpoints
 
