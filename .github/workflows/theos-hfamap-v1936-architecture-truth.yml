@@ -1,0 +1,148 @@
+name: HFAMapUniversal v1.9.36 ArchitectureTruth
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v1936-architecture-truth
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v1933_chain.py'
+      - '.github/scripts/apply_hfamap_v1934_chain.py'
+      - '.github/scripts/apply_hfamap_v1935_chain.py'
+      - '.github/scripts/apply_hfamap_v1936_chain.py'
+      - '.github/workflows/theos-hfamap-v1936-architecture-truth.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Replay history and apply v1.9.36
+        run: |
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          git diff --check -- \
+            hfamap/src/HFAMapPatchExecutionTrace.m \
+            hfamap/src/HFAMapLegacy.m \
+            hfamap/src/HFAMapGenericMenuResolver.m \
+            hfamap/src/HFAMapJailpatchRuntimeProfiler.m \
+            hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify proven runtime paths remain intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def extract_function(text, signature):
+              start = text.index(signature)
+              brace = text.index('{', start)
+              depth = 0
+              for i in range(brace, len(text)):
+                  if text[i] == '{': depth += 1
+                  elif text[i] == '}':
+                      depth -= 1
+                      if depth == 0: return text[start:i+1]
+              raise RuntimeError(signature)
+
+          before = Path('/tmp/HFAMapPatchExecutionTrace.before1936.m').read_text()
+          after = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          protected = (
+              'static uintptr_t HFAResolveSecretDecrypt(IMP getter, Dl_info *getterInfoOut,',
+              'static int HFADecryptWrapper(id wrapper, char *out, size_t outCap, const char *label)',
+              'static NSData *HFAReadOriginalBytesFromFile(uint32_t imageIndex, uint64_t vmaddr,',
+              'static NSData *HFAReadOriginalBytes(uint32_t imageIndex, uint64_t vmaddr,',
+              'static int HFAMainExecutableImageIndex(void)',
+              'static BOOL HFACanonical34Validate(NSArray *features, NSDictionary *targets)',
+              'static void HFAWriteIGMMPackage(id menuTarget, NSArray *rawFeatures)',
+          )
+          for sig in protected:
+              if extract_function(before, sig) != extract_function(after, sig):
+                  raise SystemExit(f'protected function changed: {sig}')
+
+          before_legacy = Path('/tmp/HFAMapLegacy.before1936.m').read_text()
+          after_legacy = Path('hfamap/src/HFAMapLegacy.m').read_text()
+          sig = 'static unsigned int run_full_scan(void)'
+          if extract_function(before_legacy, sig) != extract_function(after_legacy, sig):
+              raise SystemExit('crash-safe full scan changed')
+          print('decrypt + original readers + main resolver + canonical/iGMM paths preserved')
+          PY
+
+      - name: Verify ArchitectureTruth invariants
+        run: |
+          grep -q 'HFALearn v1.9.36 ArchitectureTruth' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFALearn UI v1.9.36 ArchitectureTruth' hfamap/src/HFAMapLegacy.m
+          grep -q '\[DUAL-IOSGODS-MODE\].*architecture=target-derived' hfamap/src/HFAMapLegacy.m
+          grep -q '\[PACKAGE-ARCH\] status=pass architecture=%s targets=%u source=canonical-targets' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'header->cputype != CPU_TYPE_ARM64' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'target-architecture-mismatch' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '@"architectures": @\[architecture\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          if grep -q 'const struct mach_header \*header = _dyld_get_image_header(0);' hfamap/src/HFAMapPatchExecutionTrace.m; then
+            echo 'package architecture still reads dyld index 0'; exit 1
+          fi
+          for forbidden in \
+            'systemhook.dylib' 'Dragons-prod-remote-nocheat' \
+            'libRiseofBerk' 'libpathofkings' \
+            '7E74523C-90F5-3D72-9A9C-108BDE23A4A8' \
+            '0x1002307F8' '0x10088EFE0'; do
+            if grep -q "$forbidden" \
+              .github/scripts/hfamap_v1936_architecture_truth.py \
+              .github/scripts/apply_hfamap_v1936_chain.py; then
+              echo "hardcoded sample token: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Verify v1.9.35 truth paths remain present
+        run: |
+          grep -q 'HFAMainExecutableImageIndex' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'NSBundle.mainBundle.executablePath' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[MAIN-IMAGE-RESOLVE\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[PACKAGE-ORIGINAL\].*image=%s.*filetype=%u' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[CANONICAL-CHECK\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[TARGET-IDENTITY\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[IGMM-RUNTIME-EXPORT\]' hfamap/src/HFAMapPatchExecutionTrace.m
+
+      - name: Build and verify HFAMapUniversal v1.9.36
+        run: |
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.txt
+          strings "$out" | grep -q 'HFALearn v1.9.36 ArchitectureTruth'
+          strings "$out" | grep -q '\[PACKAGE-ARCH\]'
+          strings "$out" | grep -q '\[MAIN-IMAGE-RESOLVE\]'
+          strings "$out" | grep -q '\[CANONICAL-CHECK\]'
+          strings "$out" | grep -q '\[TARGET-IDENTITY\]'
+          strings "$out" | grep -q '\[IGMM-RUNTIME-EXPORT\]'
+          ls -lh "$out"
+
+      - name: Verify distributable files
+        run: |
+          cd hfamap
+          test -f dist/HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib
+          test -f dist/SHA256_v1.9.36.txt
+          shasum -a 256 -c dist/SHA256_v1.9.36.txt
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.36-ArchitectureTruth
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.36_ArchitectureTruth.dylib
+            hfamap/dist/SHA256_v1.9.36.txt
+          if-no-files-found: error
