@@ -1,0 +1,6 @@
+{
+  "action": "invoke",
+  "package": "wayofkings-runtime-v2.json",
+  "identity": "wayofkings-runtime-v2.identity.json",
+  "featureId": "debug_menu"
+}
