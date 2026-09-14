@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v1.9.36 ArchitectureTruth — static cross-family runtime regression confirmed / consumer playback pending
+v1.9.36 ArchitectureTruth — static cross-family runtime regression confirmed / independent consumer playback pending
 
 ## Completed foundations
 
@@ -14,6 +14,7 @@ v1.9.36 ArchitectureTruth — static cross-family runtime regression confirmed /
 - v1.9.35 device-confirmed real `MH_EXECUTE` main resolution and correct original-byte acquisition.
 - v1.9.36 device-confirmed target-derived package architecture metadata.
 - The exact v1.9.36 binary has now also regression-exported the legacy 15 MB canonical package.
+- The original Dragons Jailpatch menu has a device-confirmed ON/OFF roundtrip for all 3 static features / all 8 mappings under the same v1.9.36 instrumentation.
 
 ## Current static checkpoint: v1.9.36
 
@@ -28,7 +29,10 @@ Passes current truth gates:
 5. UUID/cpusubtype/preferred-VM identity sidecar;
 6. package architecture derived from canonical targets;
 7. persisted `architectures=["arm64"]` matching the actual target;
-8. 8 original values independently static-file verified against the same-UUID Mach-O.
+8. 8 original values independently static-file verified against the same-UUID Mach-O;
+9. source-menu runtime roundtrip observed for every feature: active=1 then active=0 across all 1+6+1 mappings.
+
+The source-menu roundtrip is not independent consumer playback. It confirms the original menu's semantics and apply/revert path, but the final gate requires a separate consumer to read and execute the generated `.hfapatch.json` with its own identity/original/write/revert verification.
 
 ### iGMM / WayOfKings
 
@@ -65,25 +69,27 @@ The current 15 MB regression archive did not include the matching UnityFramework
 - Binary size: `175664` bytes.
 - SHA256: `3249137776562b0723114904c4a92131387c908fd227aec0709d92c3e8f2ca13`.
 
-## Next milestone: consumer playback
+## Next milestone: independent consumer playback
 
-Do not alter v1.9.36 in place unless playback exposes a reproducible defect.
+Do not alter v1.9.36 in place unless independent playback exposes a reproducible defect.
 
 Validation order:
 
-1. Use the intended consumer against the v1.9.36 runtime-record package and matching target identity.
+1. Use the intended consumer against the v1.9.36 runtime-record `.hfapatch.json` and matching target identity.
 2. Require pre-apply byte verification against every `original`.
-3. Apply the `enabled` bytes and verify the intended behavior.
-4. Restore `original` bytes and verify behavior restoration.
-5. Fail closed on identity or original-byte mismatch.
-6. Repeat the same consumer flow on the legacy 15 MB package when the matching UnityFramework binary/identity is available for independent byte verification.
-7. Only after static playback passes should a separate branch investigate portable equivalents for individual iGMM runtime primitives.
+3. Apply the `enabled` bytes and re-read memory to verify the write.
+4. Verify the intended game behavior.
+5. Restore `original` bytes and re-read memory to verify restoration.
+6. Verify behavior restoration.
+7. Fail closed on identity, original-byte, write or revert mismatch.
+8. Repeat the same consumer flow on the legacy 15 MB package when the matching UnityFramework binary/identity is available for independent byte verification.
+9. Only after static playback passes should a separate branch investigate portable equivalents for individual iGMM runtime primitives.
 
 ## Final closure criteria
 
 Project closure still requires:
 
-- same-consumer canonical apply/revert playback for static packages;
+- independent same-consumer canonical apply/revert playback for static packages;
 - fail-closed identity/original validation in the consumer;
 - no fabricated static representation for unresolved iGMM runtime primitives;
 - additional cross-sample validation before any universal Jailpatch claim.
