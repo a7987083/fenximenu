@@ -1,0 +1,124 @@
+name: HFAPatch Consumer v1.1.0 v2 compatibility
+
+on:
+  push:
+    branches:
+      - feature/hfa-feature-v2-unified-schema
+    paths:
+      - 'hfapatch-consumer/**'
+      - '.github/scripts/hfapatch_consumer_v2_compat.py'
+      - '.github/workflows/hfapatch-consumer-v2-compat.yml'
+      - 'schema/**'
+      - 'tools/**'
+      - 'tests/test_hfa_feature_v2.py'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Protect frozen v1.9.36 generator
+        run: |
+          git diff --exit-code a1c98bbac3d496d1038beddbaef2d0e7b75e6b6f -- \
+            hfamap/src hfamap/Makefile \
+            .github/scripts/hfamap_v1936_architecture_truth.py \
+            .github/scripts/apply_hfamap_v1936_chain.py
+
+      - name: Validate v2 package model
+        run: |
+          python3 tools/validate_hfa_feature_v2.py \
+            schema/examples/legacy-v1-compat.json \
+            schema/examples/dragons-bytepatch-v2.json \
+            schema/examples/wayofkings-runtime-v2.json
+          python3 -m unittest discover -s tests -p 'test_hfa_feature_v2.py' -v
+
+      - name: Apply v2 compatibility patch
+        run: |
+          python3 -m py_compile .github/scripts/hfapatch_consumer_v2_compat.py
+          python3 .github/scripts/hfapatch_consumer_v2_compat.py
+          git diff --check
+
+      - name: Verify v2 consumer invariants
+        run: |
+          set -euo pipefail
+          src=hfapatch-consumer/src/HFAPatchConsumer.m
+          grep -q 'HFAPCVersion = @"1.1.0"' "$src"
+          grep -q 'com.hfa.patch/v1' "$src"
+          grep -q 'com.hfa.feature/v2' "$src"
+          grep -q 'com.hfa.patch.identity/v1' "$src"
+          grep -q 'HFAPCNormalizeFeaturesForPlayback' "$src"
+          grep -q 'v2-execution-not-playable' "$src"
+          grep -q 'v2-bytepatch-control-not-toggle' "$src"
+          grep -q 'preflight-byte-mismatch' "$src"
+          grep -q 'identity-mismatch' "$src"
+          grep -q 'duplicate-patch-address' "$src"
+          grep -q '\[ROLLBACK-BEGIN\]' "$src"
+          grep -q 'mach_vm_read_overwrite' "$src"
+          grep -q 'mach_vm_protect' "$src"
+          grep -q 'mach_vm_write' "$src"
+          grep -q 'sys_icache_invalidate' "$src"
+          for forbidden in \
+            'Dragons-prod-remote-nocheat' 'UnityFramework' 'systemhook.dylib' \
+            '7E74523C-90F5-3D72-9A9C-108BDE23A4A8' \
+            '0x1007E5390' '0x3BF6D90' '0x3DEC9A0'; do
+            if grep -q "$forbidden" "$src"; then
+              echo "sample hardcode found: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Validate v2 command example
+        run: |
+          python3 - <<'PY'
+          import json
+          x=json.load(open('hfapatch-consumer/example.v2-bytepatch.command.json'))
+          assert x['action'] in {'preflight','apply','restore'}
+          assert isinstance(x['package'], str) and x['package']
+          assert x['identity'].endswith('.hfapatch.identity.json')
+          assert isinstance(x['featureIds'], list) and all(isinstance(v,str) for v in x['featureIds'])
+          print('v2 command contract passed')
+          PY
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build consumer v1.1.0
+        run: |
+          cd hfapatch-consumer
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAPatchConsumerPlayback_v1.1.0.dylib"
+          cp .theos/obj/HFAPatchConsumerPlayback.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.1.0.txt
+          strings "$out" | grep -q 'HFAPatchConsumerPlayback'
+          strings "$out" | grep -q 'com.hfa.feature/v2'
+          strings "$out" | grep -q 'v2-execution-not-playable'
+          strings "$out" | grep -q 'preflight-byte-mismatch'
+          strings "$out" | grep -q '\[PLAYBACK\]'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAPatchConsumerPlayback-v1.1.0-v2-compat
+          path: |
+            hfapatch-consumer/dist/HFAPatchConsumerPlayback_v1.1.0.dylib
+            hfapatch-consumer/dist/SHA256_v1.1.0.txt
+            hfapatch-consumer/README.md
+            hfapatch-consumer/README_V2.md
+            hfapatch-consumer/example.command.json
+            hfapatch-consumer/example.v2-bytepatch.command.json
+            schema/README.md
+            schema/hfa-feature-v2.schema.json
+          if-no-files-found: error
