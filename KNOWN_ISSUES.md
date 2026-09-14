@@ -1,48 +1,53 @@
 # Known Issues
 
-## Current parser-only line: v1.9.36.3 JSONExport
+## Current parser-only line: v1.9.36.4 JSONExport
 
-### v1.9.36.3 device validation is still pending
+### v1.9.36.4 device validation is pending
 
 Status: open / primary validation gate.
 
-The build preserves the v1.9.36 constructor, `run_full_scan()` and resolver core, and CI confirms no Dobby or HFAPatchConsumer linkage. It adds only analysis-layer normalization and read-only target image identity. Device evidence is still required before v1.9.36.3 can be called runtime-confirmed.
+v1.9.36.4 is built from the frozen v1.9.36 parser path and passed CI, compile/link/sign and no-Dobby checks. It only adds analysis-layer normalization. Device validation is still required before v1.9.36.4 can be called runtime-confirmed.
 
-### Debug Menu was mis-normalized in v1.9.36.1
+### v1.9.36.3 WayOfKings is device-confirmed
 
-Status: confirmed defect / fixed in v1.9.36.2+ / device confirmation pending.
+Status: passed.
 
-WayOfKings device output proved the raw control type is `kTypeButton`. v1.9.36.1 only recognized `button`, so `Debug Menu` became `control.kind = unknown`. v1.9.36.2+ maps the observed exact source type `kTypeButton` to `button` without changing the underlying resolver evidence.
+The supplied device archive confirmed stable injection, Full Scan completion, iGMM diagnostic export and normalized analysis export with four features. It also confirmed:
 
-### Raw source primitive can differ from normalized UI semantics
+- Debug Menu `kTypeButton -> button`;
+- raw `executionPrimitive = nativeHook` remains preserved;
+- `normalizedExecutionPrimitive = runtimeAction` for the observed `buttonBlock`;
+- target identity resolution for both `libpathofkings.dylib` and `UnityFramework` with the expected UUIDs and arm64/cryptid evidence.
 
-Status: intentional evidence policy.
+### Raw and normalized canonical reasons intentionally coexist
 
-The original iGMM diagnostic writer classified the observed Debug Menu record as `executionPrimitive = nativeHook`, while its runtime implementation evidence shows `kind = buttonBlock` with a block handler and one resolved target. v1.9.36.3 does not rewrite or hide the raw source primitive. Instead it adds `normalizedExecutionPrimitive = runtimeAction` in the normalized analysis JSON. Consumers must treat the raw field as source evidence and the normalized field as the analysis-layer interpretation.
+Status: fixed in v1.9.36.4 / device confirmation pending.
 
-### Target identities are analysis evidence, not an execution authorization
+v1.9.36.3 correctly preserved the raw iGMM classifier evidence, but that meant Debug Menu still carried raw `canonicalReason = runtime-hook-requires-portable-equivalent` even though the normalized primitive was `runtimeAction`. v1.9.36.4 does not overwrite the raw field; it adds `normalizedCanonicalReason`. The observed button block becomes `runtime-action-not-static-bytes` in the normalized layer.
+
+### Target identities are analysis evidence, not execution authorization
 
 Status: permanent rule.
 
-v1.9.36.3 adds read-only UUID/architecture/filetype/preferred-`__TEXT`/cryptid records for images referenced by the generated diagnostics. This is for build matching and analysis quality only. It must not be interpreted as permission to install hooks or execute a generated package.
+Read-only UUID/architecture/filetype/preferred-`__TEXT`/cryptid records are for build matching and analysis quality only. They do not authorize hook installation or package execution.
 
 ### iGMM runtime features remain non-canonical static patches
 
-Status: intentional / device behavior confirmed.
+Status: intentional / device-confirmed.
 
-WayOfKings uses runtime numeric/native-hook/block behavior. These records remain diagnostic and analysis-only. They are not converted into fabricated `target/offset/original/enabled` static patches.
+WayOfKings uses runtime numeric/native-hook/block behavior. These records remain diagnostic and analysis-only and are not fabricated into `target/offset/original/enabled` static patches.
 
-### v1.9.37 and v1.9.37.1 are retired from the HFAMapUniversal parser mainline
+### v1.9.37 and v1.9.37.1 are retired from the parser mainline
 
-Status: confirmed device startup failure / architecture direction reverted.
+Status: confirmed device startup failure / architecture reverted.
 
-Those builds merged the independent playback/runtime consumer and Dobby into the same HFAMapUniversal dylib. Both builds crashed immediately when injected on device. The exact crash instruction has not been established because no `.ips` crash report was supplied, but the product-direction issue is resolved: HFAMapUniversal remains a parser/exporter and no longer embeds that execution engine.
+Those builds merged the independent playback/runtime consumer and Dobby into HFAMapUniversal. Both crashed immediately when injected. HFAMapUniversal remains a parser/exporter only.
 
 ### Stale generated files can confuse device validation
 
 Status: test-environment hazard.
 
-Before testing a new parser version, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs. Otherwise a prior result can be mistaken for the current scan.
+Before testing a new parser version, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs.
 
 ### Canonical structural validity is not sufficient
 
@@ -56,22 +61,22 @@ Status: open.
 
 The v1.9.33 multi-source original-byte readers remain part of the frozen parser core. Their fallback branches still need dedicated runtime evidence on samples where the preferred read path is unavailable.
 
-### Current binary has not yet been regression-tested across all menu families
+### Current parser has not yet been regression-tested across all menu families
 
 Status: open.
 
-- WayOfKings/iGMM: v1.9.36.1 parser/export path device-confirmed; v1.9.36.3 pending.
-- Runtime-record/static 5 MB family: current v1.9.36.3 regression pending.
-- Legacy ~15 MB family: current v1.9.36.3 regression pending.
+- WayOfKings/iGMM: v1.9.36.3 device-confirmed; v1.9.36.4 pending.
+- Runtime-record/static 5 MB family: current-line regression pending.
+- Legacy ~15 MB family: current-line regression pending.
 
-Do not claim universal coverage until the current parser-only binary passes all three families.
+Do not claim universal coverage until the current parser-only line passes all three families.
 
 ## Current CI delivery
 
 Authoritative candidate:
 
-- binary: `HFAMapUniversal_v1.9.36.3_JSONExport.dylib`
-- run: `34906163687`
-- artifact: `10372078251`
-- binary SHA256: `5078c75833b246067ec3b8c3342db62c06ef80d1fa890363769290549239a546`
-- artifact digest: `sha256:f9a3da845862e535dbad8007b1b243fcb87db3de37adf1ee69cc2b275514f3ed`
+- binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`
+- run: `34907671999`
+- artifact: `10372928333`
+- binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
+- artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
