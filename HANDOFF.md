@@ -25,29 +25,25 @@ Formal `.hfapatch.json` remains the 15 MB static shape:
 
 Offsets are Mach-O preferred VM addresses. Binary identity, original bytes and package architecture must all come from the actual resolved target image.
 
-## v1.9.36 device result
+## Current runtime checkpoint: v1.9.36
 
 ### Runtime-record / Dragons
 
 Confirmed on device:
 
-- `MAIN-IMAGE-RESOLVE` identifies `Dragons-prod-remote-nocheat` as the real bundle `MH_EXECUTE` image at dyld index 1.
-- Generic secret decrypt remains `matches=1 / rc=0`.
-- Full Scan remains 3 semantic groups / 8 valid mappings.
-- All 8 `PACKAGE-ORIGINAL` records use the real game executable with `filetype=2`, `source=vm-read`, `status=ok`.
-- `CANONICAL-CHECK` passes for 3 features / 8 patches / 1 target.
-- Identity sidecar reports UUID `7E74523C-90F5-3D72-9A9C-108BDE23A4A8`, `arm64`, `cpusubtype=0`, preferred `__TEXT` VM `0x100000000`, `cryptid=0`.
-- `PACKAGE-ARCH` reports `status=pass architecture=arm64 targets=1 source=canonical-targets`.
-- Persisted package contains `architectures=["arm64"]`.
-- Formal root/feature/patch keysets exactly match the canonical contract.
-- 3 features / 8 patch records are otherwise identical to v1.9.35; only architecture metadata changed from arm64e to arm64.
-- The 8 original values are unchanged from v1.9.35, where they were independently verified 8/8 against the supplied same-UUID Mach-O.
-
-Conclusion: the supplied runtime-record 5 MB sample is now device-confirmed for structure, target identity, original-byte truth and architecture metadata under v1.9.36.
+- real `MH_EXECUTE` main resolution;
+- generic decrypt `matches=1 / rc=0`;
+- 3 semantic groups / 8 valid mappings;
+- all 8 originals read from the real executable;
+- exact canonical structure for 3 features / 8 patches;
+- UUID/cpusubtype/preferred-VM identity sidecar;
+- `PACKAGE-ARCH status=pass architecture=arm64`;
+- persisted package `architectures=["arm64"]`;
+- all 8 original values previously static-file verified against the same-UUID target Mach-O.
 
 ### iGMM / WayOfKings
 
-Also regression-confirmed under v1.9.36:
+Regression-confirmed under v1.9.36:
 
 - 4 runtime primitives exported to `com.hfa.igmm.runtime/v1`;
 - Damage / Defence are `numericRuntimeModifier`;
@@ -55,16 +51,46 @@ Also regression-confirmed under v1.9.36:
 - all remain `canonicalEligible=false`;
 - no new canonical-looking iGMM `.hfapatch.json` is created.
 
+### Legacy ~15 MB / Earn to Die Rogue
+
+The exact v1.9.36 binary now has current-device regression evidence on `com.notdoppler.earntodierogue1 1.28.251`:
+
+- `FULL-SCAN-END`: 12 groups / 18 mappings / 18 valid / 12 package features;
+- `CANONICAL-CHECK`: pass for 12 features / 18 patches / 1 target;
+- `TARGET-IDENTITY`: `UnityFramework`, UUID `8654D76C-B760-34FC-BEE0-FE70AE8C95C8`, arm64, cpusubtype 0, preferred text VM `0x0`, cryptid 0;
+- `PACKAGE-ARCH`: pass, arm64, canonical-target-derived;
+- `PACKAGE-EXPORT`: success.
+
+A full recursive JSON diff against the previously supplied v1.9.28 canonical package found exactly one changed value: `package.architectures[0]` is now `arm64` instead of the historical `arm64e`. All 12 feature definitions and all 18 patch tuples `target/offset/original/enabled` are identical.
+
+Important evidence boundary: the current 15 MB archive contains logs/JSON/identity but not the matching `UnityFramework` binary, so this pass does not newly claim 18/18 independent original-byte verification against the Mach-O file.
+
+### Additional current-build static coverage
+
+- Superstar sample: 2 features / 2 patches, canonical export pass.
+- Backpack Brawl sample: 1 feature / 1 patch, canonical export pass.
+
 ## What is still not closed
 
-- v1.9.36 itself has not been regression-tested on the legacy ~15 MB family; the historical 15 MB runtime confirmation remains v1.9.28.
-- Consumer-level playback of a v1.9.36 static package is still pending.
-- iGMM runtime hooks/modtext still have no proven portable static equivalent and must remain non-canonical.
-- Additional menu generations are required before universal Jailpatch coverage can be claimed.
+- Consumer-level playback of the canonical package is not yet validated.
+- iGMM runtime hooks/modtext still have no proven portable static equivalent and remain non-canonical.
+- Additional menu generations are still required before any universal Jailpatch claim.
 
 ## Next task
 
-Keep v1.9.36 unchanged as the current confirmed 5 MB checkpoint. Next inject this exact binary into the legacy ~15 MB target and verify its existing 12-feature canonical package. After that, perform consumer-level playback of the v1.9.36 runtime-record package.
+Freeze v1.9.36. Do not open a new implementation branch unless playback exposes a concrete defect.
+
+Perform consumer-level playback first on the runtime-record package whose 8 originals are independently verified against the same target Mach-O:
+
+1. resolve/verify target identity;
+2. verify current bytes equal each `original` before apply;
+3. apply each `enabled` patch;
+4. verify intended game behavior;
+5. restore each `original` patch;
+6. verify behavior restoration;
+7. record apply/revert failures fail-closed.
+
+Then repeat the same consumer path on the legacy 15 MB package when the matching `UnityFramework` target binary/identity is available for independent original-byte verification.
 
 ## Verification discipline
 
@@ -72,9 +98,10 @@ Keep v1.9.36 unchanged as the current confirmed 5 MB checkpoint. Next inject thi
 - compiled/linked/signed: yes.
 - CI: passed.
 - artifact independently re-hashed: passed.
-- v1.9.36 runtime-record 5 MB device test: passed.
-- v1.9.36 iGMM diagnostic-only regression: passed.
-- v1.9.36 package architecture metadata: passed (`arm64`).
-- v1.9.36 15 MB runtime regression: no.
+- runtime-record 5 MB device test: passed.
+- iGMM diagnostic-only regression: passed.
+- legacy 15 MB current-binary canonical regression: passed.
+- 15 MB old-vs-new package parity: 12/12 features and 18/18 patch records identical; architecture metadata corrected arm64e -> arm64.
+- 15 MB 18/18 original bytes independently checked against Mach-O in this run: no, target binary absent from archive.
 - consumer playback: no.
 - project final closure: no.
