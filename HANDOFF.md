@@ -41,6 +41,10 @@ Confirmed on device:
 - persisted package `architectures=["arm64"]`;
 - all 8 original values previously static-file verified against the same-UUID target Mach-O.
 
+A later device archive also captures the original Jailpatch menu executing a complete ON/OFF roundtrip for all three static features. The log sequence is Freeze Currencies ON, Free Purchase / Free Store ON (all six mappings), Free Subscriptions / Rider Club ON, then the same three features OFF. Every mapping appears with `active=1` and later `active=0`, and each feature event ends `GROUP ... status=EXECUTED`.
+
+This strengthens the mapping semantics: the source menu's own apply/revert behavior uses the same eight mappings exported to the canonical package. It does **not** close consumer playback because there is no separate consumer reading the generated `.hfapatch.json`, validating pre-write bytes, logging writes, or verifying restored bytes.
+
 ### iGMM / WayOfKings
 
 Regression-confirmed under v1.9.36:
@@ -72,23 +76,27 @@ Important evidence boundary: the current 15 MB archive contains logs/JSON/identi
 
 ## What is still not closed
 
-- Consumer-level playback of the canonical package is not yet validated.
+- Independent consumer-level playback of the canonical package is not yet validated.
 - iGMM runtime hooks/modtext still have no proven portable static equivalent and remain non-canonical.
 - Additional menu generations are still required before any universal Jailpatch claim.
 
 ## Next task
 
-Freeze v1.9.36. Do not open a new implementation branch unless playback exposes a concrete defect.
+Freeze v1.9.36. Do not open a new implementation branch unless independent playback exposes a concrete defect.
 
 Perform consumer-level playback first on the runtime-record package whose 8 originals are independently verified against the same target Mach-O:
 
 1. resolve/verify target identity;
 2. verify current bytes equal each `original` before apply;
-3. apply each `enabled` patch;
-4. verify intended game behavior;
-5. restore each `original` patch;
-6. verify behavior restoration;
-7. record apply/revert failures fail-closed.
+3. apply each `enabled` patch from the generated `.hfapatch.json` using the intended consumer;
+4. re-read memory and verify the enabled bytes;
+5. verify intended game behavior;
+6. restore each `original` patch;
+7. re-read memory and verify the originals are restored;
+8. verify behavior restoration;
+9. record identity/original/write/revert failures fail-closed.
+
+The original source menu ON/OFF sequence is useful reference evidence but must not be substituted for this independent consumer test.
 
 Then repeat the same consumer path on the legacy 15 MB package when the matching `UnityFramework` target binary/identity is available for independent original-byte verification.
 
@@ -99,9 +107,10 @@ Then repeat the same consumer path on the legacy 15 MB package when the matching
 - CI: passed.
 - artifact independently re-hashed: passed.
 - runtime-record 5 MB device test: passed.
+- runtime-record source-menu ON/OFF roundtrip: passed for all 3 features / 8 mappings.
 - iGMM diagnostic-only regression: passed.
 - legacy 15 MB current-binary canonical regression: passed.
 - 15 MB old-vs-new package parity: 12/12 features and 18/18 patch records identical; architecture metadata corrected arm64e -> arm64.
 - 15 MB 18/18 original bytes independently checked against Mach-O in this run: no, target binary absent from archive.
-- consumer playback: no.
+- independent consumer playback: no.
 - project final closure: no.
