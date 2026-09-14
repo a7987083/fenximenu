@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hfa.local/schema/hfa-feature-v2.schema.json",
+  "title": "HFA Unified Feature Package v2",
+  "type": "object",
+  "required": ["schema", "name", "package", "targets", "features"],
+  "properties": {
+    "schema": {"const": "com.hfa.feature/v2"},
+    "name": {"type": "string", "minLength": 1},
+    "offsetSemantics": {"const": "preferred-mach-o-vmaddr"},
+    "package": {"type": "object"},
+    "targets": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["image"],
+        "properties": {"image": {"type": "string", "minLength": 1}},
+        "additionalProperties": true
+      }
+    },
+    "runtimeGraphs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bootstrap": {"enum": ["once", "onDemand"]},
+          "state": {"type": "object"},
+          "stores": {"type": "object"},
+          "hooks": {"type": "array", "items": {"type": "object"}}
+        },
+        "additionalProperties": true
+      }
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "group", "control", "execution"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "group": {"type": "string", "minLength": 1},
+          "control": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {"kind": {"type": "string", "minLength": 1}},
+            "additionalProperties": true
+          },
+          "execution": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {"kind": {"type": "string", "minLength": 1}},
+            "additionalProperties": true
+          },
+          "evidence": {"type": "object"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
