@@ -1,0 +1,107 @@
+name: HFAMapUniversal v1.9.36.1 JSONExport
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19361-json-export
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v19361_json_export.py'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v1933_chain.py'
+      - '.github/scripts/apply_hfamap_v1934_chain.py'
+      - '.github/scripts/apply_hfamap_v1935_chain.py'
+      - '.github/scripts/apply_hfamap_v1936_chain.py'
+      - '.github/workflows/theos-hfamap-v19361-json-export.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate stable v1.9.36 then JSONExport layer
+        run: |
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.v1936.m
+          cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/HFAMapPatchExecutionTrace.v1936.m
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          git diff --check
+
+      - name: Verify parser/startup preservation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          def fn(text, signature):
+              start=text.index(signature); brace=text.index('{', start); depth=0
+              for i in range(brace, len(text)):
+                  if text[i]=='{': depth+=1
+                  elif text[i]=='}':
+                      depth-=1
+                      if depth==0: return text[start:i+1]
+              raise RuntimeError(signature)
+          before=Path('/tmp/HFAMapLegacy.v1936.m').read_text()
+          after=Path('hfamap/src/HFAMapLegacy.m').read_text()
+          for sig in ('static unsigned int run_full_scan(void)', '__attribute__((constructor)) static void init(void)'):
+              if fn(before,sig) != fn(after,sig):
+                  raise SystemExit(f'v1.9.36 protected path changed: {sig}')
+          before_trace=Path('/tmp/HFAMapPatchExecutionTrace.v1936.m').read_text()
+          after_trace=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          if before_trace != after_trace:
+              raise SystemExit('v1.9.36 trace/resolver core changed')
+          print('startup + full scan + resolver core preserved exactly')
+          PY
+
+      - name: Verify analysis-only invariants
+        run: |
+          set -euo pipefail
+          grep -q 'HFAMapJSONExportLatest' hfamap/src/HFAMapLegacy.m
+          grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
+          grep -q 'com.hfa.igmm.runtime/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapJSONExport.m' hfamap/Makefile
+          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
+            echo 'forbidden playback/runtime dependency found'; exit 1
+          fi
+          if grep -q '__attribute__((constructor))' hfamap/src/HFAMapJSONExport.m; then
+            echo 'JSON exporter must not add a constructor'; exit 1
+          fi
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.36.1
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.36.1_JSONExport.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.1.txt
+          strings "$out" > dist/strings_v1.9.36.1.txt
+          grep -q 'HFAMap v1.9.36.1 JSON Export' dist/strings_v1.9.36.1.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.1.txt
+          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.1.txt
+          if grep -Eq 'DobbyHook|HFAPatchConsumerPlayback|RUNTIME-TAKEOVER' dist/strings_v1.9.36.1.txt; then
+            echo 'runtime executor leaked into pure parser build'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.36.1-JSONExport
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.36.1_JSONExport.dylib
+            hfamap/dist/SHA256_v1.9.36.1.txt
+          if-no-files-found: error
