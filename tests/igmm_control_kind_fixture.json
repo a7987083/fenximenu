@@ -1,0 +1,8 @@
+{
+  "features": [
+    {"id":"Damage","title":"Damage Multiplier","type":"modtext","executionPrimitive":"numericRuntimeModifier"},
+    {"id":"Defence","title":"Defence Multiplier","type":"modtext","executionPrimitive":"numericRuntimeModifier"},
+    {"id":"God Mode","title":"God Mode","type":"customSwitch","executionPrimitive":"nativeHook"},
+    {"id":"Button","title":"Debug Menu","type":"kTypeButton","executionPrimitive":"nativeHook"}
+  ]
+}
