@@ -2,6 +2,8 @@ from pathlib import Path
 
 legacy_path = Path('hfamap/src/HFAMapLegacy.m')
 legacy = legacy_path.read_text()
+exporter_path = Path('hfamap/src/HFAMapJSONExport.m')
+exporter = exporter_path.read_text()
 
 
 def once(text, old, new, label):
@@ -73,5 +75,13 @@ legacy = once(
     'update visible panel help',
 )
 
+exporter = once(
+    exporter,
+    'HFAMapUniversal v1.9.36.4 JSONExport',
+    'HFAMapUniversal v1.9.36.5 JSONExport Delay5s',
+    'update analysis JSON analyzer version',
+)
+
 legacy_path.write_text(legacy)
+exporter_path.write_text(exporter)
 print('patched HFAMap v1.9.36.5 JSONExport Delay5s integration')
