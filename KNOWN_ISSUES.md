@@ -2,28 +2,30 @@
 
 ## Current parser-only line: v1.9.36.4 JSONExport
 
-### v1.9.36.4 device validation is pending
+### v1.9.36.4 WayOfKings/iGMM validation
+
+Status: **passed / closed**.
+
+Device archive `归档 6(1).zip` confirmed stable injection, Full Scan completion, 4-feature iGMM diagnostic export and normalized analysis export. It also confirmed:
+
+- `kTypeButton -> button`;
+- raw Debug Menu `executionPrimitive = nativeHook` remains preserved;
+- `normalizedExecutionPrimitive = runtimeAction`;
+- raw `canonicalReason = runtime-hook-requires-portable-equivalent` remains preserved;
+- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
+- `targetIdentities` resolves both `libpathofkings.dylib` and `UnityFramework` with the expected UUID/arm64/cryptid evidence;
+- `JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2`.
+
+### Cross-family regression is still pending
 
 Status: open / primary validation gate.
 
-v1.9.36.4 is built from the frozen v1.9.36 parser path and passed CI, compile/link/sign and no-Dobby checks. It only adds analysis-layer normalization. Device validation is still required before v1.9.36.4 can be called runtime-confirmed.
+The current v1.9.36.4 parser has now passed the WayOfKings/iGMM family, but the same binary still must be regression-tested on:
 
-### v1.9.36.3 WayOfKings is device-confirmed
+- runtime-record/static 5 MB family;
+- legacy ~15 MB family.
 
-Status: passed.
-
-The supplied device archive confirmed stable injection, Full Scan completion, iGMM diagnostic export and normalized analysis export with four features. It also confirmed:
-
-- Debug Menu `kTypeButton -> button`;
-- raw `executionPrimitive = nativeHook` remains preserved;
-- `normalizedExecutionPrimitive = runtimeAction` for the observed `buttonBlock`;
-- target identity resolution for both `libpathofkings.dylib` and `UnityFramework` with the expected UUIDs and arm64/cryptid evidence.
-
-### Raw and normalized canonical reasons intentionally coexist
-
-Status: fixed in v1.9.36.4 / device confirmation pending.
-
-v1.9.36.3 correctly preserved the raw iGMM classifier evidence, but that meant Debug Menu still carried raw `canonicalReason = runtime-hook-requires-portable-equivalent` even though the normalized primitive was `runtimeAction`. v1.9.36.4 does not overwrite the raw field; it adds `normalizedCanonicalReason`. The observed button block becomes `runtime-action-not-static-bytes` in the normalized layer.
+Do not claim universal/cross-family coverage until both current-line regressions pass.
 
 ### Target identities are analysis evidence, not execution authorization
 
@@ -47,7 +49,7 @@ Those builds merged the independent playback/runtime consumer and Dobby into HFA
 
 Status: test-environment hazard.
 
-Before testing a new parser version, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs.
+Before testing a new menu family, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs. A stale canonical package must never be mistaken for current output.
 
 ### Canonical structural validity is not sufficient
 
@@ -61,15 +63,17 @@ Status: open.
 
 The v1.9.33 multi-source original-byte readers remain part of the frozen parser core. Their fallback branches still need dedicated runtime evidence on samples where the preferred read path is unavailable.
 
-### Current parser has not yet been regression-tested across all menu families
+### Runtime-record/static 5 MB regression
 
-Status: open.
+Status: open / next test.
 
-- WayOfKings/iGMM: v1.9.36.3 device-confirmed; v1.9.36.4 pending.
-- Runtime-record/static 5 MB family: current-line regression pending.
-- Legacy ~15 MB family: current-line regression pending.
+The current v1.9.36.4 build must reproduce a trusted `com.hfa.patch/v1` package for the static 5 MB family. Required checks include real target identity, preferred VM offsets, original-byte truth and no stale-output contamination.
 
-Do not claim universal coverage until the current parser-only line passes all three families.
+### Legacy ~15 MB regression
+
+Status: open / follows the 5 MB static test.
+
+The legacy AP/IGSecret family was previously runtime-confirmed on older parser versions. The current v1.9.36.4 binary must still prove that path has not regressed.
 
 ## Current CI delivery
 
@@ -80,3 +84,5 @@ Authoritative candidate:
 - artifact: `10372928333`
 - binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
 - artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
+- WayOfKings/iGMM device validation: passed
+- cross-family regression: pending
