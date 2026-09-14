@@ -1,10 +1,9 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.32",
-  "phase": "crash-safe-full-scan-device-validation",
-  "branch": "feature/hfamap-v1932-crash-safe-full-scan",
-  "base_branch": "feature/hfamap-v1931-generic-secret-decrypt-resolver",
-  "base_commit": "4a4db8fbaff6f1a0decf715bc07b782c54022df0",
+  "version": "1.9.33",
+  "phase": "original-byte-resolver-device-validation",
+  "branch": "feature/hfamap-v1933-original-byte-resolver",
+  "base_branch": "feature/hfamap-v1932-crash-safe-full-scan",
   "stable_baseline": {
     "branch": "build/hfamap-v1.4.4-20260901",
     "commit": "7bd19ba08a647104d230a2da299bcdd232687abf"
@@ -12,42 +11,47 @@
   "build": {
     "status": "success",
     "ci": "success",
-    "run_id": 34790789928,
-    "build_commit": "ac2f5419f975ce9f63d2ad59546fe7c9ec16383a",
-    "artifact_id": 10328366811,
-    "artifact": "HFAMapUniversal-v1.9.32-CrashSafeFullScan",
-    "binary": "HFAMapUniversal_v1.9.32_CrashSafeFullScan.dylib",
+    "run_id": 34799869649,
+    "build_commit": "8845d84b2adbada07fdd46a1de0243ff8ae4165b",
+    "artifact_id": 10330589684,
+    "artifact": "HFAMapUniversal-v1.9.33-OriginalByteResolver",
+    "binary": "HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib",
     "architecture": "arm64",
     "size_bytes": 175616,
-    "sha256": "96c47b4509929bf03289b3329ed4399f13cfa78db7eb2ac7c75bfa8fd1fd8c0c"
+    "sha256": "1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a"
   },
   "verification": {
     "patch_chain": "passed",
-    "v1931_decrypt_functions_byte_identical": true,
-    "legacy_and_igmm_exporters_byte_identical": true,
-    "crash_safe_scan_invariants": "passed",
-    "unsafe_deep_probe_removed_from_full_scan": true,
+    "v1932_crash_safe_scan_preserved": true,
+    "v1931_decrypt_functions_preserved": true,
+    "package_writer_preserved": true,
+    "original_byte_resolver_invariants": "passed",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
     "jailpatch_v2_v1930": "device-tested-selector-and-wrapper-bridge-confirmed",
-    "jailpatch_v2_v1931": "device-tested-full-scan-crashes-on-both-supplied-5mb-games-before-traversal-end",
-    "jailpatch_v2_wayofkings_igmm": "device-confirmed-package-exported-via-existing-igmm-path",
-    "jailpatch_v2_v1932": "compiled-awaiting-device-validation"
+    "jailpatch_v2_v1931": "device-tested-full-scan-crash-reproduced-on-both-supplied-5mb-games",
+    "jailpatch_v2_v1932_scan": "device-confirmed-no-crash-on-both-supplied-5mb-games",
+    "jailpatch_v2_v1932_decrypt": "device-confirmed-text-fingerprint-matches-1-rc0",
+    "jailpatch_v2_v1932_mapping": "device-confirmed-8-of-8-full-mappings-valid-on-runtime-record-sample",
+    "jailpatch_v2_v1932_package": "partial-1-feature-1-patch-exported-7-valid-mappings-skipped-for-original-bytes",
+    "jailpatch_v2_wayofkings_igmm": "device-confirmed-4-feature-package-exported-under-v1.9.32",
+    "jailpatch_v2_v1933": "compiled-awaiting-device-validation"
   },
   "runtime_evidence": {
-    "v1931_crash_commonality": "Both supplied 5 MB games found their real semantic menu target in window 0, then Full Scan continued into unrelated windows and terminated before AUTO-TRAVERSAL-END/AUTO-SCAN.",
-    "v1931_not_decrypt_crash": "One crashing sample had records=0, so the generic secret decrypt path was not entered. Therefore the common Full Scan crash is upstream of decrypt execution.",
-    "historical_risk": "The v1.9.24 iGMM probe deep-traversed every custom target and enumerated object ivars through UIKit/framework superclasses. Objective-C exception handling cannot catch EXC_BAD_ACCESS from invalid object graph traversal.",
-    "v1932_fix": "Use semantic feature-array detection to mark the menu found and stop scanning later windows; remove deep igmm_probe_target from Auto Detect; stop profiler/legacy ivar enumeration when superclass reaches framework classes. Preserve v1.9.31 decrypt and both exporters byte-identically."
+    "wayofkings_v1932": "AUTO-MENU-CANDIDATE source=igmm-feature-array followed by AUTO-TRAVERSAL-END and AUTO-SCAN; com.TornadoBear.WayOfKings_1.4.0_165.hfapatch.json exported with 4 iGMM features.",
+    "runtime_record_v1932": "AUTO-MENU-CANDIDATE source=jailpatch-feature-array followed by AUTO-TRAVERSAL-END/AUTO-SCAN. Eight selector descriptors resolved. MAP-DECRYPT-RESOLVE used lib-local text fingerprint with matches=1; MAP-DECRYPT returned rc=0; FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0.",
+    "package_gap_v1932": "HFAMap_Mapping.log contains all 8 valid mappings, but the package exporter reported packageFeatures=1. Seven FULL-MAPPING records were followed by PACKAGE-SKIP reason=identity-or-original-unavailable; only one patch obtained original bytes and entered the package.",
+    "v1933_fix": "Preserve mapping/decrypt/scan behavior. Resolve original bytes through live vm_read, readable memcpy fallback, then cryptid-aware Mach-O file mapping. If live bytes already equal enabled bytes, allow an unencrypted on-disk original to replace them. Continue to skip package entries when no trustworthy original is available."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
     "Documents/HFAMap_MenuMap.jsonl",
     "Documents/HFAMap_JailpatchMap.jsonl",
+    "Documents/HFAMap_Mapping.log",
     "*.hfapatch.json when export succeeds"
   ],
-  "next_task": "Inject v1.9.32 into both supplied ~5 MB games with the original menu already open. First press Auto Detect / Full Scan without toggling features. Require AUTO-MENU-CANDIDATE followed by AUTO-TRAVERSAL-END/AUTO-SCAN and no crash. Only after scan stability is confirmed, exercise controls and validate MAP-DECRYPT-RESOLVE -> MAP-DECRYPT rc=0 -> valid MAPPING/FULL-MAPPING/package export."
+  "next_task": "Inject v1.9.33 into the runtime-record ~5 MB sample first. Open the original menu and run Auto Detect / Full Scan. Verify no crash, eight valid mappings remain, inspect PACKAGE-ORIGINAL source/status for every mapping, and compare the exported package against the expected 3 features / 8 patches. Then run a WayOfKings iGMM regression scan to confirm its 4-feature package remains intact."
 }
