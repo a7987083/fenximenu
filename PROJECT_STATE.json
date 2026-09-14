@@ -1,7 +1,7 @@
 {
   "project": "HFAMapUniversal",
   "version": "1.9.33",
-  "phase": "runtime-confirmed-5mb-selector-package-complete",
+  "phase": "5mb-runtime-confirmed-unified-export-pending",
   "branch": "feature/hfamap-v1933-original-byte-resolver",
   "base_branch": "feature/hfamap-v1932-crash-safe-full-scan",
   "stable_baseline": {
@@ -28,7 +28,8 @@
     "original_byte_resolver_invariants": "passed",
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed",
-    "device_runtime_v1933": "passed"
+    "device_runtime_v1933": "passed",
+    "unified_15mb_5mb_export_contract": "not-verified"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
@@ -37,15 +38,16 @@
     "jailpatch_v2_v1932_scan": "device-confirmed-no-crash-on-both-supplied-5mb-games",
     "jailpatch_v2_v1932_decrypt": "device-confirmed-text-fingerprint-matches-1-rc0",
     "jailpatch_v2_v1932_mapping": "device-confirmed-8-of-8-full-mappings-valid-on-runtime-record-sample",
-    "jailpatch_v2_v1933_package": "device-confirmed-3-features-8-patches-exported-with-original-and-enabled-bytes",
-    "jailpatch_v2_wayofkings_igmm": "device-confirmed-4-runtime-definition-features-exported-under-v1.9.33",
-    "v1933_on_15mb": "not-device-regression-tested"
+    "jailpatch_v2_v1933_runtime_record_export": "device-confirmed-3-features-8-static-patches",
+    "jailpatch_v2_v1933_igmm_export": "device-confirmed-4-runtime-definition-features",
+    "v1933_on_15mb": "not-device-regression-tested",
+    "cross_family_json_parity": "pending"
   },
   "runtime_evidence": {
     "runtime_record_v1933": "AUTO-MENU-CANDIDATE source=jailpatch-feature-array -> AUTO-TRAVERSAL-END -> AUTO-SCAN with no crash. MAP-DECRYPT-RESOLVE used text-fingerprint matches=1 and MAP-DECRYPT rc=0. FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3.",
-    "package_v1933": "The exported com.ludia.dragons package contains exactly 3 features with patch counts 1 + 6 + 1 = 8. Every patch has target, offset, original, and enabled fields; original/enabled lengths match and contents differ.",
-    "original_bytes_v1933": "All eight PACKAGE-ORIGINAL records reported source=vm-read status=ok. The memcpy and cryptid-aware Mach-O file fallback code was therefore not exercised by this device run and must not be described as runtime-confirmed.",
-    "wayofkings_v1933": "AUTO-MENU-CANDIDATE source=igmm-feature-array -> AUTO-TRAVERSAL-END/AUTO-SCAN with no crash. The exported package contains 4 iGMM runtime-definition features; patches=[] is expected for this backend because behavior is represented by runtime implementation metadata rather than static byte patches."
+    "package_v1933": "The runtime-record 5 MB package contains 3 features with patch counts 1 + 6 + 1 = 8 and complete target/offset/original/enabled fields.",
+    "wayofkings_v1933": "The iGMM 5 MB package contains 4 runtime-definition features with runtime/config/backend metadata and empty static patches arrays by design.",
+    "scope_correction": "These results prove the two 5 MB runtime/export backends work internally. They do not prove that 5 MB JSON is contract-identical to the canonical 15 MB JSON. Project completion requires explicit 15 MB versus 5 MB schema and semantic parity validation or a deliberate unified compatibility format."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
@@ -54,5 +56,5 @@
     "Documents/HFAMap_Mapping.log",
     "*.hfapatch.json when export succeeds"
   ],
-  "next_task": "Treat v1.9.33 as the confirmed 5 MB runtime checkpoint. Future work should prioritize cross-sample generalization and an optional v1.9.33-on-15MB regression run; do not modify the confirmed selector/decrypt/package path without a new branch and regression evidence."
+  "next_task": "Obtain the canonical 15 MB exported .hfapatch.json used as the compatibility target, diff it field-by-field against both 5 MB outputs, define one canonical consumer contract, then implement a new-branch unified exporter/adapter and regression-test 15 MB + runtime-record 5 MB + iGMM 5 MB before calling the project closed."
 }
