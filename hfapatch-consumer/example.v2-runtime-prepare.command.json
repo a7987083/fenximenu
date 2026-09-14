@@ -1,0 +1,6 @@
+{
+  "action": "prepare",
+  "package": "wayofkings-runtime-v2.json",
+  "identity": "wayofkings-runtime-v2.identity.json",
+  "featureId": "god_mode"
+}
