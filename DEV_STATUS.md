@@ -15,42 +15,33 @@ Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d15
 - 已提交: yes
 - 已编译: yes
 - CI通过: yes
-- v1.9.36.3 真机运行: passed on WayOfKings
-- v1.9.36.4 真机运行: pending
-- cross-family 回归验证: pending
+- v1.9.36.4 WayOfKings 真机运行: passed
+- v1.9.36.4 WayOfKings 解析回归: passed
+- runtime-record/static 5 MB 回归: pending
+- legacy ~15 MB 回归: pending
+- cross-family closure: pending
 
-### Device evidence confirmed in v1.9.36.3
+### v1.9.36.4 device evidence
+
+Device archive `归档 6(1).zip` confirmed:
 
 - injection stable;
 - Full Scan complete;
-- iGMM diagnostic JSON generated;
-- normalized analysis JSON generated;
+- iGMM diagnostic JSON regenerated;
+- normalized analysis JSON regenerated;
 - 4 features exported;
 - Debug Menu = `control.kind: button`;
-- Debug Menu raw primitive preserved as `nativeHook`;
+- Debug Menu raw primitive remains `nativeHook`;
 - Debug Menu normalized primitive = `runtimeAction`;
-- `libpathofkings.dylib` identity resolved to UUID `4C4C448B-5555-3144-A14F-4905D9ED4E59`;
-- `UnityFramework` identity resolved to UUID `E0039512-CCB0-33E3-A69A-3DBEBFF3641B`;
-- both target images reported arm64, filetype 6, preferred `__TEXT` VM `0x0`, cryptid 0.
+- Debug Menu raw canonical reason remains `runtime-hook-requires-portable-equivalent`;
+- Debug Menu normalized canonical reason = `runtime-action-not-static-bytes`;
+- target identities resolve `libpathofkings.dylib` and `UnityFramework` with the expected UUID/arm64/cryptid evidence;
+- `JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2`.
 
-### v1.9.36.4 purpose
+### Product boundary
 
-Pure parser/exporter only. No playback engine, no Dobby, no runtime takeover and no extra constructor.
-
-Adds one analysis-layer field while preserving raw evidence:
-
-- `normalizedCanonicalReason`;
-- observed Debug Menu buttonBlock/runtimeAction -> `runtime-action-not-static-bytes`;
-- raw `canonicalReason` remains unchanged.
+Pure parser/exporter only. No playback engine, no Dobby, no runtime takeover, no command polling and no extra constructor.
 
 ### Next required evidence
 
-Run WayOfKings with v1.9.36.4 and provide regenerated `.hfamap.analysis.json`, `.hfamap.igmm.json` and `HFAMap_Learn.log`. Required checks:
-
-- no startup crash;
-- all v1.9.36.3 mappings/identities unchanged;
-- Debug Menu normalized primitive remains `runtimeAction`;
-- Debug Menu `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- raw source primitive and raw canonical reason remain present.
-
-After WayOfKings passes, regression-test the runtime-record/static family and legacy ~15 MB family.
+Use the same v1.9.36.4 binary on the runtime-record/static 5 MB family. Require trusted canonical output, correct target identity and original-byte truth. Then run the legacy ~15 MB family. Only after both pass should this parser line be called cross-family validated.
