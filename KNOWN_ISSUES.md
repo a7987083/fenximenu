@@ -4,9 +4,9 @@
 
 ### v1.9.36 target-derived package architecture
 
-Status: resolved on the supplied runtime-record 5 MB sample.
+Status: resolved on the supplied runtime-record and legacy 15 MB static samples.
 
-Device evidence now shows `PACKAGE-ARCH status=pass architecture=arm64 targets=1 source=canonical-targets`, and the persisted package contains `architectures=["arm64"]`. This matches the identity sidecar's `arm64 / cpusubtype=0` target. The v1.9.35 architecture metadata defect is closed for this sample.
+Device evidence shows `PACKAGE-ARCH status=pass architecture=arm64 source=canonical-targets`, and persisted packages contain `architectures=["arm64"]` consistent with their resolved target identity.
 
 ### Runtime-record canonical truth on the supplied 5 MB sample
 
@@ -20,7 +20,26 @@ v1.9.36 device testing confirms:
 - canonical structure pass for 3 features / 8 patches;
 - UUID `7E74523C-90F5-3D72-9A9C-108BDE23A4A8`, `arm64`, `cpusubtype=0`, preferred `__TEXT` VM `0x100000000`, `cryptid=0`;
 - package architecture `arm64` from canonical targets;
-- exact patch records otherwise unchanged from v1.9.35, where the 8 original values were independently verified against the same-UUID supplied Mach-O.
+- the 8 original values were independently verified against the same-UUID supplied Mach-O.
+
+### Legacy ~15 MB current-binary regression
+
+Status: resolved for canonical parity / runtime export.
+
+The exact v1.9.36 binary was run on `com.notdoppler.earntodierogue1 1.28.251` and exported 12 features / 18 patches with canonical validation and target-derived architecture pass.
+
+Target identity:
+
+- image: `UnityFramework`;
+- UUID: `8654D76C-B760-34FC-BEE0-FE70AE8C95C8`;
+- architecture: `arm64`;
+- cpusubtype: `0`;
+- preferred `__TEXT` VM: `0x0`;
+- cryptid: `0`.
+
+A full recursive JSON comparison against the previously supplied historical canonical package found exactly one changed value: `package.architectures[0]` changed from `arm64e` to `arm64`. All 12 feature definitions and all 18 patch tuples (`target/offset/original/enabled`) are otherwise identical.
+
+Evidence boundary: the current regression archive did not include the matching UnityFramework Mach-O. Therefore this pass does not newly establish 18/18 independent file-level original-byte verification; it establishes runtime export and old-vs-new canonical parity.
 
 ### iGMM runtime features remain non-canonical static patches
 
@@ -32,15 +51,21 @@ A feature may enter `com.hfa.patch/v1` only after a real portable static equival
 
 ### Consumer playback has not yet been validated
 
-Status: open / primary static-package gate.
+Status: open / primary remaining static-package gate.
 
-A package can now satisfy structure, target identity, byte truth and architecture truth, but final consumer behavior still needs direct validation. The next static-package gate is to load/apply/revert the v1.9.36 runtime-record package with the intended consumer against the matching target identity.
+Static generation now has current-device evidence across the runtime-record 5 MB and legacy 15 MB canonical families, but final consumer behavior still needs direct validation.
 
-### v1.9.36 has not been runtime-regression-tested on ~15 MB
+Required consumer behavior:
 
-Status: open / primary cross-family gate.
+1. verify target identity before any write;
+2. verify current bytes match every declared `original`;
+3. apply `enabled` bytes;
+4. confirm intended behavior;
+5. restore `original` bytes;
+6. confirm behavior restoration;
+7. fail closed on identity or original mismatch.
 
-The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28 with 12 features. The exact v1.9.36 binary still needs to be injected into that family before the current build can be promoted as a cross-family runtime checkpoint.
+The runtime-record package should be tested first because its original bytes are independently verified against the matching target Mach-O. The 15 MB package should follow when its matching UnityFramework binary/identity is available for the same byte-level precondition check.
 
 ### Original-byte fallback branches remain incompletely runtime-exercised
 
@@ -60,7 +85,7 @@ A trusted static package requires all of the following:
 4. package architecture consistent with the target Mach-O;
 5. consumer playback validation.
 
-The first four are now confirmed for the supplied runtime-record sample under v1.9.36; the fifth remains open.
+The first four are confirmed for the runtime-record sample. The legacy 15 MB sample is currently confirmed for runtime export, canonical parity and architecture/identity metadata, but did not include its target binary for a new file-level original-byte recheck. Consumer playback remains open for both.
 
 ### Stale generated files can confuse validation
 
@@ -72,7 +97,7 @@ Before each regression or playback test, delete or move old `.hfapatch.json`, `.
 
 Status: open / future validation.
 
-Current evidence covers one runtime-record 5 MB sample, one iGMM/native-hook 5 MB sample, and the historical 15 MB family. Additional menu generations are still required before claiming universal Jailpatch coverage.
+Current evidence covers the runtime-record 5 MB sample, the iGMM/native-hook 5 MB sample, the historical/current 15 MB family, plus two additional v1.9.36 UnityFramework static exports (Superstar and Backpack Brawl). Additional menu generations are still required before claiming universal Jailpatch coverage.
 
 ### CI delivery
 
