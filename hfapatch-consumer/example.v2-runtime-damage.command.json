@@ -1,0 +1,7 @@
+{
+  "action": "set",
+  "package": "wayofkings-runtime-v2.json",
+  "identity": "wayofkings-runtime-v2.identity.json",
+  "featureId": "damage",
+  "value": 16
+}
