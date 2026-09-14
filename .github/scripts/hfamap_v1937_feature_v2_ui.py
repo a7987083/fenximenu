@@ -42,13 +42,18 @@ r = r.replace('@"1.9.36"', '@"1.9.37"')
 # the historical extern line because earlier patch generations append declarations.
 macro_anchor = '#define M0(r,o,s)'
 externs = ('extern void HFAMapFeatureUIAttach(id,id); '
-           'extern void HFAMapFeatureUIReloadLatest(void);\n')
-l = once(l, macro_anchor, externs + macro_anchor, 'feature UI externs')
+           'extern void HFAMapFeatureUIReloadLatest(void); '
+           'extern BOOL HFAMapIGMMFeatureV2ExportLatest(void);\n')
+l = once(l, macro_anchor, externs + macro_anchor, 'feature UI/export externs')
 
+# Static-patch packages are already written by FinalizeScan. iGMM first writes
+# its diagnostic package; the narrow exporter then promotes only proven supported
+# hook graphs to com.hfa.feature/v2. Reload always happens last so the floating
+# window picks the file produced by this scan.
 l = once(l,
          'unsigned int valid=run_full_scan();',
-         'unsigned int valid=run_full_scan();HFAMapFeatureUIReloadLatest();',
-         'reload generated json after scan')
+         'unsigned int valid=run_full_scan();HFAMapIGMMFeatureV2ExportLatest();HFAMapFeatureUIReloadLatest();',
+         'export and reload generated json after scan')
 
 l = once(l,
          'gPanel=p;gWindow=w;gMade=1;}',
