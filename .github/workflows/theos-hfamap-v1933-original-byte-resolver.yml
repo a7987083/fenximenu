@@ -1,0 +1,139 @@
+name: HFAMapUniversal v1.9.33 OriginalByteResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v1933-original-byte-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v1933_chain.py'
+      - '.github/workflows/theos-hfamap-v1933-original-byte-resolver.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Replay history and apply v1.9.33
+        run: |
+          python3 .github/scripts/apply_hfamap_v1933_chain.py
+          git diff --check -- \
+            hfamap/src/HFAMapPatchExecutionTrace.m \
+            hfamap/src/HFAMapLegacy.m \
+            hfamap/src/HFAMapGenericMenuResolver.m \
+            hfamap/src/HFAMapJailpatchRuntimeProfiler.m \
+            hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify v1.9.32 behavior remains intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def extract_function(text, signature):
+              start = text.index(signature)
+              brace = text.index('{', start)
+              depth = 0
+              for i in range(brace, len(text)):
+                  if text[i] == '{':
+                      depth += 1
+                  elif text[i] == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return text[start:i+1]
+              raise RuntimeError(signature)
+
+          before = Path('/tmp/HFAMapPatchExecutionTrace.before1933.m').read_text()
+          after = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          for sig in (
+              'static void HFAWritePatchPackage(NSArray *features, NSDictionary *targets)',
+              'static uintptr_t HFAResolveSecretDecrypt(IMP getter, Dl_info *getterInfoOut,',
+              'static int HFADecryptWrapper(id wrapper, char *out, size_t outCap, const char *label)',
+          ):
+              if extract_function(before, sig) != extract_function(after, sig):
+                  raise SystemExit(f'protected function changed: {sig}')
+
+          before_legacy = Path('/tmp/HFAMapLegacy.before1933.m').read_text()
+          after_legacy = Path('hfamap/src/HFAMapLegacy.m').read_text()
+          sig = 'static unsigned int run_full_scan(void)'
+          if extract_function(before_legacy, sig) != extract_function(after_legacy, sig):
+              raise SystemExit('v1.9.32 crash-safe full scan changed')
+          print('v1.9.32 scan + v1.9.31 decrypt + package writer preserved')
+          PY
+          grep -q '\[AUTO-MENU-CANDIDATE\]' hfamap/src/HFAMapLegacy.m
+          grep -q '\[MAP-DECRYPT-RESOLVE\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[FULL-MAPPING\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[IGMM-PACKAGE-EXPORT\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[JAILPATCH-SELECTOR-DESCRIPTOR\]' hfamap/src/HFAMapJailpatchSelectorResolver.m
+
+      - name: Verify OriginalByteResolver invariants
+        run: |
+          grep -q 'HFALearn v1.9.33 OriginalByteResolver' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFALearn UI v1.9.33 OriginalByteResolver' hfamap/src/HFAMapLegacy.m
+          grep -q '\[DUAL-IOSGODS-MODE\].*original=multi-source' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAReadOriginalBytesFromFile' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'LC_ENCRYPTION_INFO_64' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'vm_read_overwrite' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFAReadable(address, length)' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'mach-o-file-after-enabled-live' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '\[PACKAGE-ORIGINAL\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'identity-or-original-unavailable' hfamap/src/HFAMapPatchExecutionTrace.m
+          for forbidden in \
+            'libRiseofBerk' 'libpathofkings' \
+            'Freeze Currencies' 'Free Purchase' 'Free Subscriptions' \
+            'Damage Multiplier' 'God Mode' 'SqblAE' 'NiGyvZ' \
+            '0x1007E5390' '0x1002307F8' '0x2123D4' '0x2129A4'; do
+            if grep -q "$forbidden" \
+              .github/scripts/hfamap_v1933_original_bytes.py \
+              .github/scripts/apply_hfamap_v1933_chain.py; then
+              echo "hardcoded sample token: $forbidden"; exit 1
+            fi
+          done
+
+      - name: Build and verify HFAMapUniversal v1.9.33
+        run: |
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out="dist/HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.33.txt
+          strings "$out" | grep -q "HFALearn v1.9.33 OriginalByteResolver"
+          strings "$out" | grep -q "HFALearn UI v1.9.33 OriginalByteResolver"
+          strings "$out" | grep -q "HFAMap v1.9.33 OriginalByteResolver"
+          strings "$out" | grep -q "\[PACKAGE-ORIGINAL\]"
+          strings "$out" | grep -q "\[MAP-DECRYPT-RESOLVE\]"
+          strings "$out" | grep -q "\[AUTO-MENU-CANDIDATE\]"
+          strings "$out" | grep -q "\[FULL-MAPPING\]"
+          strings "$out" | grep -q "\[IGMM-PACKAGE-EXPORT\]"
+          ls -lh "$out"
+
+      - name: Verify distributable files
+        run: |
+          cd hfamap
+          test -f dist/HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib
+          test -f dist/SHA256_v1.9.33.txt
+          shasum -a 256 -c dist/SHA256_v1.9.33.txt
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.33-OriginalByteResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib
+            hfamap/dist/SHA256_v1.9.33.txt
+          if-no-files-found: error
