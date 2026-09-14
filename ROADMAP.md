@@ -2,58 +2,61 @@
 
 ## Current phase
 
-v1.9.33 — 5 MB runtime confirmed / unified 15 MB-compatible export pending
+v1.9.34 CanonicalTruthGate — compiled / CI passed / awaiting device validation
 
-## Completed milestone: legacy AP / ~15 MB
+## Completed foundations
 
-v1.9.28 is runtime-confirmed with 12 valid mappings and successful patch-package export.
+- Legacy ~15 MB static patch path remains runtime-confirmed under v1.9.28.
+- 5 MB runtime-record discovery/decrypt/mapping is runtime-confirmed through v1.9.33.
+- 5 MB iGMM semantic menu/runtime-implementation discovery is runtime-confirmed through v1.9.33.
+- The canonical consumer contract is now explicitly the 15 MB-style `com.hfa.patch/v1` static package.
 
-Formal stable baseline remains:
+## Why the next milestone changed
 
-`build/hfamap-v1.4.4-20260901 @ 7bd19ba08a647104d230a2da299bcdd232687abf`
+Static analysis of the two supplied 5 MB target/menu pairs showed that the menu framework family is shared but the execution primitives are not:
 
-## Completed milestone: 5 MB runtime-record execution chain
+- runtime-record features resolve to concrete static byte patch points;
+- iGMM features can share native-hook infrastructure and use dynamic numeric values or runtime state.
 
-- v1.9.29: runtime-record object graph and stable selector surface established.
-- v1.9.30: selector descriptor and offset/patch-wrapper association device-confirmed.
-- v1.9.31: image-local decrypt fingerprint resolver built.
-- v1.9.32: crash-safe Full Scan confirmed; generic decrypt reached `matches=1 / rc=0`; 8/8 mappings valid.
-- v1.9.33: original-byte acquisition produced a complete 3-feature / 8-static-patch package for the tested runtime-record sample.
+Therefore cross-family closure cannot be achieved by copying iGMM runtime metadata into an empty `patches` array and still calling the result `com.hfa.patch/v1`.
 
-## Completed milestone: 5 MB iGMM runtime path
+## Current milestone: v1.9.34 CanonicalTruthGate
 
-The independent iGMM path is runtime-confirmed with four runtime-definition features and successful JSON export under its current representation.
+Policy:
 
-## Current milestone: unified export contract
+- Only true static patches can produce `.hfapatch.json`.
+- Formal feature/patch keys must match the canonical 15 MB contract exactly.
+- Canonical offsets are Mach-O preferred VM addresses.
+- Binary byte evidence must be tied to UUID + CPU subtype/build identity.
+- iGMM runtime primitives remain evidence-rich diagnostics until a portable static equivalent is actually proven.
 
-Runtime success is not sufficient for project completion. The final consumer-facing JSON must be deliberately normalized against the canonical 15 MB package.
+Implementation:
 
-Required work:
-
-1. Obtain the exact canonical 15 MB `.hfapatch.json`.
-2. Diff both 5 MB outputs against it:
-   - root keys / schema version;
-   - target identity model;
-   - feature IDs/titles/groups/types;
-   - static patch representation;
-   - runtime-definition representation;
-   - menu-family/extensions metadata;
-   - consumer execution semantics.
-3. Define one canonical cross-family contract.
-4. Add an adapter/unified exporter on a new branch.
-5. Device-regression all three paths:
-   - legacy 15 MB;
-   - runtime-record 5 MB;
-   - iGMM 5 MB.
-6. Only after parity/compatibility passes should the project be called closed.
+- strict `HFACanonical34Validate` preflight;
+- target identity sidecar `com.hfa.patch.identity/v1`;
+- iGMM diagnostic schema `com.hfa.igmm.runtime/v1`;
+- execution primitive classification (`numericRuntimeModifier`, `nativeHook`, `blockHandler`, `runtimeBoolean`, `runtimeAction`, `unresolved`);
+- no new canonical-looking `.hfapatch.json` from unresolved iGMM features.
 
 ## Build checkpoint
 
-- Branch: `feature/hfamap-v1933-original-byte-resolver`.
-- Build-tested code commit: `8845d84b2adbada07fdd46a1de0243ff8ae4165b`.
-- CI run: `34799869649` — success.
-- Artifact ID: `10330589684`.
-- Binary: `HFAMapUniversal_v1.9.33_OriginalByteResolver.dylib`.
-- SHA256: `1b0029907683e40439d8bc23442491e314648257d6f517a6cf2df3687e56bd4a`.
-- Device validation: passed for both supplied 5 MB runtime paths.
-- Unified 15 MB/5 MB JSON parity: pending.
+- Branch: `feature/hfamap-v1934-unified-canonical-exporter`.
+- Base commit: `59ceb4bfa28b016b1bc52acea1613527c06aa231`.
+- Build-tested code commit: `5c7edc0a70f571813c8b2882dd260beae3c0db6c`.
+- CI run: `34824481536` — success.
+- Artifact ID: `10339925211`.
+- Binary: `HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib`.
+- SHA256: `98d5643e1c72b049e647bd58fcf861ef1012a6efbf406fbb71fec7e36673863c`.
+- v1.9.34 device validation: pending.
+
+## Next validation
+
+First clear stale generated output files.
+
+Runtime-record 5 MB must reproduce the proven scan/decrypt/mapping chain and additionally show canonical validation plus target identity, ending in the same 3-feature / 8-static-patch package.
+
+iGMM 5 MB must emit execution-primitive diagnostics and a `.hfamap.igmm.json` report, while producing no new `.hfapatch.json` through the iGMM fallback.
+
+After both pass, the next branch can investigate whether any iGMM runtime primitive has a genuinely portable static equivalent. Features that do not must remain non-canonical rather than being represented by fabricated bytes.
+
+A v1.9.34-on-15MB device regression is still required before promoting the current binary itself as the cross-family runtime candidate.
