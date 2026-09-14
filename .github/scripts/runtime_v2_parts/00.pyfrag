@@ -1,0 +1,220 @@
+from pathlib import Path
+
+p = Path("hfapatch-consumer/src/HFAPatchConsumer.m")
+s = p.read_text()
+make_path = Path("hfapatch-consumer/Makefile")
+m = make_path.read_text()
+
+
+def replace_once(text, old, new, label):
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected 1 match, got {count}")
+    return text.replace(old, new, 1)
+
+
+s = replace_once(
+    s,
+    'static NSString *const HFAPCVersion = @"1.1.0";',
+    'static NSString *const HFAPCVersion = @"1.2.0";',
+    'consumer version',
+)
+
+s = replace_once(
+    s,
+    '#include <unistd.h>\n',
+    '#include <unistd.h>\n#include <math.h>\n#include <pthread.h>\n',
+    'runtime includes',
+)
+
+runtime_block = r'''
+// HFA Feature v2 runtime executor v1.2.0.
+//
+// This executor intentionally supports a small, explicit primitive set:
+// - runtimeState bound to bool / numeric graph state;
+// - captureFieldPointer producer hooks;
+// - conditionalPipeline damage-style hook over x0/x1 integer arguments;
+// - nativeCall with ABI "void()".
+//
+// Hook installation is delegated to the statically linked Dobby backend. Every
+// graph hook is identity-checked and original-byte checked before DobbyHook is
+// called. Unsupported behavior/ABI/state/store forms fail closed.
+
+extern int DobbyHook(void *address, void *replace_call, void **origin_call);
+extern int DobbyDestroy(void *address);
+extern const char *DobbyBuildVersion(void);
+
+#define HFAPC_RT_MAX_GRAPHS 4
+#define HFAPC_RT_MAX_STATES 16
+#define HFAPC_RT_MAX_STORES 8
+#define HFAPC_RT_MAX_STORE_ENTRIES 64
+#define HFAPC_RT_MAX_HOOKS 16
+#define HFAPC_RT_MAX_CAPTURE 8
+#define HFAPC_RT_MAX_PIPELINE 4
+#define HFAPC_RT_NAME_MAX 64
+#define HFAPC_RT_PACKAGE_KEY_MAX 192
+#define HFAPC_RT_ORIGINAL_MAX 32
+
+typedef enum {
+    HFAPCRTStateInvalid = 0,
+    HFAPCRTStateBool,
+    HFAPCRTStateInt,
+    HFAPCRTStateUInt,
+    HFAPCRTStateFloat32,
+    HFAPCRTStateFloat64,
+} HFAPCRTStateType;
+
+typedef struct {
+    char name[HFAPC_RT_NAME_MAX];
+    HFAPCRTStateType type;
+    union {
+        BOOL b;
+        int64_t i;
+        uint64_t u;
+        float f32;
+        double f64;
+    } value;
+    union {
+        BOOL b;
+        int64_t i;
+        uint64_t u;
+        float f32;
+        double f64;
+    } defaultValue;
+} HFAPCRTState;
+
+typedef struct {
+    char name[HFAPC_RT_NAME_MAX];
+    uintptr_t values[HFAPC_RT_MAX_STORE_ENTRIES];
+    uint32_t count;
+    uint32_t maxEntries;
+} HFAPCRTPointerStore;
+
+typedef struct HFAPCRuntimeGraphContext {
+    BOOL inUse;
+    BOOL bootstrapped;
+    char packageKey[HFAPC_RT_PACKAGE_KEY_MAX];
+    char name[HFAPC_RT_NAME_MAX];
+    pthread_mutex_t lock;
+    HFAPCRTState states[HFAPC_RT_MAX_STATES];
+    uint32_t stateCount;
+    HFAPCRTPointerStore stores[HFAPC_RT_MAX_STORES];
+    uint32_t storeCount;
+    void *installedTargets[HFAPC_RT_MAX_HOOKS];
+    uint8_t installedKinds[HFAPC_RT_MAX_HOOKS];
+    uint8_t installedSlots[HFAPC_RT_MAX_HOOKS];
+    uint32_t installedCount;
+} HFAPCRuntimeGraphContext;
+
+typedef uintptr_t (*HFAPCAny8Fn)(uintptr_t, uintptr_t, uintptr_t, uintptr_t,
+                                  uintptr_t, uintptr_t, uintptr_t, uintptr_t);
+
+typedef struct {
+    BOOL inUse;
+    HFAPCRuntimeGraphContext *graph;
+    uint32_t storeIndex;
+    uint64_t fieldOffset;
+    HFAPCAny8Fn original;
+} HFAPCRTCaptureSlot;
+
+typedef struct {
+    BOOL inUse;
+    HFAPCRuntimeGraphContext *graph;
+    uint32_t storeIndex;
+    int godStateIndex;
+    int defenceStateIndex;
+    int damageStateIndex;
+    HFAPCAny8Fn original;
+} HFAPCRTPipelineSlot;
+
+typedef struct {
+    uint8_t kind; // 1 capture, 2 pipeline
+    uint8_t slotIndex;
+    mach_vm_address_t address;
+    uint8_t original[HFAPC_RT_ORIGINAL_MAX];
+    uint32_t originalLength;
+    void *replacement;
+} HFAPCRTHookPlan;
+
+static HFAPCRuntimeGraphContext gHFAPCRTGraphs[HFAPC_RT_MAX_GRAPHS];
+static pthread_mutex_t gHFAPCRTRegistryLock = PTHREAD_MUTEX_INITIALIZER;
+static HFAPCRTCaptureSlot gHFAPCRTCaptureSlots[HFAPC_RT_MAX_CAPTURE];
+static HFAPCRTPipelineSlot gHFAPCRTPipelineSlots[HFAPC_RT_MAX_PIPELINE];
+
+static BOOL HFAPCRTCopyCString(NSString *value, char *out, size_t capacity) {
+    if (![value isKindOfClass:[NSString class]] || !value.length || !out || capacity < 2) return NO;
+    const char *utf8 = value.UTF8String;
+    if (!utf8) return NO;
+    size_t n = strlen(utf8);
+    if (n == 0 || n >= capacity) return NO;
+    memcpy(out, utf8, n + 1);
+    return YES;
+}
+
+static NSString *HFAPCRTPackageKey(NSDictionary *package) {
+    NSDictionary *meta = package[@"package"];
+    if (![meta isKindOfClass:[NSDictionary class]]) return nil;
+    NSString *bundle = [meta[@"bundleIdentifier"] isKindOfClass:[NSString class]] ? meta[@"bundleIdentifier"] : @"";
+    NSString *shortVersion = [meta[@"shortVersion"] isKindOfClass:[NSString class]] ? meta[@"shortVersion"] : @"";
+    NSString *buildVersion = [meta[@"buildVersion"] isKindOfClass:[NSString class]] ? meta[@"buildVersion"] : @"";
+    return [NSString stringWithFormat:@"%@|%@|%@", bundle, shortVersion, buildVersion];
+}
+
+static HFAPCRTStateType HFAPCRTStateTypeFromString(NSString *value) {
+    if ([value isEqualToString:@"bool"]) return HFAPCRTStateBool;
+    if ([value isEqualToString:@"int32"] || [value isEqualToString:@"int64"]) return HFAPCRTStateInt;
+    if ([value isEqualToString:@"uint32"] || [value isEqualToString:@"uint64"]) return HFAPCRTStateUInt;
+    if ([value isEqualToString:@"float32"]) return HFAPCRTStateFloat32;
+    if ([value isEqualToString:@"float64"]) return HFAPCRTStateFloat64;
+    return HFAPCRTStateInvalid;
+}
+
+static int HFAPCRTStateIndex(HFAPCRuntimeGraphContext *graph, NSString *name) {
+    if (!graph || ![name isKindOfClass:[NSString class]]) return -1;
+    const char *utf8 = name.UTF8String;
+    if (!utf8) return -1;
+    for (uint32_t i = 0; i < graph->stateCount; i++) {
+        if (strcmp(graph->states[i].name, utf8) == 0) return (int)i;
+    }
+    return -1;
+}
+
+static int HFAPCRTStoreIndex(HFAPCRuntimeGraphContext *graph, NSString *name) {
+    if (!graph || ![name isKindOfClass:[NSString class]]) return -1;
+    const char *utf8 = name.UTF8String;
+    if (!utf8) return -1;
+    for (uint32_t i = 0; i < graph->storeCount; i++) {
+        if (strcmp(graph->stores[i].name, utf8) == 0) return (int)i;
+    }
+    return -1;
+}
+
+static double HFAPCRTNumericStateAsDouble(const HFAPCRTState *state) {
+    if (!state) return 0.0;
+    switch (state->type) {
+        case HFAPCRTStateInt: return (double)state->value.i;
+        case HFAPCRTStateUInt: return (double)state->value.u;
+        case HFAPCRTStateFloat32: return (double)state->value.f32;
+        case HFAPCRTStateFloat64: return state->value.f64;
+        default: return 0.0;
+    }
+}
+
+static BOOL HFAPCRTStoreContainsLocked(HFAPCRuntimeGraphContext *graph, uint32_t storeIndex, uintptr_t value) {
+    if (!graph || storeIndex >= graph->storeCount || value == 0) return NO;
+    HFAPCRTPointerStore *store = &graph->stores[storeIndex];
+    for (uint32_t i = 0; i < store->count; i++) if (store->values[i] == value) return YES;
+    return NO;
+}
+
+static void HFAPCRTStoreInsert(HFAPCRuntimeGraphContext *graph, uint32_t storeIndex, uintptr_t value) {
+    if (!graph || value == 0 || storeIndex >= graph->storeCount) return;
+    pthread_mutex_lock(&graph->lock);
+    HFAPCRTPointerStore *store = &graph->stores[storeIndex];
+    BOOL exists = NO;
+    for (uint32_t i = 0; i < store->count; i++) {
+        if (store->values[i] == value) { exists = YES; break; }
+    }
+    if (!exists && store->count < store->maxEntries && store->count < HFAPC_RT_MAX_STORE_ENTRIES) {
+        store->values[store->count++] = value;
+    }
