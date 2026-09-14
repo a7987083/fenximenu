@@ -1,0 +1,8 @@
+Package: com.hfa.hfapatchconsumerplayback
+Name: HFAPatch Consumer Playback
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Independent fail-closed consumer for com.hfa.patch/v1 playback validation.
+Maintainer: a7987083
+Author: a7987083
+Section: Tweaks
