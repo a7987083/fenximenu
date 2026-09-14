@@ -1,0 +1,220 @@
+    pthread_mutex_unlock(&graph->lock);
+}
+
+static uintptr_t HFAPCRTCaptureDispatch(uint32_t slotIndex,
+                                        uintptr_t x0, uintptr_t x1, uintptr_t x2, uintptr_t x3,
+                                        uintptr_t x4, uintptr_t x5, uintptr_t x6, uintptr_t x7) {
+    if (slotIndex >= HFAPC_RT_MAX_CAPTURE) return 0;
+    HFAPCRTCaptureSlot *slot = &gHFAPCRTCaptureSlots[slotIndex];
+    if (!slot->inUse || !slot->graph || !slot->original) return 0;
+    if (x0 != 0) {
+        uintptr_t captured = *(volatile uintptr_t *)(uintptr_t)(x0 + slot->fieldOffset);
+        if (captured != 0) HFAPCRTStoreInsert(slot->graph, slot->storeIndex, captured);
+    }
+    return slot->original(x0, x1, x2, x3, x4, x5, x6, x7);
+}
+
+#define HFAPC_DEFINE_CAPTURE_WRAPPER(N) \
+static uintptr_t HFAPCRTCaptureWrapper##N(uintptr_t x0, uintptr_t x1, uintptr_t x2, uintptr_t x3, \
+                                         uintptr_t x4, uintptr_t x5, uintptr_t x6, uintptr_t x7) { \
+    return HFAPCRTCaptureDispatch(N, x0, x1, x2, x3, x4, x5, x6, x7); \
+}
+HFAPC_DEFINE_CAPTURE_WRAPPER(0)
+HFAPC_DEFINE_CAPTURE_WRAPPER(1)
+HFAPC_DEFINE_CAPTURE_WRAPPER(2)
+HFAPC_DEFINE_CAPTURE_WRAPPER(3)
+HFAPC_DEFINE_CAPTURE_WRAPPER(4)
+HFAPC_DEFINE_CAPTURE_WRAPPER(5)
+HFAPC_DEFINE_CAPTURE_WRAPPER(6)
+HFAPC_DEFINE_CAPTURE_WRAPPER(7)
+
+static void *HFAPCRTCaptureReplacement(uint32_t index) {
+    switch (index) {
+        case 0: return (void *)HFAPCRTCaptureWrapper0;
+        case 1: return (void *)HFAPCRTCaptureWrapper1;
+        case 2: return (void *)HFAPCRTCaptureWrapper2;
+        case 3: return (void *)HFAPCRTCaptureWrapper3;
+        case 4: return (void *)HFAPCRTCaptureWrapper4;
+        case 5: return (void *)HFAPCRTCaptureWrapper5;
+        case 6: return (void *)HFAPCRTCaptureWrapper6;
+        case 7: return (void *)HFAPCRTCaptureWrapper7;
+        default: return NULL;
+    }
+}
+
+static uintptr_t HFAPCRTPipelineDispatch(uint32_t slotIndex,
+                                         uintptr_t x0, uintptr_t x1, uintptr_t x2, uintptr_t x3,
+                                         uintptr_t x4, uintptr_t x5, uintptr_t x6, uintptr_t x7) {
+    if (slotIndex >= HFAPC_RT_MAX_PIPELINE) return 0;
+    HFAPCRTPipelineSlot *slot = &gHFAPCRTPipelineSlots[slotIndex];
+    if (!slot->inUse || !slot->graph || !slot->original) return 0;
+
+    BOOL isProtected = NO;
+    BOOL godMode = NO;
+    double defence = 1.0;
+    double damage = 1.0;
+    pthread_mutex_lock(&slot->graph->lock);
+    isProtected = HFAPCRTStoreContainsLocked(slot->graph, slot->storeIndex, x0);
+    if (slot->godStateIndex >= 0) {
+        HFAPCRTState *s = &slot->graph->states[slot->godStateIndex];
+        godMode = (s->type == HFAPCRTStateBool) ? s->value.b : NO;
+    }
+    if (slot->defenceStateIndex >= 0) defence = HFAPCRTNumericStateAsDouble(&slot->graph->states[slot->defenceStateIndex]);
+    if (slot->damageStateIndex >= 0) damage = HFAPCRTNumericStateAsDouble(&slot->graph->states[slot->damageStateIndex]);
+    pthread_mutex_unlock(&slot->graph->lock);
+
+    // The original iGMM implementation returns early for protected objects when
+    // God Mode is enabled. The underlying target is used as a void-like routine;
+    // x0 return content is not part of the menu's semantic contract.
+    if (isProtected && godMode) return 1;
+
+    int64_t amount = (int64_t)x1;
+    if (isProtected && slot->defenceStateIndex >= 0 && defence != 1.0) {
+        amount = (int64_t)((double)amount / defence);
+    } else if (!isProtected && slot->damageStateIndex >= 0 && damage != 1.0) {
+        amount = (int64_t)((double)amount * damage);
+    }
+    return slot->original(x0, (uintptr_t)amount, x2, x3, x4, x5, x6, x7);
+}
+
+#define HFAPC_DEFINE_PIPELINE_WRAPPER(N) \
+static uintptr_t HFAPCRTPipelineWrapper##N(uintptr_t x0, uintptr_t x1, uintptr_t x2, uintptr_t x3, \
+                                           uintptr_t x4, uintptr_t x5, uintptr_t x6, uintptr_t x7) { \
+    return HFAPCRTPipelineDispatch(N, x0, x1, x2, x3, x4, x5, x6, x7); \
+}
+HFAPC_DEFINE_PIPELINE_WRAPPER(0)
+HFAPC_DEFINE_PIPELINE_WRAPPER(1)
+HFAPC_DEFINE_PIPELINE_WRAPPER(2)
+HFAPC_DEFINE_PIPELINE_WRAPPER(3)
+
+static void *HFAPCRTPipelineReplacement(uint32_t index) {
+    switch (index) {
+        case 0: return (void *)HFAPCRTPipelineWrapper0;
+        case 1: return (void *)HFAPCRTPipelineWrapper1;
+        case 2: return (void *)HFAPCRTPipelineWrapper2;
+        case 3: return (void *)HFAPCRTPipelineWrapper3;
+        default: return NULL;
+    }
+}
+
+static int HFAPCRTClaimCaptureSlot(void) {
+    for (uint32_t i = 0; i < HFAPC_RT_MAX_CAPTURE; i++) {
+        if (!gHFAPCRTCaptureSlots[i].inUse) {
+            memset(&gHFAPCRTCaptureSlots[i], 0, sizeof(gHFAPCRTCaptureSlots[i]));
+            gHFAPCRTCaptureSlots[i].inUse = YES;
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+static int HFAPCRTClaimPipelineSlot(void) {
+    for (uint32_t i = 0; i < HFAPC_RT_MAX_PIPELINE; i++) {
+        if (!gHFAPCRTPipelineSlots[i].inUse) {
+            memset(&gHFAPCRTPipelineSlots[i], 0, sizeof(gHFAPCRTPipelineSlots[i]));
+            gHFAPCRTPipelineSlots[i].inUse = YES;
+            gHFAPCRTPipelineSlots[i].godStateIndex = -1;
+            gHFAPCRTPipelineSlots[i].defenceStateIndex = -1;
+            gHFAPCRTPipelineSlots[i].damageStateIndex = -1;
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+static void HFAPCRTReleaseHookSlot(uint8_t kind, uint8_t index) {
+    if (kind == 1 && index < HFAPC_RT_MAX_CAPTURE) memset(&gHFAPCRTCaptureSlots[index], 0, sizeof(gHFAPCRTCaptureSlots[index]));
+    if (kind == 2 && index < HFAPC_RT_MAX_PIPELINE) memset(&gHFAPCRTPipelineSlots[index], 0, sizeof(gHFAPCRTPipelineSlots[index]));
+}
+
+static HFAPCRuntimeGraphContext *HFAPCRTFindGraph(NSString *packageKey, NSString *graphName) {
+    const char *pk = packageKey.UTF8String;
+    const char *gn = graphName.UTF8String;
+    if (!pk || !gn) return NULL;
+    for (uint32_t i = 0; i < HFAPC_RT_MAX_GRAPHS; i++) {
+        HFAPCRuntimeGraphContext *g = &gHFAPCRTGraphs[i];
+        if (g->inUse && strcmp(g->packageKey, pk) == 0 && strcmp(g->name, gn) == 0) return g;
+    }
+    return NULL;
+}
+
+static HFAPCRuntimeGraphContext *HFAPCRTClaimGraph(NSString *packageKey, NSString *graphName, NSString **errorOut) {
+    HFAPCRuntimeGraphContext *existing = HFAPCRTFindGraph(packageKey, graphName);
+    if (existing) return existing;
+    for (uint32_t i = 0; i < HFAPC_RT_MAX_GRAPHS; i++) {
+        HFAPCRuntimeGraphContext *g = &gHFAPCRTGraphs[i];
+        if (!g->inUse) {
+            memset(g, 0, sizeof(*g));
+            if (!HFAPCRTCopyCString(packageKey, g->packageKey, sizeof(g->packageKey)) ||
+                !HFAPCRTCopyCString(graphName, g->name, sizeof(g->name))) {
+                if (errorOut) *errorOut = @"runtime-graph-name-too-long";
+                return NULL;
+            }
+            pthread_mutex_init(&g->lock, NULL);
+            g->inUse = YES;
+            return g;
+        }
+    }
+    if (errorOut) *errorOut = @"runtime-graph-capacity-exhausted";
+    return NULL;
+}
+
+static BOOL HFAPCRTLoadGraphStateAndStores(HFAPCRuntimeGraphContext *graph,
+                                           NSDictionary *graphDef,
+                                           NSString **errorOut) {
+    NSDictionary *stateDefs = [graphDef[@"state"] isKindOfClass:[NSDictionary class]] ? graphDef[@"state"] : @{};
+    if (stateDefs.count > HFAPC_RT_MAX_STATES) {
+        if (errorOut) *errorOut = @"runtime-state-capacity-exceeded";
+        return NO;
+    }
+    graph->stateCount = 0;
+    for (NSString *key in stateDefs) {
+        NSDictionary *def = stateDefs[key];
+        if (![def isKindOfClass:[NSDictionary class]] || graph->stateCount >= HFAPC_RT_MAX_STATES) {
+            if (errorOut) *errorOut = @"runtime-state-definition-invalid";
+            return NO;
+        }
+        HFAPCRTState *state = &graph->states[graph->stateCount];
+        memset(state, 0, sizeof(*state));
+        if (!HFAPCRTCopyCString(key, state->name, sizeof(state->name))) {
+            if (errorOut) *errorOut = @"runtime-state-name-invalid";
+            return NO;
+        }
+        state->type = HFAPCRTStateTypeFromString(def[@"type"]);
+        NSNumber *value = [def[@"default"] isKindOfClass:[NSNumber class]] ? def[@"default"] : nil;
+        if (!value || state->type == HFAPCRTStateInvalid) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-state-default-invalid:%@", key];
+            return NO;
+        }
+        switch (state->type) {
+            case HFAPCRTStateBool: state->value.b = state->defaultValue.b = value.boolValue; break;
+            case HFAPCRTStateInt: state->value.i = state->defaultValue.i = value.longLongValue; break;
+            case HFAPCRTStateUInt: state->value.u = state->defaultValue.u = value.unsignedLongLongValue; break;
+            case HFAPCRTStateFloat32: state->value.f32 = state->defaultValue.f32 = value.floatValue; break;
+            case HFAPCRTStateFloat64: state->value.f64 = state->defaultValue.f64 = value.doubleValue; break;
+            default: return NO;
+        }
+        graph->stateCount++;
+    }
+
+    NSDictionary *storeDefs = [graphDef[@"stores"] isKindOfClass:[NSDictionary class]] ? graphDef[@"stores"] : @{};
+    if (storeDefs.count > HFAPC_RT_MAX_STORES) {
+        if (errorOut) *errorOut = @"runtime-store-capacity-exceeded";
+        return NO;
+    }
+    graph->storeCount = 0;
+    for (NSString *key in storeDefs) {
+        NSDictionary *def = storeDefs[key];
+        NSString *kind = [def[@"kind"] isKindOfClass:[NSString class]] ? def[@"kind"] : nil;
+        NSNumber *maxEntries = [def[@"maxEntries"] isKindOfClass:[NSNumber class]] ? def[@"maxEntries"] : @(HFAPC_RT_MAX_STORE_ENTRIES);
+        if (![kind isEqualToString:@"pointerSet"] || maxEntries.unsignedIntegerValue == 0 ||
+            maxEntries.unsignedIntegerValue > HFAPC_RT_MAX_STORE_ENTRIES) {
+            if (errorOut) *errorOut = [NSString stringWithFormat:@"runtime-store-unsupported:%@", key];
+            return NO;
+        }
+        HFAPCRTPointerStore *store = &graph->stores[graph->storeCount];
+        memset(store, 0, sizeof(*store));
+        if (!HFAPCRTCopyCString(key, store->name, sizeof(store->name))) {
+            if (errorOut) *errorOut = @"runtime-store-name-invalid";
+            return NO;
+        }
