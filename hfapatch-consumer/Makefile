@@ -6,7 +6,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = HFAPatchConsumerPlayback
 
 HFAPatchConsumerPlayback_FILES = src/HFAPatchConsumer.m
-HFAPatchConsumerPlayback_CFLAGS = -Oz -fno-stack-protector -Wno-deprecated-declarations
+HFAPatchConsumerPlayback_CFLAGS = -Oz -fno-stack-protector -Wno-deprecated-declarations -include src/HFAPatchVMCompat.h
 HFAPatchConsumerPlayback_FRAMEWORKS = Foundation
 
 include $(THEOS_MAKE_PATH)/tweak.mk
