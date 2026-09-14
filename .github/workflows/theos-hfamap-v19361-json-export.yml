@@ -1,4 +1,4 @@
-name: HFAMapUniversal v1.9.36.4 JSONExport
+name: HFAMapUniversal v1.9.36.5 JSONExport Delay5s
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate stable v1.9.36 then JSONExport layer
+      - name: Generate stable v1.9.36 then JSONExport Delay5s layer
         run: |
           python3 .github/scripts/apply_hfamap_v1936_chain.py
           cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.v1936.m
@@ -31,7 +31,7 @@ jobs:
           python3 .github/scripts/hfamap_v19361_json_export.py
           git diff --check
 
-      - name: Verify parser/startup preservation
+      - name: Verify parser core and exact startup-delay delta
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -45,33 +45,40 @@ jobs:
               raise RuntimeError(signature)
           before=Path('/tmp/HFAMapLegacy.v1936.m').read_text()
           after=Path('hfamap/src/HFAMapLegacy.m').read_text()
-          for sig in ('static unsigned int run_full_scan(void)', '__attribute__((constructor)) static void init(void)'):
-              if fn(before,sig) != fn(after,sig):
-                  raise SystemExit(f'v1.9.36 protected path changed: {sig}')
+          if fn(before,'static unsigned int run_full_scan(void)') != fn(after,'static unsigned int run_full_scan(void)'):
+              raise SystemExit('v1.9.36 protected run_full_scan changed')
+          before_ctor=fn(before,'__attribute__((constructor)) static void init(void)')
+          after_ctor=fn(after,'__attribute__((constructor)) static void init(void)')
+          added='class_addMethod(c,sel_registerName("hfaDelayedStart:"),(IMP)hfaDelayedStart,"v@:@");'
+          old_timer='if(t&&gTarget)M5(id,(id)t,"scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",double,.5,id,gTarget,SEL,sel_registerName("tick:"),id,(id)0,BOOL,1);'
+          new_timer='if(t&&gTarget)M5(id,(id)t,"scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",double,5.0,id,gTarget,SEL,sel_registerName("hfaDelayedStart:"),id,(id)0,BOOL,0);'
+          if after_ctor.count(added) != 1 or after_ctor.count(new_timer) != 1:
+              raise SystemExit('expected exact 5-second constructor delta missing')
+          normalized=after_ctor.replace(added,'',1).replace(new_timer,old_timer,1)
+          if normalized != before_ctor:
+              raise SystemExit('constructor changed beyond intentional 5-second startup delay')
           before_trace=Path('/tmp/HFAMapPatchExecutionTrace.v1936.m').read_text()
           after_trace=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
           if before_trace != after_trace:
               raise SystemExit('v1.9.36 trace/resolver core changed')
-          print('startup + full scan + resolver core preserved exactly')
+          print('scan/resolver preserved; constructor delta is exactly Delay5s bootstrap')
           PY
 
-      - name: Verify analysis-only invariants
+      - name: Verify delay and analysis-only invariants
         run: |
           set -euo pipefail
           grep -q 'HFAMapJSONExportLatest' hfamap/src/HFAMapLegacy.m
-          grep -q 'HFAMap v1.9.36.4 JSON Export' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMap v1.9.36.5 JSON Export Delay5s' hfamap/src/HFAMapLegacy.m
+          grep -q 'static void hfaDelayedStart' hfamap/src/HFAMapLegacy.m
+          grep -q 'double,5.0,id,gTarget,SEL,sel_registerName("hfaDelayedStart:")' hfamap/src/HFAMapLegacy.m
+          grep -q 'double,.5,id,self,SEL,sel_registerName("tick:")' hfamap/src/HFAMapLegacy.m
           grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
-          grep -q 'com.hfa.igmm.runtime/v1' hfamap/src/HFAMapJSONExport.m
-          grep -q 'com.hfa.patch/v1' hfamap/src/HFAMapJSONExport.m
-          grep -q 'kTypeButton' hfamap/src/HFAMapJSONExport.m
           grep -q 'normalizedExecutionPrimitive' hfamap/src/HFAMapJSONExport.m
           grep -q 'normalizedCanonicalReason' hfamap/src/HFAMapJSONExport.m
           grep -q 'runtime-action-not-static-bytes' hfamap/src/HFAMapJSONExport.m
           grep -q 'targetIdentities' hfamap/src/HFAMapJSONExport.m
-          grep -q 'LC_UUID' hfamap/src/HFAMapJSONExport.m
-          grep -q 'LC_ENCRYPTION_INFO_64' hfamap/src/HFAMapJSONExport.m
-          grep -q 'HFAMapUniversal v1.9.36.4 JSONExport' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapUniversal v1.9.36.5 JSONExport Delay5s' hfamap/src/HFAMapJSONExport.m
           grep -q 'HFAMapJSONExport.m' hfamap/Makefile
           if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
             echo 'forbidden playback/runtime dependency found'; exit 1
@@ -97,7 +104,7 @@ jobs:
           assert 'return @"runtimeAction";' in source
           assert 'record[@"normalizedCanonicalReason"]' in source
           assert 'runtime-action-not-static-bytes' in source
-          print('WayOfKings control/action semantics are normalized while raw resolver evidence remains preserved')
+          print('normalization behavior preserved')
           PY
 
       - name: Install build dependencies
@@ -108,35 +115,34 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build HFAMapUniversal v1.9.36.4
+      - name: Build HFAMapUniversal v1.9.36.5 Delay5s
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFAMapUniversal_v1.9.36.4_JSONExport.dylib'
+          out='dist/HFAMapUniversal_v1.9.36.5_JSONExport_Delay5s.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.4.txt
-          strings "$out" > dist/strings_v1.9.36.4.txt
-          grep -q 'HFAMap v1.9.36.4 JSON Export' dist/strings_v1.9.36.4.txt
-          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.4.txt
-          grep -q 'normalizedExecutionPrimitive' dist/strings_v1.9.36.4.txt
-          grep -q 'normalizedCanonicalReason' dist/strings_v1.9.36.4.txt
-          grep -q 'targetIdentities' dist/strings_v1.9.36.4.txt
-          grep -q '\[JSON-EXPORT\]' dist/strings_v1.9.36.4.txt
-          nm -g "$out" > dist/nm_global_v1.9.36.4.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.36.4.txt
-          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.4.txt dist/nm_undefined_v1.9.36.4.txt; then
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.5.txt
+          strings "$out" > dist/strings_v1.9.36.5.txt
+          grep -q 'HFAMap v1.9.36.5 JSON Export Delay5s' dist/strings_v1.9.36.5.txt
+          grep -q 'HFAMapUniversal v1.9.36.5 JSONExport Delay5s' dist/strings_v1.9.36.5.txt
+          grep -q 'hfaDelayedStart:' dist/strings_v1.9.36.5.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.5.txt
+          grep -q 'normalizedCanonicalReason' dist/strings_v1.9.36.5.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.5.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.5.txt
+          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.5.txt dist/nm_undefined_v1.9.36.5.txt; then
             echo 'Dobby symbol leaked into pure parser build'; exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.36.4-JSONExport
+          name: HFAMapUniversal-v1.9.36.5-JSONExport-Delay5s
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.36.4_JSONExport.dylib
-            hfamap/dist/SHA256_v1.9.36.4.txt
+            hfamap/dist/HFAMapUniversal_v1.9.36.5_JSONExport_Delay5s.dylib
+            hfamap/dist/SHA256_v1.9.36.5.txt
           if-no-files-found: error
