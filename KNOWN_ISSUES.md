@@ -1,61 +1,70 @@
 # Known Issues
 
-## v1.9.34 CanonicalTruthGate
+## v1.9.35 MainImageTruth
 
-### v1.9.34 has not yet been device-tested
+### v1.9.35 main-executable resolver is not yet device-confirmed
 
 Status: open / primary validation gate.
 
-The source is committed, CI replay/regression/invariant checks pass, the arm64 dylib is compiled/signed, and the artifact hash is independently verified. Do not claim runtime behavior for the new canonical gate, identity sidecar, or iGMM diagnostic-only export until device logs/files are supplied.
+The candidate replaces all known `main -> dyld image index 0` assumptions with an `NSBundle.mainBundle.executablePath` + `MH_EXECUTE` resolver, and CI verifies the historical index-0 patterns are absent from the generated source. The dylib compiles, signs and passes regression checks, but device evidence is still required before the fix can be called runtime-confirmed.
 
-### iGMM runtime features are not canonical static patches
+### v1.9.34 main target identity/original bytes were wrong
 
-Status: intentionally unresolved, not silently converted.
+Status: confirmed defect / fixed in v1.9.35 candidate / device validation pending.
 
-Static analysis of the supplied iGMM target/menu pair confirms that multiple user-visible features can share native-hook infrastructure and use runtime numeric/state decisions. A fixed `target/offset/original/enabled` tuple is therefore not established merely because a hook target address is known.
+v1.9.34 device testing showed that `@main` resolved to `systemhook.dylib` because the identity writer hardcoded dyld image index 0. Source inspection also found the older `HFAImageIndexForName("main") -> 0` assumption, so runtime-record original-byte acquisition used the same wrong loaded image.
 
-v1.9.34 stops writing unresolved iGMM runtime-definition data as `com.hfa.patch/v1`. It emits `com.hfa.igmm.runtime/v1` diagnostics instead. A later version may promote an individual feature only if a real portable static equivalent is demonstrated.
+The exported package consequently contained unrelated bytes at statically confirmed executable patch offsets, including `4531454E53395F31` and `70726F706F736564`. Therefore the v1.9.34 runtime-record package is structurally canonical but not trusted as a byte-correct package.
 
-### Stale v1.9.33 package files can confuse device validation
+v1.9.35 routes both `main` and `@main` through the real `MH_EXECUTE` resolver and fails closed if the executable cannot be identified unambiguously.
+
+### iGMM runtime features remain non-canonical static patches
+
+Status: intentional / device behavior confirmed under v1.9.34.
+
+The supplied iGMM sample uses runtime numeric/native-hook behavior. v1.9.34 correctly exported four features only to `com.hfa.igmm.runtime/v1` diagnostics and produced no new iGMM `.hfapatch.json`. v1.9.35 preserves that policy.
+
+A future feature can enter `com.hfa.patch/v1` only after a real portable static `target/offset/original/enabled` equivalent is proven. Runtime hook metadata must not be converted into fabricated patch bytes.
+
+### Canonical structural validity is not sufficient
+
+Status: permanent verification rule.
+
+v1.9.34 demonstrated that a package can satisfy exact JSON keys, valid hex lengths and known target IDs while still reading bytes from the wrong Mach-O. Canonical acceptance therefore requires both:
+
+1. structural contract validation; and
+2. resolved target binary identity consistent with the declared target.
+
+For `@main`, the resolved image must be `MH_EXECUTE`.
+
+### Stale generated files can confuse device validation
 
 Status: test-environment hazard.
 
-Before testing v1.9.34, delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files. Otherwise an old iGMM `.hfapatch.json` can be mistaken for new output even though v1.9.34 no longer creates one through the iGMM fallback.
-
-### Binary identity is required for byte-level comparisons
-
-Status: addressed by sidecar, device verification pending.
-
-Offset similarity alone does not prove identical machine bytes across builds/slices. In particular, arm64 and arm64e can preserve similar function layout while differing in PAC-related instructions and original bytes.
-
-v1.9.34 writes canonical-target UUID, cputype/cpusubtype, architecture, preferred `__TEXT` VM address, slide and cryptid to `*.hfapatch.identity.json`. The sidecar must be checked before cross-file byte validation.
-
-### Canonical offset semantics must stay consistent
-
-Status: defined / device verification pending.
-
-The canonical offset field is a Mach-O preferred VM address. It is not a slid runtime address and not a file offset. Main executables can legitimately use `0x100...` preferred addresses while frameworks/dylibs may use lower values. Consumers must apply the image slide exactly once.
+Before testing v1.9.35, delete or move old generated `.hfapatch.json`, `.hfapatch.identity.json`, and `.hfamap.igmm.json` files. Otherwise a v1.9.34 package can be mistaken for the new candidate's output.
 
 ### Original-byte fallback branches remain incompletely runtime-exercised
 
 Status: open.
 
-The v1.9.33 readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks are preserved and CI-verified. Previous runtime testing recovered all observed originals through `vm-read`, so the fallback branches are still not device-confirmed.
+The readable-memory `memcpy` and cryptid-aware Mach-O file fallbacks from v1.9.33 remain compiled and CI-verified. The new v1.9.35 change does not rewrite those readers; it corrects the loaded-image index supplied to them. Their fallback branches still need dedicated runtime evidence if `vm-read` is insufficient on a future sample.
 
-### v1.9.34 has not been runtime-regression-tested on ~15 MB
+### v1.9.35 has not been runtime-regression-tested on ~15 MB
 
 Status: open.
 
-The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. CI preserves the canonical writer path, but the v1.9.34 binary itself has not yet been injected into the 15 MB target.
+The legacy AP/IGSecret family remains runtime-confirmed under v1.9.28. A current-binary 15 MB device regression is still required before v1.9.35 can be promoted as the cross-family runtime candidate.
 
 ### Generalization beyond supplied samples
 
 Status: open / future validation.
 
-The current architecture is grounded in one runtime-record 5 MB sample, one iGMM/native-hook 5 MB sample, and the legacy 15 MB family. Additional menu generations are still needed before claiming universal Jailpatch coverage.
+The architecture is currently grounded in one runtime-record 5 MB sample, one iGMM/native-hook 5 MB sample, and the legacy 15 MB family. Additional menu generations are still needed before claiming universal Jailpatch coverage.
 
 ### CI delivery
 
 Status: intentional.
 
-Verified binary: `HFAMapUniversal_v1.9.34_CanonicalTruthGate.dylib`, run `34824481536`, artifact `10339925211`, SHA256 `98d5643e1c72b049e647bd58fcf861ef1012a6efbf406fbb71fec7e36673863c`.
+Verified candidate binary: `HFAMapUniversal_v1.9.35_MainImageTruth.dylib`, successful run `34830471085`, artifact `10341533093`, SHA256 `93c3670206bea50278a9e78e8b14d6aa96abea830818fecc022d15168cf9cf3f`.
+
+The earlier v1.9.35 run `34830298479` failed before compilation because of a patch-script anchor mismatch and is not the authoritative build.
