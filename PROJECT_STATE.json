@@ -1,7 +1,7 @@
 {
   "project": "HFAMapUniversal",
   "version": "1.9.36",
-  "phase": "architecture-truth-device-validation",
+  "phase": "runtime-confirmed-5mb-canonical-truth-15mb-regression-pending",
   "branch": "feature/hfamap-v1936-architecture-truth",
   "base_branch": "feature/hfamap-v1935-main-image-truth",
   "base_commit": "9556c223646c4dda12d566a1e65b8a4394bbb59d",
@@ -33,24 +33,26 @@
     "no_package_architecture_index0_assumption": true,
     "sample_hardcode_check": "passed",
     "binary_sha256_check": "passed",
-    "device_runtime_v1936": "pending"
+    "device_runtime_v1936": "passed-on-supplied-two-5mb-samples"
   },
   "runtime": {
     "legacy_ap_15mb": "runtime-confirmed-package-exported-12-features-under-v1.9.28",
-    "jailpatch_v2_v1934_igmm": "device-confirmed-diagnostic-only-export-no-new-hfapatch-json",
-    "jailpatch_v2_v1935_runtime_record_scan": "device-confirmed-no-crash-decrypt-rc0-3-groups-8-valid-mappings",
-    "jailpatch_v2_v1935_main_identity": "device-confirmed-main-resolved-to-Dragons-prod-remote-nocheat-MH_EXECUTE-index1",
-    "jailpatch_v2_v1935_identity_sidecar": "device-confirmed-uuid-7E74523C-90F5-3D72-9A9C-108BDE23A4A8-arm64-cpusubtype0-textvm-0x100000000-cryptid0",
-    "jailpatch_v2_v1935_original_bytes": "device-confirmed-8-of-8-from-real-game-executable-and-static-file-verified-8-of-8-against-same-uuid-macho",
-    "jailpatch_v2_v1935_package_architecture": "device-failed-metadata-still-reported-arm64e-from-dyld-index0",
-    "jailpatch_v2_v1936": "compiled-ci-passed-awaiting-device-validation",
-    "v1936_on_15mb": "not-device-regression-tested"
+    "jailpatch_v2_v1936_runtime_record_scan": "device-confirmed-no-crash-decrypt-rc0-3-groups-8-valid-mappings",
+    "jailpatch_v2_v1936_main_identity": "device-confirmed-main-resolved-to-Dragons-prod-remote-nocheat-MH_EXECUTE-index1",
+    "jailpatch_v2_v1936_identity_sidecar": "device-confirmed-uuid-7E74523C-90F5-3D72-9A9C-108BDE23A4A8-arm64-cpusubtype0-textvm-0x100000000-cryptid0",
+    "jailpatch_v2_v1936_original_bytes": "device-confirmed-8-of-8-from-real-game-executable-and-identical-to-v1935-records-previously-static-verified-8-of-8-against-same-uuid-macho",
+    "jailpatch_v2_v1936_package_architecture": "device-confirmed-package-arch-arm64-from-canonical-targets",
+    "jailpatch_v2_v1936_canonical_package": "device-confirmed-schema-v1-exact-keysets-3-features-8-patches-architectures-arm64",
+    "jailpatch_v2_v1936_igmm": "device-confirmed-diagnostic-only-4-runtime-primitives-no-new-hfapatch-json",
+    "v1936_on_15mb": "not-device-regression-tested",
+    "consumer_playback_v1936": "not-yet-validated"
   },
   "runtime_evidence": {
-    "v1935_main_resolution": "PACKAGE-ORIGINAL records resolved module=main to imageIndex=1 image=Dragons-prod-remote-nocheat filetype=2 for all eight mappings. TARGET-IDENTITY resolved the same executable with UUID 7E74523C-90F5-3D72-9A9C-108BDE23A4A8, architecture arm64, cpusubtype 0, preferredTextVMAddr 0x100000000 and cryptid 0.",
-    "v1935_static_byte_crosscheck": "The identity UUID exactly matches the previously supplied Dragons-prod-remote-nocheat Mach-O. Mapping all eight preferred VM addresses back to that file produced byte-for-byte matches for every exported original: 8/8 verified.",
-    "v1935_architecture_metadata_failure": "Despite the correct target identity, package.architectures still contained arm64e. Source inspection found HFAWritePatchPackage still derived architecture from _dyld_get_image_header(0), the same positional assumption already removed from main target resolution.",
-    "v1936_fix": "HFAWritePatchPackage now derives one agreed ARM64 architecture from the actual canonical targets resolved through HFAImageIndexForName. Unresolved, non-ARM64 or mixed target architectures fail closed. The proven v1.9.35 main/original/identity path is protected unchanged."
+    "v1936_runtime_record": "MAIN-IMAGE-RESOLVE resolved bundle-executable index=1 image=Dragons-prod-remote-nocheat filetype=MH_EXECUTE. All eight PACKAGE-ORIGINAL records used that image with filetype=2 and source=vm-read. FULL-SCAN-END reported groups=3 mappings=8 valid=8 unresolved=0 packageFeatures=3; CANONICAL-CHECK passed for 3 features / 8 patches / 1 target.",
+    "v1936_identity": "TARGET-IDENTITY resolved UUID 7E74523C-90F5-3D72-9A9C-108BDE23A4A8, architecture arm64, cpusubtype 0, preferredTextVMAddr 0x100000000 and cryptid 0. Only ASLR slide changed between runs, as expected.",
+    "v1936_architecture_truth": "PACKAGE-ARCH reported status=pass architecture=arm64 targets=1 source=canonical-targets, and the persisted package.architectures is exactly [arm64]. The v1.9.35 arm64e metadata defect is resolved on device.",
+    "v1936_package_parity": "The persisted com.hfa.patch/v1 root, feature and patch keysets exactly match the canonical contract. The 3 features and 8 patch records are otherwise identical to v1.9.35; the only formal package change is architectures arm64e -> arm64. Original/enabled lengths remain equal and values differ for every patch.",
+    "v1936_igmm_regression": "WayOfKings emitted four com.hfa.igmm.runtime/v1 features: Damage/Defence as numericRuntimeModifier and God Mode/Button as nativeHook, all canonicalEligible=false. No new .hfapatch.json was generated by the iGMM path."
   },
   "outputs": [
     "Documents/HFAMap_Learn.log",
@@ -61,5 +63,5 @@
     "*.hfapatch.identity.json for canonical target identity",
     "*.hfamap.igmm.json for iGMM runtime diagnostics"
   ],
-  "next_task": "Clear old outputs and device-test v1.9.36 on the Dragons/runtime-record sample. Require MAIN-IMAGE-RESOLVE and all eight PACKAGE-ORIGINAL records to remain on the real MH_EXECUTE game image, CANONICAL-CHECK to remain 3 features / 8 patches, PACKAGE-ARCH to report status=pass architecture=arm64 source=canonical-targets, package.architectures to be [arm64], identity sidecar to remain UUID/cpusubtype/textVM-correct, and the eight originals to remain byte-identical to the same-UUID Mach-O. Then regression-test the WayOfKings diagnostic-only path and later the 15 MB family."
+  "next_task": "Treat v1.9.36 as the current confirmed 5 MB checkpoint. Do not reopen the proven main/original/architecture path unless new evidence contradicts it. Next, inject the same v1.9.36 binary into the legacy ~15 MB target and verify the existing 12-feature canonical package still exports correctly. After that, perform consumer-level playback of a v1.9.36 static package. iGMM runtime primitives remain non-canonical until a portable static equivalent is actually proven."
 }
