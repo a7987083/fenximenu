@@ -1,4 +1,4 @@
-name: HFAMapUniversal v1.9.36.5 JSONExport Delay5s
+name: HFAMapUniversal v1.9.36.6 JSONExport LazyScan
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate stable v1.9.36 then JSONExport Delay5s layer
+      - name: Generate stable v1.9.36 then JSONExport LazyScan layer
         run: |
           python3 .github/scripts/apply_hfamap_v1936_chain.py
           cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.v1936.m
@@ -31,10 +31,11 @@ jobs:
           python3 .github/scripts/hfamap_v19361_json_export.py
           git diff --check
 
-      - name: Verify parser core and exact startup-delay delta
+      - name: Verify parser core and manual-only runtime discovery
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           def fn(text, signature):
               start=text.index(signature); brace=text.index('{', start); depth=0
               for i in range(brace, len(text)):
@@ -43,44 +44,70 @@ jobs:
                       depth-=1
                       if depth==0: return text[start:i+1]
               raise RuntimeError(signature)
+
           before=Path('/tmp/HFAMapLegacy.v1936.m').read_text()
           after=Path('hfamap/src/HFAMapLegacy.m').read_text()
           if fn(before,'static unsigned int run_full_scan(void)') != fn(after,'static unsigned int run_full_scan(void)'):
               raise SystemExit('v1.9.36 protected run_full_scan changed')
+
           before_ctor=fn(before,'__attribute__((constructor)) static void init(void)')
           after_ctor=fn(after,'__attribute__((constructor)) static void init(void)')
           added='class_addMethod(c,sel_registerName("hfaDelayedStart:"),(IMP)hfaDelayedStart,"v@:@");'
           old_timer='if(t&&gTarget)M5(id,(id)t,"scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",double,.5,id,gTarget,SEL,sel_registerName("tick:"),id,(id)0,BOOL,1);'
           new_timer='if(t&&gTarget)M5(id,(id)t,"scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",double,5.0,id,gTarget,SEL,sel_registerName("hfaDelayedStart:"),id,(id)0,BOOL,0);'
           if after_ctor.count(added) != 1 or after_ctor.count(new_timer) != 1:
-              raise SystemExit('expected exact 5-second constructor delta missing')
+              raise SystemExit('expected exact 5-second UI bootstrap delta missing')
           normalized=after_ctor.replace(added,'',1).replace(new_timer,old_timer,1)
           if normalized != before_ctor:
-              raise SystemExit('constructor changed beyond intentional 5-second startup delay')
+              raise SystemExit('legacy constructor changed beyond intentional UI-delay bootstrap')
+
           before_trace=Path('/tmp/HFAMapPatchExecutionTrace.v1936.m').read_text()
           after_trace=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
-          if before_trace != after_trace:
-              raise SystemExit('v1.9.36 trace/resolver core changed')
-          print('scan/resolver preserved; constructor delta is exactly Delay5s bootstrap')
+          ctor_sig='__attribute__((constructor)) static void HFAInit(void)'
+          lazy_sig='void HFAPatchTracePrepareForManualScan(void)'
+          old_trace_ctor=fn(before_trace,ctor_sig)
+          new_trace_ctor=fn(after_trace,ctor_sig)
+          lazy=fn(after_trace,lazy_sig)
+          if '_dyld_register_func_for_add_image' in new_trace_ctor:
+              raise SystemExit('trace constructor still registers dyld add-image callback')
+          if 'HFAInstallDynamicRegistrationHooks' in new_trace_ctor or 'objc_getClassList' in new_trace_ctor:
+              raise SystemExit('trace constructor still performs class/runtime discovery')
+          if new_trace_ctor != '__attribute__((constructor)) static void HFAInit(void) {\n}':
+              raise SystemExit('trace constructor is not passive')
+          required = ('_dyld_image_count()', '_dyld_get_image_header(i)',
+                      '_dyld_get_image_vmaddr_slide(i)', 'HFANativeImageAdded(header, slide)',
+                      'HFAInstallDynamicRegistrationHooks()', '[LAZY-SCAN-PREPARE]')
+          for token in required:
+              if token not in lazy:
+                  raise SystemExit(f'lazy preparation missing {token}')
+          expected_trace=before_trace.replace(old_trace_ctor, lazy+'\n\n'+new_trace_ctor, 1)
+          if expected_trace != after_trace:
+              raise SystemExit('trace/resolver changed beyond manual LazyScan relocation')
+
+          attach=fn(after,'static void attach(id self,SEL c,id sender)')
+          order='HFAPatchTracePrepareForManualScan();unsigned int valid=run_full_scan();'
+          if order not in attach:
+              raise SystemExit('manual preparation is not immediately before Full Scan')
+          print('parser preserved; startup discovery removed; runtime discovery is manual Full Scan only')
           PY
 
-      - name: Verify delay and analysis-only invariants
+      - name: Verify LazyScan and analysis-only invariants
         run: |
           set -euo pipefail
-          grep -q 'HFAMapJSONExportLatest' hfamap/src/HFAMapLegacy.m
-          grep -q 'HFAMap v1.9.36.5 JSON Export Delay5s' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAPatchTracePrepareForManualScan' hfamap/src/HFAMapLegacy.m
+          grep -q 'HFAMap v1.9.36.6 JSON Export LazyScan' hfamap/src/HFAMapLegacy.m
           grep -q 'static void hfaDelayedStart' hfamap/src/HFAMapLegacy.m
           grep -q 'double,5.0,id,gTarget,SEL,sel_registerName("hfaDelayedStart:")' hfamap/src/HFAMapLegacy.m
-          grep -q 'double,.5,id,self,SEL,sel_registerName("tick:")' hfamap/src/HFAMapLegacy.m
+          grep -q '\[LAZY-SCAN-PREPARE\]' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFANativeImageAdded(header, slide)' hfamap/src/HFAMapPatchExecutionTrace.m
           grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
           grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
           grep -q 'normalizedExecutionPrimitive' hfamap/src/HFAMapJSONExport.m
           grep -q 'normalizedCanonicalReason' hfamap/src/HFAMapJSONExport.m
-          grep -q 'runtime-action-not-static-bytes' hfamap/src/HFAMapJSONExport.m
           grep -q 'targetIdentities' hfamap/src/HFAMapJSONExport.m
-          grep -q 'HFAMapUniversal v1.9.36.5 JSONExport Delay5s' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapUniversal v1.9.36.6 JSONExport LazyScan' hfamap/src/HFAMapJSONExport.m
           grep -q 'HFAMapJSONExport.m' hfamap/Makefile
-          if grep -Eq 'DobbyHook|libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
+          if grep -Eq 'libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src/HFAMapJSONExport.m hfamap/Makefile; then
             echo 'forbidden playback/runtime dependency found'; exit 1
           fi
           if grep -q '__attribute__((constructor))' hfamap/src/HFAMapJSONExport.m; then
@@ -115,34 +142,38 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build HFAMapUniversal v1.9.36.5 Delay5s
+      - name: Build HFAMapUniversal v1.9.36.6 LazyScan
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFAMapUniversal_v1.9.36.5_JSONExport_Delay5s.dylib'
+          out='dist/HFAMapUniversal_v1.9.36.6_JSONExport_LazyScan.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.5.txt
-          strings "$out" > dist/strings_v1.9.36.5.txt
-          grep -q 'HFAMap v1.9.36.5 JSON Export Delay5s' dist/strings_v1.9.36.5.txt
-          grep -q 'HFAMapUniversal v1.9.36.5 JSONExport Delay5s' dist/strings_v1.9.36.5.txt
-          grep -q 'hfaDelayedStart:' dist/strings_v1.9.36.5.txt
-          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.5.txt
-          grep -q 'normalizedCanonicalReason' dist/strings_v1.9.36.5.txt
-          nm -g "$out" > dist/nm_global_v1.9.36.5.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.36.5.txt
-          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.5.txt dist/nm_undefined_v1.9.36.5.txt; then
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.6.txt
+          strings "$out" > dist/strings_v1.9.36.6.txt
+          grep -q 'HFAMap v1.9.36.6 JSON Export LazyScan' dist/strings_v1.9.36.6.txt
+          grep -q 'HFAMapUniversal v1.9.36.6 JSONExport LazyScan' dist/strings_v1.9.36.6.txt
+          grep -q '\[LAZY-SCAN-PREPARE\]' dist/strings_v1.9.36.6.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.6.txt
+          grep -q 'normalizedCanonicalReason' dist/strings_v1.9.36.6.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.6.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.6.txt
+          grep -q '_HFAPatchTracePrepareForManualScan' dist/nm_global_v1.9.36.6.txt
+          if grep -q '__dyld_register_func_for_add_image\|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.36.6.txt; then
+            echo 'startup dyld add-image callback dependency still present'; exit 1
+          fi
+          if grep -Eq '_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.6.txt dist/nm_undefined_v1.9.36.6.txt; then
             echo 'Dobby symbol leaked into pure parser build'; exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.36.5-JSONExport-Delay5s
+          name: HFAMapUniversal-v1.9.36.6-JSONExport-LazyScan
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.36.5_JSONExport_Delay5s.dylib
-            hfamap/dist/SHA256_v1.9.36.5.txt
+            hfamap/dist/HFAMapUniversal_v1.9.36.6_JSONExport_LazyScan.dylib
+            hfamap/dist/SHA256_v1.9.36.6.txt
           if-no-files-found: error
