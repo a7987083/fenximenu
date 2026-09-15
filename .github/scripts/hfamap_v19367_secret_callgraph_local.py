@@ -3,16 +3,25 @@ from pathlib import Path
 path = Path('hfamap/src/HFAMapSecretCallGraphProbe.m')
 s = path.read_text()
 
-extern_anchor = '#endif\n\nstatic int gKey2PathDone;\n'
-extern_decl = (
-    '#endif\n\n'
-    'extern unsigned HFAAppLocalCopyClassesForImage(const char *image, Class *buffer, unsigned capacity);\n\n'
-    'static int gKey2PathDone;\n'
-)
-if 'extern unsigned HFAAppLocalCopyClassesForImage' not in s:
-    if s.count(extern_anchor) != 1:
-        raise SystemExit(f'extern anchor expected once, got {s.count(extern_anchor)}')
-    s = s.replace(extern_anchor, extern_decl, 1)
+# Remove the historical #if 0 Key2 early-listener implementation entirely.
+# Although dead at compile time, it still contains a persistent
+# _dyld_register_func_for_add_image path and sample-specific RiseofBerk offsets.
+# v1.9.36.7 keeps no such process-wide/dyld-startup discovery even as dormant
+# source: all discovery must be app-local and explicit.
+dead_start = s.find('#if 0\n')
+dead_end_marker = '\n#endif\n\nstatic int gKey2PathDone;\n'
+if dead_start >= 0:
+    dead_end = s.find(dead_end_marker, dead_start)
+    if dead_end < 0:
+        raise SystemExit('disabled Key2 block end not found')
+    s = (
+        s[:dead_start]
+        + 'extern unsigned HFAAppLocalCopyClassesForImage(const char *image, Class *buffer, unsigned capacity);\n\n'
+        + 'static int gKey2PathDone;\n'
+        + s[dead_end + len(dead_end_marker):]
+    )
+elif 'extern unsigned HFAAppLocalCopyClassesForImage' not in s:
+    raise SystemExit('disabled Key2 block already absent but app-local declaration missing')
 
 start = s.find('static void HFALogMethodsForNodes(uintptr_t base, const char *image,')
 if start < 0:
@@ -72,8 +81,9 @@ replacement = r'''static void HFALogMethodsForNodes(uintptr_t base, const char *
 
 s = s[:start] + replacement + s[end:]
 
-if 'objc_getClassList' in s:
-    raise SystemExit('HFAMapSecretCallGraphProbe still contains objc_getClassList')
+for forbidden in ('objc_getClassList', '_dyld_register_func_for_add_image'):
+    if forbidden in s:
+        raise SystemExit(f'HFAMapSecretCallGraphProbe still contains {forbidden}')
 
 path.write_text(s)
-print('patched SecretCallGraphProbe to app-local image class discovery')
+print('patched SecretCallGraphProbe to app-local image classes; removed dormant dyld listener')
