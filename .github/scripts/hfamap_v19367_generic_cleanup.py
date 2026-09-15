@@ -34,6 +34,7 @@ def remove_function(text, name):
 obsolete = (
     'HFASeenClass',
     'HFALogMethod',
+    'HFABytesContain',
     'HFAImageContainsCString',
     'HFAShouldScanImage',
 )
