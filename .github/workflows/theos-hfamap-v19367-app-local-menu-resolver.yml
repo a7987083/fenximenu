@@ -9,6 +9,7 @@ on:
       - '.github/scripts/hfamap_v19367_app_local_menu_resolver.py'
       - '.github/scripts/hfamap_v19367_dynamic_apply_local.py'
       - '.github/scripts/hfamap_v19367_secret_callgraph_local.py'
+      - '.github/scripts/hfamap_v19367_ui_cleanup.py'
       - '.github/scripts/hfamap_v19361_json_export.py'
       - '.github/scripts/hfamap_v*.py'
       - '.github/scripts/apply_hfamap_v1933_chain.py'
@@ -36,6 +37,7 @@ jobs:
           python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
           python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
           python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
           git diff --check
 
       - name: Verify protected parser and AppLocal architecture
@@ -106,6 +108,9 @@ jobs:
           fi
           if grep -q '__attribute__((constructor))' hfamap/src/HFAMapCyberUI.m hfamap/src/HFAMapAppLocalResolver.m hfamap/src/HFAMapJSONExport.m; then
             echo 'new AppLocal/UI/exporter layer must not add constructors'; exit 1
+          fi
+          if grep -q 'gStatus\|mklabel(\|settext(' hfamap/src/HFAMapLegacy.m; then
+            echo 'obsolete legacy panel helpers remain after Cyber UI migration'; exit 1
           fi
 
       - name: Verify analysis-only and family invariants
