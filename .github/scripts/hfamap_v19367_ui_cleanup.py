@@ -1,7 +1,8 @@
 from pathlib import Path
 
-path = Path('hfamap/src/HFAMapLegacy.m')
-s = path.read_text()
+legacy_path = Path('hfamap/src/HFAMapLegacy.m')
+cyber_path = Path('hfamap/src/HFAMapCyberUI.m')
+s = legacy_path.read_text()
 
 old_globals = 'static id gTarget=0,gButton=0,gPanel=0,gWindow=0,gStatus=0;'
 new_globals = 'static id gTarget=0,gButton=0,gPanel=0,gWindow=0;'
@@ -43,5 +44,25 @@ for forbidden in ('gStatus', 'mklabel(', 'settext('):
     if forbidden in s:
         raise SystemExit(f'legacy UI cleanup incomplete: {forbidden}')
 
-path.write_text(s)
-print('removed obsolete v1.9.36 panel status/label helpers after Cyber UI migration')
+legacy_path.write_text(s)
+
+# Keep the user-approved Courier look, but use iOS 12-safe fallbacks. The
+# project deployment target is iOS 12, while monospacedSystemFontOfSize:weight:
+# is iOS 13+. CourierNew remains the first choice, so the appearance is unchanged
+# on normal devices; only the fallback API changes.
+cyber = cyber_path.read_text()
+replacements = {
+    '[UIFont fontWithName:@"CourierNewPSMT" size:11.0] ?: [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular]':
+        '[UIFont fontWithName:@"CourierNewPSMT" size:11.0] ?: [UIFont systemFontOfSize:11.0]',
+    '[UIFont fontWithName:@"CourierNewPS-BoldMT" size:13.0] ?: [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightBold]':
+        '[UIFont fontWithName:@"CourierNewPS-BoldMT" size:13.0] ?: [UIFont boldSystemFontOfSize:13.0]',
+}
+for old, new in replacements.items():
+    if old not in cyber:
+        raise SystemExit(f'Cyber UI font fallback pattern missing: {old}')
+    cyber = cyber.replace(old, new)
+if 'monospacedSystemFontOfSize:' in cyber:
+    raise SystemExit('iOS 13-only monospaced font fallback remains in Cyber UI')
+cyber_path.write_text(cyber)
+
+print('removed obsolete legacy panel helpers; patched Cyber UI font fallbacks for iOS 12')
