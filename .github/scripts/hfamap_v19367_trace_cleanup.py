@@ -31,19 +31,22 @@ def remove_function(text, name):
         pos = i + len(needle)
 
 # v1.9.36.7 no longer installs process-wide dynamic-registration discovery.
-# Remove the complete obsolete registration helper chain rather than retaining
-# unreachable callbacks/recorders that can both trigger -Werror and invite
-# accidental reintroduction of process-wide class discovery later.
-for fn in ('HFADynamicRegistration4',
-           'HFAInstallDynamicRegistrationHooks',
-           'HFARecordDynamicRegistration'):
+# Remove the complete obsolete helper chain. Do not fake-call dead functions to
+# satisfy -Werror: that risks reactivating the exact discovery mechanism this
+# version is designed to eliminate.
+obsolete = (
+    'HFADynamicRegistration4',
+    'HFAInstallDynamicRegistrationHooks',
+    'HFARecordDynamicRegistration',
+    'HFADynamicRegistrationHookFor',
+    'HFACopyNSString',
+)
+for fn in obsolete:
     s = remove_function(s, fn)
 
-for forbidden in ('HFADynamicRegistration4(',
-                  'HFAInstallDynamicRegistrationHooks(',
-                  'HFARecordDynamicRegistration('):
-    if forbidden in s:
-        raise SystemExit(f'trace cleanup incomplete: {forbidden}')
+for fn in obsolete:
+    if fn + '(' in s:
+        raise SystemExit(f'trace cleanup incomplete: {fn}')
 
 path.write_text(s)
-print('removed obsolete dynamic-registration callback/install/record chain')
+print('removed complete obsolete dynamic-registration helper chain')
