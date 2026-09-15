@@ -10,6 +10,7 @@ on:
       - '.github/scripts/hfamap_v19367_dynamic_apply_local.py'
       - '.github/scripts/hfamap_v19367_secret_callgraph_local.py'
       - '.github/scripts/hfamap_v19367_ui_cleanup.py'
+      - '.github/scripts/hfamap_v19367_trace_cleanup.py'
       - '.github/scripts/hfamap_v19361_json_export.py'
       - '.github/scripts/hfamap_v*.py'
       - '.github/scripts/apply_hfamap_v1933_chain.py'
@@ -38,6 +39,7 @@ jobs:
           python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
           python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
           python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
           git diff --check
 
       - name: Verify protected parser and AppLocal architecture
@@ -89,6 +91,9 @@ jobs:
           grep -q 'processWideClassScan=0' hfamap/src/HFAMapGenericMenuResolver.m
           if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
             echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+          if grep -q 'HFADynamicRegistration4\|HFAInstallDynamicRegistrationHooks' hfamap/src/HFAMapPatchExecutionTrace.m; then
+            echo 'obsolete dynamic registration path remains'; exit 1
           fi
 
       - name: Verify user-approved UI only
