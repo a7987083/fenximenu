@@ -1,0 +1,180 @@
+name: HFAMapUniversal v1.9.36.7 AppLocalMenuResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19367-app-local-menu-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v19367_app_local_menu_resolver.py'
+      - '.github/scripts/hfamap_v19361_json_export.py'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v1933_chain.py'
+      - '.github/scripts/apply_hfamap_v1934_chain.py'
+      - '.github/scripts/apply_hfamap_v1935_chain.py'
+      - '.github/scripts/apply_hfamap_v1936_chain.py'
+      - '.github/workflows/theos-hfamap-v19367-app-local-menu-resolver.yml'
+      - 'tests/igmm_control_kind_fixture.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.36.7 AppLocalMenuResolver
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.v1936.m
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          cp hfamap/src/HFAMapLegacy.m /tmp/HFAMapLegacy.v19366.m
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          git diff --check
+
+      - name: Verify protected parser and AppLocal architecture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def fn(text, signature):
+              start=text.index(signature); brace=text.index('{', start); depth=0
+              for i in range(brace, len(text)):
+                  if text[i]=='{': depth+=1
+                  elif text[i]=='}':
+                      depth-=1
+                      if depth==0: return text[start:i+1]
+              raise RuntimeError(signature)
+
+          frozen=Path('/tmp/HFAMapLegacy.v1936.m').read_text()
+          current=Path('hfamap/src/HFAMapLegacy.m').read_text()
+          if fn(frozen,'static unsigned int run_full_scan(void)') != fn(current,'static unsigned int run_full_scan(void)'):
+              raise SystemExit('protected v1.9.36 run_full_scan changed')
+          ctor=fn(current,'__attribute__((constructor)) static void init(void)')
+          if 'hfaDelayedStart:' not in ctor or 'double,5.0' not in ctor:
+              raise SystemExit('five-second UI bootstrap is not preserved')
+          if 'HFACyberUICreatePanel' not in fn(current,'static void mkui(id w)'):
+              raise SystemExit('Cyber UI panel not wired into existing window bootstrap')
+          if 'HFACyberUIToggle' not in fn(current,'static void tap(id self,SEL c,id s)'):
+              raise SystemExit('floating HF button does not toggle Cyber UI')
+          bridge=fn(current,'unsigned int HFAAppLocalExecuteParser(void)')
+          for token in ('HFAAppLocalPrimaryImage', 'HFAAppLocalInspectCandidates',
+                        'HFAPatchTracePrepareForManualScan', 'run_full_scan()',
+                        'HFAMapJSONExportLatest'):
+              if token not in bridge: raise SystemExit(f'parser bridge missing {token}')
+          print('protected parser unchanged; Cyber UI and AppLocal bridge verified')
+          PY
+
+      - name: Verify no process-wide ObjC class enumeration
+        run: |
+          set -euo pipefail
+          if grep -R -n 'objc_getClassList' hfamap/src; then
+            echo 'process-wide objc_getClassList remains in generated source'; exit 1
+          fi
+          grep -q 'HFAAppLocalCopyClassesForImage' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q '__objc_classlist' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q '__objc_nlclslist' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'bundlePath' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'Frameworks' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'com.hfa.app-local-candidates/v1' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'processWideClassScan=0' hfamap/src/HFAMapGenericMenuResolver.m
+          if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+
+      - name: Verify user-approved UI only
+        run: |
+          set -euo pipefail
+          grep -q 'HFAMap AppLocalMenuResolver' hfamap/src/HFAMapCyberUI.m
+          grep -q '扫描菜单模块' hfamap/src/HFAMapCyberUI.m
+          grep -q '解析并导出' hfamap/src/HFAMapCyberUI.m
+          grep -q 'UITextView' hfamap/src/HFAMapCyberUI.m
+          grep -q 'magentaColor' hfamap/src/HFAMapCyberUI.m
+          grep -q 'cyanColor' hfamap/src/HFAMapCyberUI.m
+          if grep -q '%hook UIApplication\|applicationDidBecomeActive' hfamap/src/HFAMapCyberUI.m; then
+            echo 'forbidden lifecycle hook copied from UI sample'; exit 1
+          fi
+          if grep -q 'UIWindowLevelStatusBar' hfamap/src/HFAMapCyberUI.m; then
+            echo 'forbidden standalone high-level UIWindow copied from UI sample'; exit 1
+          fi
+          if grep -q '__attribute__((constructor))' hfamap/src/HFAMapCyberUI.m hfamap/src/HFAMapAppLocalResolver.m hfamap/src/HFAMapJSONExport.m; then
+            echo 'new AppLocal/UI/exporter layer must not add constructors'; exit 1
+          fi
+
+      - name: Verify analysis-only and family invariants
+        run: |
+          set -euo pipefail
+          grep -q 'HFAMapUniversal v1.9.36.7 AppLocalMenuResolver' hfamap/src/HFAMapJSONExport.m
+          grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'analysisOnly' hfamap/src/HFAMapJSONExport.m
+          grep -q 'normalizedExecutionPrimitive' hfamap/src/HFAMapJSONExport.m
+          grep -q 'normalizedCanonicalReason' hfamap/src/HFAMapJSONExport.m
+          grep -q 'src/HFAMapAppLocalResolver.m' hfamap/Makefile
+          grep -q 'src/HFAMapCyberUI.m' hfamap/Makefile
+          grep -q 'QuartzCore' hfamap/Makefile
+          if grep -R -E -n 'libdobby|HFAPatchConsumer|HFAPatchPlayback.command|runtime takeover|RUNTIME-TAKEOVER' hfamap/src hfamap/Makefile; then
+            echo 'forbidden playback/runtime dependency found'; exit 1
+          fi
+
+      - name: Verify WayOfKings normalization fixture
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          fixture=json.loads(Path('tests/igmm_control_kind_fixture.json').read_text())
+          by_title={f['title']:f for f in fixture['features']}
+          assert by_title['Damage Multiplier']['type']=='modtext'
+          assert by_title['Defence Multiplier']['type']=='modtext'
+          assert by_title['God Mode']['type']=='customSwitch'
+          assert by_title['Debug Menu']['type']=='kTypeButton'
+          source=Path('hfamap/src/HFAMapJSONExport.m').read_text()
+          assert '[type isEqualToString:@"kTypeButton"]' in source
+          assert '[implementationKind isEqualToString:@"buttonBlock"]' in source
+          assert 'return @"runtimeAction";' in source
+          assert 'record[@"normalizedCanonicalReason"]' in source
+          assert 'runtime-action-not-static-bytes' in source
+          print('WayOfKings normalization preserved')
+          PY
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.36.7
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.36.7_AppLocalMenuResolver.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.7.txt
+          strings "$out" > dist/strings_v1.9.36.7.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.7.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.7.txt
+          grep -q 'HFAMap AppLocalMenuResolver' dist/strings_v1.9.36.7.txt
+          grep -q 'com.hfa.app-local-candidates/v1' dist/strings_v1.9.36.7.txt
+          grep -q 'HFAMapUniversal v1.9.36.7 AppLocalMenuResolver' dist/strings_v1.9.36.7.txt
+          grep -q 'com.hfa.menu.analysis/v1' dist/strings_v1.9.36.7.txt
+          grep -q '_HFAAppLocalScanCandidates' dist/nm_global_v1.9.36.7.txt
+          grep -q '_HFAAppLocalExecuteParser' dist/nm_global_v1.9.36.7.txt
+          if grep -Eq '_objc_getClassList|__dyld_register_func_for_add_image|_dyld_register_func_for_add_image|_Dobby(Hook|Destroy)' dist/nm_global_v1.9.36.7.txt dist/nm_undefined_v1.9.36.7.txt; then
+            echo 'forbidden process-wide/runtime symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.36.7-AppLocalMenuResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.36.7_AppLocalMenuResolver.dylib
+            hfamap/dist/SHA256_v1.9.36.7.txt
+          if-no-files-found: error
