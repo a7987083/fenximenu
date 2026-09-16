@@ -17,13 +17,17 @@ if declaration not in legacy:
     if anchor not in legacy:
         raise SystemExit('legacy primary image declaration missing')
     legacy = legacy.replace(anchor, anchor + declaration, 1)
-
-# These helpers are retained only as compile-time quarantined historical code.
-# The clean production entry point never calls them. Marking them unused keeps
-# Clang -Werror strict while allowing the final Mach-O dead-code gate to prove
-# they are not emitted.
 legacy = legacy.replace('static unsigned int run_full_scan(void){',
                         'static __attribute__((unused)) unsigned int run_full_scan(void){', 1)
 legacy = legacy.replace('static void tryhook(void){',
                         'static __attribute__((unused)) void tryhook(void){', 1)
 legacy_path.write_text(legacy)
+
+# v19367 generic cleanup intentionally removed the class-registry cache. Keep
+# the v19370 generation-local reset limited to state that still exists after
+# that cleanup rather than reintroducing process-wide class bookkeeping.
+generic_path = Path('hfamap/src/HFAMapGenericMenuResolver.m')
+generic = generic_path.read_text()
+generic = generic.replace('    memset(gSeenClasses, 0, sizeof(gSeenClasses));\n', '')
+generic = generic.replace('    gSeenClassCount = 0;\n', '')
+generic_path.write_text(generic)
