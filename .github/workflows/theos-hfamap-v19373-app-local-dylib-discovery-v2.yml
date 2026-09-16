@@ -39,6 +39,7 @@ jobs:
           cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before
           cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/profiler.before
           cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/trace.before
+          python3 .github/scripts/hfamap_v19374_prepare_patch.py
           python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
           git diff --check
 
