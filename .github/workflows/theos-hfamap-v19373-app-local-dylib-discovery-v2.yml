@@ -52,6 +52,7 @@ jobs:
           grep -q '\[SELECT-WAIT\]' hfamap/src/HFAMapAppLocalResolver.m
           grep -q '\[MANUAL-SELECT\]' hfamap/src/HFAMapAppLocalResolver.m
           grep -q 'showCandidateSelector' hfamap/src/HFAMapCyberUI.m
+          grep -q '\[SELECTOR-OPEN\]' hfamap/src/HFAMapCyberUI.m
           grep -q '请先扫描并手动选择一个菜单 dylib' hfamap/src/HFAMapCyberUI.m
           grep -q 'v1.9.37.4 ManualCandidateSelection ready' hfamap/src/HFAMapCyberUI.m
           if grep -q '\[SELECT\] primary=' hfamap/src/HFAMapAppLocalResolver.m; then
@@ -100,11 +101,11 @@ jobs:
           shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.4.txt
           strings "$out" > dist/strings_v1.9.37.4.txt
           nm -u "$out" > dist/nm_undefined_v1.9.37.4.txt
-          grep -q 'v1.9.37.4 ManualCandidateSelection' dist/strings_v1.9.37.4.txt
-          grep -q '\[DEPENDENCY\]' dist/strings_v1.9.37.4.txt
-          grep -q '\[SELECT-WAIT\]' dist/strings_v1.9.37.4.txt
-          grep -q '\[MANUAL-SELECT\]' dist/strings_v1.9.37.4.txt
-          grep -q '\[SELECTOR\]' dist/strings_v1.9.37.4.txt
+          grep -q 'v1.9.37.4 ManualCandidateSelection' dist/strings_v1.9.37.4.txt || { echo 'version marker missing'; exit 1; }
+          grep -q '\[DEPENDENCY\]' dist/strings_v1.9.37.4.txt || { echo 'dependency marker missing'; exit 1; }
+          grep -q '\[SELECT-WAIT\]' dist/strings_v1.9.37.4.txt || { echo 'select-wait marker missing'; exit 1; }
+          grep -q '\[MANUAL-SELECT\]' dist/strings_v1.9.37.4.txt || { echo 'manual-select marker missing'; exit 1; }
+          grep -q '\[SELECTOR-OPEN\]' dist/strings_v1.9.37.4.txt || { echo 'selector-open marker missing'; exit 1; }
           if grep -Eq '_objc_getClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.4.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
           fi
