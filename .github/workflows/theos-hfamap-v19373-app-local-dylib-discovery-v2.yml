@@ -41,6 +41,7 @@ jobs:
           cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/trace.before
           python3 .github/scripts/hfamap_v19374_prepare_patch.py
           python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
+          python3 .github/scripts/hfamap_v19374_finalize_markers.py
           git diff --check
 
       - name: Verify manual selection behavior
@@ -52,6 +53,7 @@ jobs:
           grep -q '\[MANUAL-SELECT\]' hfamap/src/HFAMapAppLocalResolver.m
           grep -q 'showCandidateSelector' hfamap/src/HFAMapCyberUI.m
           grep -q '请先扫描并手动选择一个菜单 dylib' hfamap/src/HFAMapCyberUI.m
+          grep -q 'v1.9.37.4 ManualCandidateSelection ready' hfamap/src/HFAMapCyberUI.m
           if grep -q '\[SELECT\] primary=' hfamap/src/HFAMapAppLocalResolver.m; then
             echo 'automatic primary selection remains'; exit 1
           fi
@@ -102,7 +104,7 @@ jobs:
           grep -q '\[DEPENDENCY\]' dist/strings_v1.9.37.4.txt
           grep -q '\[SELECT-WAIT\]' dist/strings_v1.9.37.4.txt
           grep -q '\[MANUAL-SELECT\]' dist/strings_v1.9.37.4.txt
-          grep -q '选择菜单 dylib' dist/strings_v1.9.37.4.txt
+          grep -q '\[SELECTOR\]' dist/strings_v1.9.37.4.txt
           if grep -Eq '_objc_getClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.4.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
           fi
