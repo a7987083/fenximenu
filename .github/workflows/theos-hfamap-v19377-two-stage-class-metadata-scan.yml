@@ -1,0 +1,140 @@
+name: HFAMapUniversal v1.9.37.7 TwoStageClassMetadataScan
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19377-two-stage-class-metadata-scan
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19377-two-stage-class-metadata-scan.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37.7
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          python3 .github/scripts/hfamap_v19372_5m_dual_backend_fix.py
+          python3 .github/scripts/hfamap_v19373_app_local_dylib_discovery_v2.py
+          python3 .github/scripts/hfamap_v19374_prepare_patch.py
+          python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
+          python3 .github/scripts/hfamap_v19374_finalize_markers.py
+          python3 .github/scripts/hfamap_v19375_loaded_macho_dependency_discovery.py
+          python3 .github/scripts/hfamap_v19376_loaded_image_fingerprint.py
+          cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before
+          cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/profiler.before
+          cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/trace.before
+          python3 .github/scripts/hfamap_v19377_two_stage_class_metadata_scan.py
+          git diff --check
+
+      - name: Verify stage 1 metadata only
+        run: |
+          set -euo pipefail
+          grep -q 'objc_copyClassNamesForImage' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'class_copyMethodList' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'class_copyIvarList' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'class_copyPropertyList' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'class_copyProtocolList' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[CLASS-META-BEGIN\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[CLASS-META-HIT\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[CLASS-META-END\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAMap_ClassMetadata.json' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('hfamap/src/HFAMapFamilyRuntimeResolver.m').read_text()
+          name = 'HFAFamilyStage1MetadataScan('
+          i = text.index(name)
+          brace = text.index('{', i)
+          depth = 0
+          end = None
+          for j in range(brace, len(text)):
+              if text[j] == '{': depth += 1
+              elif text[j] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end = j + 1
+                      break
+          body = text[i:end]
+          forbidden = ['objc_msgSend', 'object_getIvar', 'performSelector', 'method_invoke']
+          bad = [x for x in forbidden if x in body]
+          if bad:
+              raise SystemExit('stage1 target execution leak: ' + ','.join(bad))
+          PY
+
+      - name: Verify stage 2 gate
+        run: |
+          set -euo pipefail
+          grep -q 'HFAFamilyStage2ObjectMatch' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[STAGE2-MATCH\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'status=no-stage1-metadata-match' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'stage1ClassNames' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAAppLocalPrimaryLoadedIndex' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAAppLocalPrimaryPath' hfamap/src/HFAMapAppLocalResolver.m
+
+      - name: Verify no broad runtime scan
+        run: |
+          set -euo pipefail
+          if grep -R -n 'objc_getClassList\|objc_copyClassList\|_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'forbidden process-wide scan/listener present'; exit 1
+          fi
+          cmp /tmp/dispatch.before hfamap/src/HFAMap5MDispatcherResolver.m
+          cmp /tmp/profiler.before hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          cmp /tmp/trace.before hfamap/src/HFAMapPatchExecutionTrace.m
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37.7
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37.7_TwoStageClassMetadataScan.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.7.txt
+          strings "$out" > dist/strings_v1.9.37.7.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.7.txt
+          grep -q 'v1.9.37.7 TwoStageClassMetadataScan' dist/strings_v1.9.37.7.txt
+          grep -q '\[CLASS-META-BEGIN\]' dist/strings_v1.9.37.7.txt
+          grep -q '\[CLASS-META-HIT\]' dist/strings_v1.9.37.7.txt
+          grep -q '\[CLASS-META-END\]' dist/strings_v1.9.37.7.txt
+          grep -q '\[STAGE2-MATCH\]' dist/strings_v1.9.37.7.txt
+          grep -q '_objc_copyClassNamesForImage' dist/nm_undefined_v1.9.37.7.txt
+          if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.7.txt; then
+            echo 'forbidden symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37.7-TwoStageClassMetadataScan
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37.7_TwoStageClassMetadataScan.dylib
+            hfamap/dist/SHA256_v1.9.37.7.txt
+          if-no-files-found: error
