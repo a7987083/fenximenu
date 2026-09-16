@@ -1,0 +1,114 @@
+name: HFAMapUniversal v1.9.37 CleanFamilyResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19370-clean-family-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19370-clean-family-resolver.yml'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37 CleanFamilyResolver
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          git diff --check
+
+      - name: Verify family dispatcher and runtime bridge
+        run: |
+          set -euo pipefail
+          grep -q 'HFAAppLocalPrimaryFamily' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'runtime-5m' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'legacy-ap' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAFamilyResolveCurrentUI' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFARegisterIGMMFeatureArray' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAJailpatchProfileTarget' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAGenericMenuObserveObject' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'FAMILY-EXECUTE-BEGIN' hfamap/src/HFAMapLegacy.m
+          if grep -q 'tryhook();' hfamap/src/HFAMapLegacy.m; then
+            echo 'legacy global UIControl hook still auto-installs'; exit 1
+          fi
+
+      - name: Verify clean production path
+        run: |
+          set -euo pipefail
+          grep -q 'HFAGenericMenuResetScanState' hfamap/src/HFAMapGenericMenuResolver.m
+          grep -q 'HFAJailpatchResetProfilerState' hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          grep -q 'HFAPatchTraceResetAnalysis' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'signatureWrapper' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'modslider' hfamap/src/HFAMapJSONExport.m
+          grep -q 'byIdentifierAll' hfamap/src/HFAMapJSONExport.m
+          if grep -q 'HFAProbeKey2Path' hfamap/src/HFAMapPatchExecutionTrace.m; then
+            echo 'obsolete Key2 path still referenced'; exit 1
+          fi
+          if grep -q 'HFAMapSecretCallGraphProbe.m' hfamap/Makefile; then
+            echo 'obsolete key callgraph source still linked'; exit 1
+          fi
+          if grep -R -n 'objc_getClassList' hfamap/src; then
+            echo 'process-wide objc_getClassList remains'; exit 1
+          fi
+          if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37_CleanFamilyResolver.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.txt
+          strings "$out" > dist/strings_v1.9.37.txt
+          nm -g "$out" > dist/nm_global_v1.9.37.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.txt
+          grep -q 'runtime-5m' dist/strings_v1.9.37.txt
+          grep -q 'legacy-ap' dist/strings_v1.9.37.txt
+          grep -q 'FAMILY-RESOLVE-BEGIN' dist/strings_v1.9.37.txt
+          grep -q 'HFAMapUniversal v1.9.37 CleanFamilyResolver' dist/strings_v1.9.37.txt
+          if grep -Eq '_objc_getClassList|__dyld_register_func_for_add_image|_dyld_register_func_for_add_image' dist/nm_global_v1.9.37.txt dist/nm_undefined_v1.9.37.txt; then
+            echo 'forbidden process-wide symbol leaked into final dylib'; exit 1
+          fi
+          if grep -Eq 'KEY2-PATH-BEGIN|KEY-REGISTER-HOOK|AUTO-TARGET-BEGIN|sendAction installed' dist/strings_v1.9.37.txt; then
+            echo 'obsolete runtime probe/auto-target logic leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37-CleanFamilyResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37_CleanFamilyResolver.dylib
+            hfamap/dist/SHA256_v1.9.37.txt
+          if-no-files-found: error
