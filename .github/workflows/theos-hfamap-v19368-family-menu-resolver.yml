@@ -1,0 +1,107 @@
+name: HFAMapUniversal v1.9.36.8 FamilyMenuResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19368-family-menu-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19368-family-menu-resolver.yml'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.36.8 FamilyMenuResolver
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          git diff --check
+
+      - name: Verify family detector and menu index
+        run: |
+          set -euo pipefail
+          grep -q 'runtime-5m' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'legacy-ap' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'A-standard' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'B-extended' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'C-alternate' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAAppLocalStaticObjCClassCount' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'pathExtension.lowercaseString' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'no-known-family-structure' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAJSONMenuIndex' hfamap/src/HFAMapJSONExport.m
+          grep -q 'root\[@"menuIndex"\]' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAMapUniversal v1.9.36.8 FamilyMenuResolver' hfamap/src/HFAMapJSONExport.m
+          if grep -q 'legacy-15mb\|jailpatch-v2\|size=%.2fMB\|record\[@"size"\]' hfamap/src/HFAMapAppLocalResolver.m; then
+            echo 'obsolete size/top-level family logic remains'; exit 1
+          fi
+          if grep -R -n 'objc_getClassList' hfamap/src; then
+            echo 'process-wide objc_getClassList remains'; exit 1
+          fi
+          if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+
+      - name: Verify existing decrypt and JSON chain remains wired
+        run: |
+          set -euo pipefail
+          grep -q 'HFADecryptWrapper' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'HFARegisterPatchSecret' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'IGSecretInt' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'IGSecretData' hfamap/src/HFAMapJailpatchSelectorResolver.m
+          grep -q 'com.hfa.menu.analysis/v1' hfamap/src/HFAMapJSONExport.m
+          grep -q 'runtimeEvidence' hfamap/src/HFAMapJSONExport.m
+          grep -q 'normalizedExecutionPrimitive' hfamap/src/HFAMapJSONExport.m
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.36.8
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.36.8_FamilyMenuResolver.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.36.8.txt
+          strings "$out" > dist/strings_v1.9.36.8.txt
+          nm -g "$out" > dist/nm_global_v1.9.36.8.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.36.8.txt
+          grep -q 'runtime-5m' dist/strings_v1.9.36.8.txt
+          grep -q 'legacy-ap' dist/strings_v1.9.36.8.txt
+          grep -q 'HFAMapUniversal v1.9.36.8 FamilyMenuResolver' dist/strings_v1.9.36.8.txt
+          if grep -Eq '_objc_getClassList|__dyld_register_func_for_add_image|_dyld_register_func_for_add_image' dist/nm_global_v1.9.36.8.txt dist/nm_undefined_v1.9.36.8.txt; then
+            echo 'forbidden process-wide symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.36.8-FamilyMenuResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.36.8_FamilyMenuResolver.dylib
+            hfamap/dist/SHA256_v1.9.36.8.txt
+          if-no-files-found: error
