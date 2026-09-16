@@ -1,0 +1,154 @@
+name: HFAMapUniversal v1.9.37.8 StructuralRelationExpansion
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19378-structural-relation-expansion
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19378-structural-relation-expansion.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37.8
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          python3 .github/scripts/hfamap_v19372_5m_dual_backend_fix.py
+          python3 .github/scripts/hfamap_v19373_app_local_dylib_discovery_v2.py
+          python3 .github/scripts/hfamap_v19374_prepare_patch.py
+          python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
+          python3 .github/scripts/hfamap_v19374_finalize_markers.py
+          python3 .github/scripts/hfamap_v19375_loaded_macho_dependency_discovery.py
+          python3 .github/scripts/hfamap_v19376_loaded_image_fingerprint.py
+          python3 .github/scripts/hfamap_v19377_two_stage_class_metadata_scan.py
+          cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before
+          cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/trace.before
+          python3 .github/scripts/hfamap_v19378_structural_relation_expansion.py
+          git diff --check
+
+      - name: Verify Stage1A metadata-only and Stage1B structural expansion
+        run: |
+          set -euo pipefail
+          grep -q '\[CLASS-META-SEED\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[CLASS-META-EXPAND\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAFamilyLooksLikeStructuralOwner' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'cap=none' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'com.hfa.class-metadata/v2' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('hfamap/src/HFAMapFamilyRuntimeResolver.m').read_text()
+          name = 'HFAFamilyStage1MetadataScan('
+          i = text.index(name); b = text.index('{', i); d = 0; e = None
+          for j in range(b, len(text)):
+              if text[j] == '{': d += 1
+              elif text[j] == '}':
+                  d -= 1
+                  if d == 0: e = j + 1; break
+          body = text[i:e]
+          bad = [x for x in ('objc_msgSend','object_getIvar','performSelector','method_invoke') if x in body]
+          if bad: raise SystemExit('Stage1 target execution leak: ' + ','.join(bad))
+          if 'MIN(matched.count, (NSUInteger)20)' in text or 'cap=20' in text:
+              raise SystemExit('old fixed top20 Stage1 gate remains')
+          PY
+
+      - name: Verify relation promotion and shallow owner gate
+        run: |
+          set -euo pipefail
+          grep -q 'HFAFamilyPromoteRelationTarget' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[RELATION-PROMOTE\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[RELATION-REJECT\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[OWNER-SHALLOW\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'control-allTargets' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAFamilyClassBelongsToImage(cls, context->image)' hfamap/src/HFAMapFamilyRuntimeResolver.m
+
+      - name: Verify mixed feature arrays and 5M dual backend restored
+        run: |
+          set -euo pipefail
+          grep -q '\[JAILPATCH-ARRAY-CANDIDATE\]' hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          grep -q 'featureLike \* 2 >= inspect' hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          grep -q 'HFA5MDispatcherObserveFeatureArray' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAJailpatchCanProfileTarget' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'runtime-5m-jailpatch-target' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q '\[FAMILY-5M-JAILPATCH\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('hfamap/src/HFAMapJailpatchRuntimeProfiler.m').read_text()
+          name = 'HFAJPFindFeatureArray('
+          i = text.index(name); b = text.index('{', i); d = 0; e = None
+          for j in range(b, len(text)):
+              if text[j] == '{': d += 1
+              elif text[j] == '}':
+                  d -= 1
+                  if d == 0: e = j + 1; break
+          body = text[i:e]
+          if 'valid == a.count' in body or 'valid != a.count' in body:
+              raise SystemExit('exact-all-items array rule remains')
+          PY
+
+      - name: Verify broad scans remain forbidden and unrelated backends stable
+        run: |
+          set -euo pipefail
+          if grep -R -n 'objc_getClassList\|objc_copyClassList\|_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'forbidden process-wide scan/listener present'; exit 1
+          fi
+          cmp /tmp/dispatch.before hfamap/src/HFAMap5MDispatcherResolver.m
+          cmp /tmp/trace.before hfamap/src/HFAMapPatchExecutionTrace.m
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37.8
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37.8_StructuralRelationExpansion.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.8.txt
+          strings "$out" > dist/strings_v1.9.37.8.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.8.txt
+          grep -q 'v1.9.37.8 StructuralRelationExpansion' dist/strings_v1.9.37.8.txt
+          grep -q '\[CLASS-META-EXPAND\]' dist/strings_v1.9.37.8.txt
+          grep -q '\[RELATION-PROMOTE\]' dist/strings_v1.9.37.8.txt
+          grep -q '\[OWNER-SHALLOW\]' dist/strings_v1.9.37.8.txt
+          grep -q '\[JAILPATCH-ARRAY-CANDIDATE\]' dist/strings_v1.9.37.8.txt
+          grep -q '\[FAMILY-5M-JAILPATCH\]' dist/strings_v1.9.37.8.txt
+          if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.8.txt; then
+            echo 'forbidden symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37.8-StructuralRelationExpansion
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37.8_StructuralRelationExpansion.dylib
+            hfamap/dist/SHA256_v1.9.37.8.txt
+          if-no-files-found: error
