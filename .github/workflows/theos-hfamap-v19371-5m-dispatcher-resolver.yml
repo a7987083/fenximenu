@@ -1,0 +1,115 @@
+name: HFAMapUniversal v1.9.37.1 5MDispatcherResolver
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19371-5m-dispatcher-resolver
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19371-5m-dispatcher-resolver.yml'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37.1 5MDispatcherResolver
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          git diff --check
+
+      - name: Verify 5M dispatcher resolver integration
+        run: |
+          set -euo pipefail
+          grep -q 'HFA5MDispatcherObserveFeatureArray' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFA5MDispatcherObserveAction' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFA5MDispatcherEvidenceForIdentifier' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'dispatcherEvidence' hfamap/src/HFAMapPatchExecutionTrace.m
+          grep -q 'arm64-tail-forwarder' hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -q 'postNotificationName:object:userInfo:' hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -q 'addObserverForName:object:queue:usingBlock:' hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -q 'dictionaryBlocks' hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -q 'src/HFAMap5MDispatcherResolver.m' hfamap/Makefile
+          if grep -Eq 'krEYQb|lAZymWlqhBGZx|EcqBRSRTwUlijwOlQGw|34C7C8|34C7BC|UWPCXTRSIG|NRBIFQDNAO|kNSC_pWm3' hfamap/src/HFAMap5MDispatcherResolver.m; then
+            echo 'sample-specific 5M name/RVA leaked into generic resolver'; exit 1
+          fi
+
+      - name: Verify clean production path remains intact
+        run: |
+          set -euo pipefail
+          if grep -q 'HFAProbeKey2Path' hfamap/src/HFAMapPatchExecutionTrace.m; then
+            echo 'obsolete Key2 path still referenced'; exit 1
+          fi
+          if grep -q 'HFAMapSecretCallGraphProbe.m' hfamap/Makefile; then
+            echo 'obsolete key callgraph source still linked'; exit 1
+          fi
+          if grep -R -n 'objc_getClassList' hfamap/src; then
+            echo 'process-wide objc_getClassList remains'; exit 1
+          fi
+          if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37.1
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37.1_5MDispatcherResolver.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.1.txt
+          strings "$out" > dist/strings_v1.9.37.1.txt
+          nm -g "$out" > dist/nm_global_v1.9.37.1.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.1.txt
+          grep -q '5M-DISPATCH' dist/strings_v1.9.37.1.txt
+          grep -q 'arm64-tail-forwarder' dist/strings_v1.9.37.1.txt
+          grep -q 'dispatcherEvidence' dist/strings_v1.9.37.1.txt
+          grep -q 'postNotificationName:object:userInfo:' dist/strings_v1.9.37.1.txt
+          grep -q 'runtime-5m' dist/strings_v1.9.37.1.txt
+          grep -q 'legacy-ap' dist/strings_v1.9.37.1.txt
+          if grep -Eq '_objc_getClassList|__dyld_register_func_for_add_image|_dyld_register_func_for_add_image' dist/nm_global_v1.9.37.1.txt dist/nm_undefined_v1.9.37.1.txt; then
+            echo 'forbidden process-wide symbol leaked into final dylib'; exit 1
+          fi
+          if grep -Eq 'KEY2-PATH-BEGIN|KEY-REGISTER-HOOK|AUTO-TARGET-BEGIN|sendAction installed' dist/strings_v1.9.37.1.txt; then
+            echo 'obsolete runtime probe/auto-target logic leaked into final dylib'; exit 1
+          fi
+          if grep -Eq 'krEYQb|lAZymWlqhBGZx|EcqBRSRTwUlijwOlQGw|UWPCXTRSIG|NRBIFQDNAO|kNSC_pWm3' dist/strings_v1.9.37.1.txt; then
+            echo 'sample-specific evidence leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37.1-5MDispatcherResolver
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37.1_5MDispatcherResolver.dylib
+            hfamap/dist/SHA256_v1.9.37.1.txt
+          if-no-files-found: error
