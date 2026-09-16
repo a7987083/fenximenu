@@ -52,14 +52,13 @@ jobs:
         run: |
           set -euo pipefail
           f=hfamap/src/HFAMapPatchExecutionTrace.m
-          grep -q 'HFAFeatureDefinitionForIdentifier' "$f"
-          grep -q '\[FEATURE-RUNTIME\]' "$f"
           grep -q '\[FEATURE-CATALOG-APPEND\]' "$f"
           grep -q '\[FEATURE-CATALOG\]' "$f"
-          grep -q 'exportedFeatureIDs' "$f"
+          grep -q 'runtimeCatalogFeatures' "$f"
           grep -q '@"patches": @\[\]' "$f"
-          grep -q '@"backend": haveRuntimeAction ? @"runtime-action"' "$f"
+          grep -q '@"backend": @"runtime-observed"' "$f"
           grep -q '@"canonicalEligible": @NO' "$f"
+          grep -q 'runtime-feature-no-static-mapping' "$f"
           python3 - <<'PY'
           from pathlib import Path
           s = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
@@ -67,9 +66,11 @@ jobs:
               raise SystemExit('runtime-only package still requires targets')
           if 'if (!features.count) return;' not in s:
               raise SystemExit('feature-only package guard missing')
-          # All definitions must be appended after static descriptor extraction.
-          if s.index('for (unsigned i = 0; i < gFeatureDefinitionCount; i++)', s.index('unsigned HFAPatchTraceFinalizeScan')) < s.index('[FULL-MAPPING]', s.index('unsigned HFAPatchTraceFinalizeScan')):
-              raise SystemExit('catalog append loop is in the wrong place')
+          fn = s.index('unsigned HFAPatchTraceFinalizeScan(void)')
+          catalog = s.index('[FEATURE-CATALOG-APPEND]', fn)
+          write = s.index('HFAWritePatchPackage(exportFeatures, exportTargets)', fn)
+          if catalog > write:
+              raise SystemExit('catalog completion runs after package write')
           PY
 
       - name: Verify empty-label regression fixed
@@ -81,7 +82,7 @@ jobs:
           if grep -q '!identifier.length || !label.length' "$f"; then
             echo 'old v19379 label filter remains'; exit 1
           fi
-          grep -q 'runtimeEvidence' "$f"
+          grep -q 'runtime-observed-feature' "$f"
 
       - name: Verify success cleanup policy
         run: |
@@ -94,7 +95,6 @@ jobs:
           grep -q 'HFAMap_Mapping.log' "$f"
           grep -q 'HFAMap_MenuMap.jsonl' "$f"
           grep -q '\[ARTIFACT-CLEANUP\]' "$f"
-          # Cleanup must happen only after successful final analysis write/log.
           python3 - <<'PY'
           from pathlib import Path
           s = Path('hfamap/src/HFAMapJSONExport.m').read_text()
@@ -144,7 +144,7 @@ jobs:
           grep -q 'v1.9.37.10 UnifiedFeatureModel' dist/strings_v1.9.37.10.txt
           grep -q 'FEATURE-CATALOG-APPEND' dist/strings_v1.9.37.10.txt
           grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.10.txt
-          grep -q 'runtime-action-not-static-bytes' dist/strings_v1.9.37.10.txt
+          grep -q 'runtime-feature-no-static-mapping' dist/strings_v1.9.37.10.txt
           if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.10.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
           fi
