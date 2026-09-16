@@ -1,0 +1,128 @@
+name: HFAMapUniversal v1.9.37.3 AppLocalDylibDiscoveryV2
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v19373-app-local-dylib-discovery-v2
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v19373-app-local-dylib-discovery-v2.yml'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37.3 AppLocalDylibDiscoveryV2
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          python3 .github/scripts/hfamap_v19372_5m_dual_backend_fix.py
+          cp hfamap/src/HFAMapFamilyRuntimeResolver.m /tmp/HFAMapFamilyRuntimeResolver.before
+          cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/HFAMap5MDispatcherResolver.before
+          cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/HFAMapJailpatchRuntimeProfiler.before
+          cp hfamap/src/HFAMapPatchExecutionTrace.m /tmp/HFAMapPatchExecutionTrace.before
+          python3 .github/scripts/hfamap_v19373_app_local_dylib_discovery_v2.py
+          git diff --check
+
+      - name: Verify discovery-only boundary
+        run: |
+          set -euo pipefail
+          cmp /tmp/HFAMapFamilyRuntimeResolver.before hfamap/src/HFAMapFamilyRuntimeResolver.m
+          cmp /tmp/HFAMap5MDispatcherResolver.before hfamap/src/HFAMap5MDispatcherResolver.m
+          cmp /tmp/HFAMapJailpatchRuntimeProfiler.before hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          cmp /tmp/HFAMapPatchExecutionTrace.before hfamap/src/HFAMapPatchExecutionTrace.m
+
+      - name: Verify App-local Dylib Discovery v2
+        run: |
+          set -euo pipefail
+          grep -q '\[DISCOVERY-V2\]' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q '\[DYLIB\] path=' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'enumeratorAtPath:bundle' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q '_dyld_image_count()' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAAppLocalPathInsideBundle' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'discoverySources' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'com.hfa.app-local-candidates/v2' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'discoveredDylibCount' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'Legacy-AP' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'Runtime-5M' hfamap/src/HFAMapAppLocalResolver.m
+          if grep -q 'enumeratorAtPath:frameworks' hfamap/src/HFAMapAppLocalResolver.m; then
+            echo 'old Frameworks-only discovery remains'; exit 1
+          fi
+          if grep -q 'size=%.2fMB' hfamap/src/HFAMapAppLocalResolver.m; then
+            echo 'size family heuristic returned'; exit 1
+          fi
+          if grep -R -n 'objc_getClassList' hfamap/src; then
+            echo 'process-wide objc_getClassList remains'; exit 1
+          fi
+          if grep -R -n '_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'persistent dyld add-image registration remains'; exit 1
+          fi
+
+      - name: Verify previous family fingerprints unchanged
+        run: |
+          set -euo pipefail
+          grep -q 'legacyCore = appPatch && secretInt' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'runtimeCore = customSwitch && modtext && typeButton && identifier && label' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'family = @"legacy-ap"' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'family = @"runtime-5m"' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'A-standard' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'B-extended' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'C-alternate' hfamap/src/HFAMapAppLocalResolver.m
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37.3
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37.3_AppLocalDylibDiscoveryV2.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.3.txt
+          strings "$out" > dist/strings_v1.9.37.3.txt
+          nm -g "$out" > dist/nm_global_v1.9.37.3.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.3.txt
+          grep -q 'DISCOVERY-V2' dist/strings_v1.9.37.3.txt
+          grep -q '\[DYLIB\] path=' dist/strings_v1.9.37.3.txt
+          grep -q 'com.hfa.app-local-candidates/v2' dist/strings_v1.9.37.3.txt
+          grep -q 'HFAMapUniversal v1.9.37.3 AppLocalDylibDiscoveryV2' dist/strings_v1.9.37.3.txt
+          grep -q 'legacy-ap' dist/strings_v1.9.37.3.txt
+          grep -q 'runtime-5m' dist/strings_v1.9.37.3.txt
+          if grep -Eq '_objc_getClassList|__dyld_register_func_for_add_image|_dyld_register_func_for_add_image' dist/nm_global_v1.9.37.3.txt dist/nm_undefined_v1.9.37.3.txt; then
+            echo 'forbidden global scan symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37.3-AppLocalDylibDiscoveryV2
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37.3_AppLocalDylibDiscoveryV2.dylib
+            hfamap/dist/SHA256_v1.9.37.3.txt
+          if-no-files-found: error
