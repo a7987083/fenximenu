@@ -1,73 +1,62 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.37.10",
-  "phase": "earntodie-verified-profile-ci-and-device-validation",
+  "version": "1.9.38.0-stage1",
+  "phase": "universal-mutation-ir-stage1",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfamap-v193710-unified-feature-model",
-  "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
-  "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
+  "branch": "feature/universal-mutation-refactor",
+  "baseline_branch": "feature/hfamap-v193710-unified-feature-model",
+  "baseline_commit": "9fe759fe8519bfcaa90c2461a256c18a4d6c2080",
+  "implementation_commit": "a26cab49985fbb675e76378899eeb02052e7f2c6",
+  "architecture": {
+    "pipeline": "Evidence Provider -> existing truth gate -> Canonical Mutation IR -> export/regression",
+    "mutation_schema": "com.hfa.mutation/v1",
+    "provider_neutral_core": true,
+    "family_resolvers_retained_as_evidence_providers": true,
+    "legacy_canonical_schema_preserved": "com.hfa.patch/v1"
+  },
   "build": {
-    "local_generation": "passed",
     "ci": "success",
-    "run_id": 35170319783,
-    "build_commit": "5db1f384c49a4a4cd243b722881083f0893692e5",
-    "artifact_id": 10476488771,
-    "artifact": "HFAMapUniversal-v1.9.37.10-UnifiedFeatureModel",
-    "artifact_digest": "sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4",
-    "binary": "HFAMapUniversal_v1.9.37.10_UnifiedFeatureModel.dylib",
+    "run_id": 35194007919,
+    "build_commit": "a26cab49985fbb675e76378899eeb02052e7f2c6",
+    "artifact_id": 10484872379,
+    "artifact": "HFAMapUniversal-UniversalMutationRefactor",
+    "artifact_digest": "sha256:d3ff65db4470250f008134a180ae01c866e410cc13b4e6bff258069355ac9876",
+    "binary": "HFAMapUniversal_UniversalMutationRefactor.dylib",
     "architecture": "arm64",
-    "size_bytes": 247824,
-    "binary_sha256": "afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58"
+    "binary_sha256": "09f04e942d6f571048f26fe728e6a51974bb8c2aeeba29a06878befd28a5ea16"
   },
-  "target_profile": {
-    "id": "earntodie-1.28.251-1",
-    "bundle_identifier": "com.notdoppler.earntodierogue",
-    "short_version": "1.28.251",
-    "build_version": "1",
-    "architecture": "arm64",
-    "image": "UnityFramework",
-    "uuid": "8654D76C-B760-34FC-BEE0-FE70AE8C95C8",
-    "binary_sha256": "7d19c706d3a2768799a4d1dd452ff0aa327e62221e5d59d88e706ed1347f7b57",
-    "metadata_version": 31,
-    "metadata_sha256": "de4eac81ed758381ef929c65d7efddb8592ccaf1dacf9d9f523df8ee1041081b",
-    "offset_semantics": "preferred-mach-o-vmaddr"
-  },
-  "verified_patches": {
-    "Fuel": {
-      "title": "Unlimited Fuel",
-      "offset": "0x2D98AC8",
-      "original": "0038211E",
-      "enabled": "1F2003D5",
-      "status": "static-verified"
-    },
-    "Boost": {
-      "title": "Unlimited Boost",
-      "offset": "0x2D9887C",
-      "original": "0038281E",
-      "enabled": "1F2003D5",
-      "status": "static-verified"
-    }
+  "stage1": {
+    "new_files": [
+      "hfamap/src/HFACanonicalMutation.h",
+      "hfamap/src/HFACanonicalMutation.m",
+      ".github/scripts/hfamap_v19380_canonical_mutation_ir.py",
+      ".github/workflows/theos-hfamap-universal-mutation-refactor.yml",
+      "docs/UNIVERSAL_MUTATION_REFACTOR.md"
+    ],
+    "runtime_output": "Documents/HFAMap_CanonicalMutations.json",
+    "truth": "only existing truth-gated static byte patches are ingested",
+    "dedupe_key": "feature-id + target-id + offset + enabled-bytes"
   },
   "verification": {
-    "github_remote_baseline": "passed",
-    "metadata_pair_identical": true,
-    "il2cpp_mapping": "passed",
-    "arm64_data_flow": "passed",
-    "existing_original_bytes": "18/18",
-    "new_original_bytes": "2/2",
-    "python_syntax": "passed",
-    "json_fixture": "passed",
-    "workflow_yaml_parse": "passed",
-    "git_diff_check": "passed",
-    "ios_build_link_sign": "passed",
-    "artifact_rehash": "passed",
-    "compiled_profile_markers": "passed",
-    "device_runtime": "pending"
+    "generation_chain": "passed",
+    "mutation_ir_integration_assertions": "passed",
+    "provider_specific_names_absent_from_core": "passed",
+    "original_truth_gates_preserved": "passed",
+    "ios_arm64_compile": "passed",
+    "link": "passed",
+    "strip": "passed",
+    "sign": "passed",
+    "binary_markers": "passed",
+    "artifact_upload": "passed",
+    "device_runtime": "pending",
+    "cross_family_regression": "pending"
   },
   "known_issues": [
-    "Fuel/Boost stop future depletion but do not refill an already-zero value",
-    "Posters and Prestige overlap at UnityFramework+0x2E25904",
-    "generic observed-action classification remains broader than the available evidence"
+    "Stage 1 normalizes already-proven static mutations but does not yet generically discover arbitrary unknown menu implementations",
+    "Device runtime validation of HFAMap_CanonicalMutations.json is pending",
+    "5M, legacy ~15 MB, Jailpatch and iGMM cross-family regression on the refactor build is pending",
+    "Posters and Prestige overlap at UnityFramework+0x2E25904 remains pre-existing",
+    "Fuel/Boost exact-build profile remains version-gated and is not a generic discovery rule"
   ],
-  "next_task": "Run a clean 14-feature/20-patch device regression, verify Fuel/Boost independently, then resolve the Posters/Prestige overlap."
+  "next_task": "Stage 2: add provider-neutral mutation capture beneath family resolvers, then run the supplied five menu+host sample pairs through one CanonicalMutation regression pipeline."
 }
