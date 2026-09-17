@@ -53,6 +53,7 @@ Active branch: `feature/hfamap-v2-bounded-universal-analyzer`
 - old scanner removed from active Makefile: complete;
 - host parser unit tests: pass;
 - supplied real-dylib regression: 10/10 pass;
-- arm64 Theos CI: pending;
+- arm64 Theos CI: passed (`35186351403`);
+- artifact: `10481758150`, binary SHA-256 `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`;
 - device runtime: pending;
 - release status: not yet device-validated.

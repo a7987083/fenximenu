@@ -57,5 +57,6 @@ dispatcher 绝不自动等价于静态 patch。
 
 - Python 语法和合成 Mach-O 单元测试：通过。
 - 用户提供的 10 个真实菜单 dylib 离线分类回归：通过。
-- arm64 Theos CI：等待新分支首次运行。
+- arm64 Theos CI：run `35186351403` 通过，二进制 SHA-256
+  `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`。
 - 真机 injection、菜单解析和导出：等待验证。

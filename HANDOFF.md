@@ -175,3 +175,7 @@ new workflow. On device, first open the target menu, press `Scan Menu`, and coll
 Acceptance requires one legacy-ap and one jailpatch sample to finish without blocking, select the correct
 menu dylib, and either export byte-validated patches or explicit unresolved reasons. An empty canonical file
 with honest unresolved evidence is preferable to a guessed patch.
+
+CI checkpoint: run `35186351403`, commit `ac74cfaff43fa19ea3f83491c1e955a81946103c`, artifact
+`10481758150`; arm64 binary SHA-256
+`d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`.

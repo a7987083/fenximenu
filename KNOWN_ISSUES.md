@@ -137,8 +137,9 @@ Authoritative candidate:
 
 ### Device validation is pending
 
-The host-side parser passes all ten supplied dylib samples, but the new Objective-C++ runtime path has not
-yet been injected on a device. CI compile/link and clean-device regressions are required before release.
+The host-side parser passes all ten supplied dylib samples and arm64 CI compile/link passed, but the new
+Objective-C++ runtime path has not yet been injected on a device. Clean-device regressions are required
+before release.
 
 ### Runtime-generated descriptors are intentionally unresolved
 

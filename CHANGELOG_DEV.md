@@ -146,4 +146,7 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - Added same-descriptor name/offset/patch extraction plus unique executable-range and live-byte validation.
 - Split canonical, analysis and process-log outputs.
 - Added a read-only host triage tool, synthetic parser tests and a 10-sample SHA/family regression manifest.
+- Fixed four Objective-C++ pointer conversions reported by the first macOS build.
+- GitHub Actions run `35186351403`: host tests, invariants, arm64 compile/link and artifact upload passed.
+- Built binary SHA-256: `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`.
 - Device runtime validation remains pending.
