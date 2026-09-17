@@ -150,3 +150,11 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - GitHub Actions run `35186351403`: host tests, invariants, arm64 compile/link and artifact upload passed.
 - Built binary SHA-256: `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`.
 - Device runtime validation remains pending.
+# v2.0.1-dev — first device-log corrections
+
+- Parsed five nested device archives from input SHA-256 `2f92bfc64b37c47a57cfcf42b9e5b84594f401d5cb10877d23f1c67a74f65855`.
+- Confirmed bounded scans completed quickly and did not hang.
+- Raised the dyld image cap from 512 to 2048 after three runs exhausted the old cap before reaching late-loaded menu images.
+- Added descriptor-strength tie-breaking for a generic legacy shell (`97`) versus a full Jailpatch payload (`89`, Jailpatch evidence `116`).
+- Stopped recursively turning UIKit/Foundation implementation objects into duplicate `missing-offset` features.
+- Confirmed the 5 MB Jailpatch family still needs an evidenced `loadConfig:`/runtime-table observer; no static patch was claimed.

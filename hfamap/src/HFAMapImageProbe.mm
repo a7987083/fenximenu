@@ -5,7 +5,7 @@
 #include <string.h>
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
-static const uint32_t kHFAMaxImages = 512;
+static const uint32_t kHFAMaxImages = 2048;
 
 static BOOL HFAContains(const uint8_t *bytes, size_t length, const char *token) {
     const size_t n = strlen(token);
@@ -97,8 +97,10 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
 NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
                                                     NSMutableArray<NSDictionary *> *events) {
     NSMutableArray *found = [NSMutableArray array];
-    uint32_t count = MIN(_dyld_image_count(), kHFAMaxImages);
-    HFAEvent(events, @"image-discovery", @"start", @{ @"loadedImages": @(count) });
+    uint32_t totalCount = _dyld_image_count();
+    uint32_t count = MIN(totalCount, kHFAMaxImages);
+    HFAEvent(events, @"image-discovery", @"start",
+             @{ @"totalLoadedImages": @(totalCount), @"inspectedImages": @(count) });
     for (uint32_t i = 0; i < count; ++i) {
         if ([[NSDate date] timeIntervalSince1970] > deadline) {
             HFAEvent(events, @"image-discovery", @"timeout", @{ @"processed": @(i) });

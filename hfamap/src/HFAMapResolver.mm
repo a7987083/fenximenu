@@ -65,6 +65,30 @@ static id HFAValueForAliases(NSDictionary *dictionary, NSArray<NSString *> *alia
     return nil;
 }
 
+static BOOL HFADescriptorSignal(NSDictionary *dictionary) {
+    static NSSet<NSString *> *signals; static dispatch_once_t once;
+    dispatch_once(&once, ^{ signals = [NSSet setWithArray:@[
+        @"label", @"title", @"name", @"identifier", @"displayname",
+        @"offset", @"offsets", @"patchoffset", @"targetoffset", @"address", @"rva",
+        @"enabled", @"enabledbytes", @"disabled", @"disabledbytes",
+        @"patch", @"patches", @"patchbytes", @"bytes", @"instruction"
+    ]]; });
+    for (id key in dictionary) {
+        if (![key isKindOfClass:NSString.class]) continue;
+        NSString *normalized = [[key lowercaseString] stringByTrimmingCharactersInSet:
+                                [NSCharacterSet characterSetWithCharactersInString:@"_"]];
+        if ([signals containsObject:normalized]) return YES;
+    }
+    return NO;
+}
+
+static BOOL HFACandidateOwnedObject(id value, NSString *candidateImage) {
+    if (!value || !candidateImage.length) return NO;
+    const char *path = class_getImageName(object_getClass(value));
+    NSString *image = path ? [NSString stringWithUTF8String:path].lastPathComponent : @"";
+    return [image isEqualToString:candidateImage];
+}
+
 static NSDictionary *HFADictionaryFromObject(id object) {
     if (!object) return nil;
     if ([object isKindOfClass:NSDictionary.class]) return object;
@@ -222,7 +246,7 @@ NSDictionary *HFAMapResolveFeatures(NSDictionary *candidate, NSTimeInterval dead
         if (feature) {
             NSString *key = [NSString stringWithFormat:@"%@:%@:%@", feature[@"targetImage"], feature[@"offset"], feature[@"patch"]];
             if (![featureKeys containsObject:key]) { [featureKeys addObject:key]; [features addObject:feature]; }
-        } else if (label.length) {
+        } else if (label.length && HFADescriptorSignal(dictionary)) {
             NSString *className = NSStringFromClass(object_getClass(object)) ?: @"?";
             NSString *key = [NSString stringWithFormat:@"%@:%@:%@", label, reason ?: @"no-static-descriptor", className];
             if (![unresolvedKeys containsObject:key]) { [unresolvedKeys addObject:key];
@@ -233,14 +257,14 @@ NSDictionary *HFAMapResolveFeatures(NSDictionary *candidate, NSTimeInterval dead
             if (containers.count >= kHFAMaxContainers) break;
             if ([value isKindOfClass:NSArray.class]) {
                 for (id item in [(NSArray *)value subarrayWithRange:NSMakeRange(0, MIN([value count], kHFAMaxItems))])
-                    if (item) [containers addObject:@{ @"value": item, @"label": label ?: @"" }];
+                    if ([item isKindOfClass:NSDictionary.class] || [item isKindOfClass:NSArray.class] ||
+                        HFACandidateOwnedObject(item, candidate[@"image"]))
+                        [containers addObject:@{ @"value": item, @"label": label ?: @"" }];
             } else if ([value isKindOfClass:NSDictionary.class]) {
                 [containers addObject:@{ @"value": value, @"label": label ?: @"" }];
             } else if (![value isKindOfClass:NSString.class] && ![value isKindOfClass:NSNumber.class] &&
                        ![value isKindOfClass:NSData.class]) {
-                const char *path = class_getImageName(object_getClass(value));
-                NSString *image = path ? [NSString stringWithUTF8String:path].lastPathComponent : @"";
-                if ([image isEqualToString:candidate[@"image"]])
+                if (HFACandidateOwnedObject(value, candidate[@"image"]))
                     [containers addObject:@{ @"value": value, @"label": label ?: @"" }];
             }
         }

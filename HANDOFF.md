@@ -179,3 +179,9 @@ with honest unresolved evidence is preferable to a guessed patch.
 CI checkpoint: run `35186351403`, commit `ac74cfaff43fa19ea3f83491c1e955a81946103c`, artifact
 `10481758150`; arm64 binary SHA-256
 `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`.
+
+First device archive proved stability but not extraction universality. One `libdragonfevertd.dylib` run selected
+the correct payload and completed in about 114 ms, but produced zero canonical features. Do not treat the
+58 `missing-offset` entries as features; they were traversal pollution and are filtered in v2.0.1. If the next
+run still has no static descriptors, the next evidence boundary is the selected image's exact `loadConfig:` /
+Jailpatch runtime-table initialization path, not a broad Objective-C hook.

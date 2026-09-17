@@ -135,6 +135,24 @@ Authoritative candidate:
 - cross-family regression: pending
 # v2 open issues
 
+### Jailpatch runtime table is not yet decoded
+
+Status: confirmed by first device archive.
+
+`libdragonfevertd.dylib` was selected correctly and the scan completed, but UI-target object traversal exposed
+no offset/patch descriptor. Static strings and Mach-O structure identify a Jailpatch `loadConfig:` and runtime
+metadata path, but strings alone do not prove its structure. A bounded observer at that exact boundary is the
+next task if v2.0.1 still exports no descriptors.
+
+### First device build had discovery/traversal defects
+
+Status: fixed in v2.0.1-dev; device re-test pending.
+
+The 512-image cap omitted late-loaded menu images in three runs. A wrapper/payload pair was rejected because
+their total scores differed by only eight points. UIKit/Foundation objects polluted unresolved output. The
+corrective build raises the bounded cap, applies descriptor-strength tie-breaking and filters non-descriptor
+containers.
+
 ### Device validation is pending
 
 The host-side parser passes all ten supplied dylib samples and arm64 CI compile/link passed, but the new

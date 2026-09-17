@@ -45,7 +45,7 @@ Pure parser/exporter only. No playback engine, no Dobby, no runtime takeover, no
 ### Next required evidence
 
 Use the same v1.9.36.4 binary on the runtime-record/static 5 MB family. Require trusted canonical output, correct target identity and original-byte truth. Then run the legacy ~15 MB family. Only after both pass should this parser line be called cross-family validated.
-# Development Status — v2.0.0-dev
+# Development Status — v2.0.1-dev
 
 Active branch: `feature/hfamap-v2-bounded-universal-analyzer`
 
@@ -57,3 +57,5 @@ Active branch: `feature/hfamap-v2-bounded-universal-analyzer`
 - artifact: `10481758150`, binary SHA-256 `d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413`;
 - device runtime: pending;
 - release status: not yet device-validated.
+- first device archive: scan stability passed; discovery partially passed; static patch extraction failed.
+- corrective source changes: complete; v2.0.1 CI pending.

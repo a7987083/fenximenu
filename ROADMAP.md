@@ -125,3 +125,7 @@ Execution of generated JSON remains a separate project/module. Do not merge it b
 4. Use process logs to identify the exact registration/decryption boundary only for families whose descriptors remain runtime-generated.
 5. Add a manual candidate picker for legitimate score ties.
 6. Promote only after canonical records are independently checked against the target image bytes.
+
+Current next task: build v2.0.1 and repeat the same five-device matrix. Only if the correct Jailpatch payload
+still exports zero static descriptors, add a selected-image-only observer at the verified `loadConfig:` /
+runtime-table boundary.

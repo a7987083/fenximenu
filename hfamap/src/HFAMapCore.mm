@@ -36,7 +36,14 @@ static NSDictionary *HFASelectCandidate(NSArray<NSDictionary *> *candidates, NSS
     if ([first[@"score"] unsignedIntValue] < 50) { if (reason) *reason = @"weak-fingerprint"; return nil; }
     if (candidates.count > 1) {
         NSInteger a = [first[@"score"] integerValue], b = [candidates[1][@"score"] integerValue];
-        if (a - b < 10) { if (reason) *reason = @"ambiguous-top-candidates"; return nil; }
+        if (a - b < 10) {
+            NSDictionary *second = candidates[1];
+            NSInteger firstDescriptor = MAX([first[@"legacyScore"] integerValue], [first[@"jailpatchScore"] integerValue]);
+            NSInteger secondDescriptor = MAX([second[@"legacyScore"] integerValue], [second[@"jailpatchScore"] integerValue]);
+            if (secondDescriptor >= 80 && secondDescriptor >= firstDescriptor * 2) return second;
+            if (firstDescriptor >= 80 && firstDescriptor >= secondDescriptor * 2) return first;
+            if (reason) *reason = @"ambiguous-top-candidates"; return nil;
+        }
     }
     return first;
 }
