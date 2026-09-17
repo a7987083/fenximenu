@@ -27,14 +27,14 @@ static void HFAMutationLog(NSString *message) {
 
 static BOOL HFAHexStringIsValid(NSString *value) {
     if (![value isKindOfClass:[NSString class]] || !value.length || (value.length & 1)) return NO;
-    static NSCharacterSet *invalid;
-    @synchronized([HFACanonicalMutationRegistry class]) {
-        if (!invalid) {
-            NSCharacterSet *hex = [NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF"];
-            invalid = [hex invertedSet];
-        }
+    for (NSUInteger i = 0; i < value.length; i++) {
+        unichar c = [value characterAtIndex:i];
+        BOOL digit = c >= '0' && c <= '9';
+        BOOL lower = c >= 'a' && c <= 'f';
+        BOOL upper = c >= 'A' && c <= 'F';
+        if (!digit && !lower && !upper) return NO;
     }
-    return [value rangeOfCharacterFromSet:invalid].location == NSNotFound;
+    return YES;
 }
 
 static NSString *HFAString(id value) {
@@ -42,11 +42,9 @@ static NSString *HFAString(id value) {
 }
 
 static NSMutableDictionary *HFAStore(void) {
-    @synchronized([HFACanonicalMutationRegistry class]) {
-        if (!gHFACanonicalMutations)
-            gHFACanonicalMutations = [NSMutableDictionary dictionary];
-        return gHFACanonicalMutations;
-    }
+    if (!gHFACanonicalMutations)
+        gHFACanonicalMutations = [[NSMutableDictionary alloc] init];
+    return gHFACanonicalMutations;
 }
 
 static NSString *HFAMutationKey(NSString *featureID,
@@ -90,10 +88,10 @@ static void HFARegisterMutation(NSDictionary *mutation, NSString *provider) {
         NSMutableDictionary *existing = [store[key] mutableCopy];
         if (!existing) {
             existing = [mutation mutableCopy];
-            NSMutableDictionary *evidence = [@{ @"providers": [NSMutableArray array],
-                                                 @"truth": @"original-enabled-byte-difference-validated" } mutableCopy];
-            existing[@"evidence"] = evidence;
-            store[key] = existing;
+            existing[@"evidence"] = @{
+                @"providers": @[],
+                @"truth": @"original-enabled-byte-difference-validated"
+            };
         }
         NSMutableDictionary *evidence = [existing[@"evidence"] mutableCopy];
         if (!evidence) evidence = [NSMutableDictionary dictionary];
@@ -159,26 +157,15 @@ void HFAIngestCanonicalPackage(NSArray *features,
             accepted++;
         }
     }
+    NSUInteger total = HFACanonicalMutationSnapshot().count;
     HFAMutationLog([NSString stringWithFormat:
         @"[MUTATION-IR-INGEST] provider=%@ accepted=%u rejected=%u total=%lu",
-        provider ?: @"unknown", accepted, rejected,
-        (unsigned long)HFACanonicalMutationSnapshot().count]);
+        provider ?: @"unknown", accepted, rejected, (unsigned long)total]);
 }
 
 NSArray *HFACanonicalMutationSnapshot(void) {
     @synchronized([HFACanonicalMutationRegistry class]) {
-        NSArray *values = [HFAStore().allValues copy];
-        return [values sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
-            NSString *ak = [NSString stringWithFormat:@"%@|%@|%@",
-                            HFAString(a[@"id"]),
-                            HFAString([a[@"target"] objectForKey:@"id"]),
-                            HFAString([a[@"location"] objectForKey:@"offset"])];
-            NSString *bk = [NSString stringWithFormat:@"%@|%@|%@",
-                            HFAString(b[@"id"]),
-                            HFAString([b[@"target"] objectForKey:@"id"]),
-                            HFAString([b[@"location"] objectForKey:@"offset"])];
-            return [ak compare:bk];
-        }];
+        return [HFAStore().allValues copy];
     }
 }
 
@@ -211,6 +198,6 @@ BOOL HFAFlushCanonicalMutations(void) {
 
 void HFAResetCanonicalMutations(void) {
     @synchronized([HFACanonicalMutationRegistry class]) {
-        [gHFACanonicalMutations removeAllObjects];
+        [HFAStore() removeAllObjects];
     }
 }
