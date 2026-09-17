@@ -3,14 +3,101 @@
 ## Active work
 
 - repository: `a7987083/fenximenu`;
-- branch: `feature/hfamap-v193710-unified-feature-model`;
-- product version: `v1.9.37.10 UnifiedFeatureModel`;
-- previous build commit: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`;
-- verified-profile implementation: `13fff6fd49d84348c618cc7845527e0b5c8413fa`.
+- branch: `feature/universal-mutation-refactor`;
+- phase: `v1.9.38.0 Stage 1 Universal Mutation IR`;
+- base branch: `feature/hfamap-v193710-unified-feature-model`;
+- base commit: `9fe759fe8519bfcaa90c2461a256c18a4d6c2080`;
+- build-tested implementation: `a26cab49985fbb675e76378899eeb02052e7f2c6`.
 
-## Earn to Die Rogue conclusion
+## Current architectural direction
 
-Target identity:
+HFAMapUniversal remains a parser/exporter. The refactor changes the internal ownership of truth:
+
+```text
+family/static/runtime evidence provider
+        -> existing target/original-byte truth gate
+        -> Canonical Mutation IR
+        -> export / regression
+```
+
+Family-specific code is allowed to discover evidence, but the final mutation model must not depend on family-specific classes, selectors or strings.
+
+Stage 1 schema: `com.hfa.mutation/v1`.
+
+Core files:
+
+- `hfamap/src/HFACanonicalMutation.h`
+- `hfamap/src/HFACanonicalMutation.m`
+- `.github/scripts/hfamap_v19380_canonical_mutation_ir.py`
+- `.github/workflows/theos-hfamap-universal-mutation-refactor.yml`
+- `docs/UNIVERSAL_MUTATION_REFACTOR.md`
+
+Runtime output added by Stage 1:
+
+- `Documents/HFAMap_CanonicalMutations.json`
+
+The existing canonical `com.hfa.patch/v1` output is preserved unchanged for compatibility.
+
+## Stage 1 acceptance boundary
+
+`HFACanonicalMutation.m` accepts only static byte mutations with:
+
+- feature id;
+- target id/image;
+- offset;
+- valid even-length hex original bytes;
+- valid even-length hex enabled bytes;
+- equal original/enabled lengths;
+- original bytes different from enabled bytes.
+
+Deduplication key:
+
+`feature-id + target-id + offset + enabled-bytes`
+
+Provider evidence is accumulated separately.
+
+The IR core intentionally contains no `IGSecretInt`, `IGCodePatch`, `APPatchItem`, `Jailpatch`, or 5M-specific names.
+
+## CI result
+
+GitHub Actions run `35194007919`: **success**.
+
+Build output:
+
+```text
+artifact        HFAMapUniversal-UniversalMutationRefactor
+artifact id     10484872379
+artifact digest sha256:d3ff65db4470250f008134a180ae01c866e410cc13b4e6bff258069355ac9876
+binary          HFAMapUniversal_UniversalMutationRefactor.dylib
+architecture    arm64 Mach-O dylib
+binary SHA256   09f04e942d6f571048f26fe728e6a51974bb8c2aeeba29a06878befd28a5ea16
+```
+
+Verified in CI:
+
+- historical generation chain completed;
+- Stage 1 patcher applied;
+- existing original-byte truth gate markers remained;
+- provider-neutral core assertion passed;
+- new module compiled;
+- final dylib linked, stripped and signed;
+- `com.hfa.mutation/v1`, `MUTATION-IR-INGEST`, and `MUTATION-IR-FLUSH` markers are present;
+- artifact upload passed.
+
+Not yet verified:
+
+- device startup/injection with the refactor binary;
+- actual on-device generation of `HFAMap_CanonicalMutations.json`;
+- five-pair cross-family regression;
+- provider-neutral capture of an unknown menu implementation.
+
+## Important build history
+
+The first Stage 1 CI attempt failed at the first real compiler error in `HFACanonicalMutation.m`: an extra `]` in the flush log expression. The fix was syntax-only; the architecture and truth model were unchanged. The successful build is run `35194007919`.
+
+## Existing verified Earn to Die evidence retained
+
+Target:
 
 ```text
 bundle       com.notdoppler.earntodierogue
@@ -21,145 +108,51 @@ image        UnityFramework
 UUID         8654D76C-B760-34FC-BEE0-FE70AE8C95C8
 ```
 
-Missing canonical patches:
+Verified static patches:
 
 ```text
 Fuel  UnityFramework+0x2D98AC8  0038211E -> 1F2003D5
 Boost UnityFramework+0x2D9887C  0038281E -> 1F2003D5
 ```
 
-Both sites belong to `Assembly-CSharp.dll!com.notdoppler.ETDR.Car.FixedUpdate()`
-at RVA `0x2D9827C`. Fuel is `_fuelAmount` at object offset `0xB8`; Boost is
-`_boostAmount` at `0xBC`. The original instructions subtract per-frame
-consumption and the replacement is one ARM64 `nop`.
+Both are inside `Assembly-CSharp.dll!com.notdoppler.ETDR.Car.FixedUpdate()` at RVA `0x2D9827C`. Fuel is `_fuelAmount +0xB8`; Boost is `_boostAmount +0xBC`.
 
-The original v1.9.37.10 result was incomplete because the shared Objective-C
-action (`AaNfXa -ddktmnuyvBoEK:`, `EarntoDieRogue.dylib+0x397098`) was treated
-as evidence of a runtime-only implementation. All 14 controls share that menu
-dispatcher, including the 12 already-proven static features, so that inference
-was invalid. The exact-build profile repairs Fuel/Boost without weakening the
-generic truth gates.
+The exact-build profile remains a safety/verification profile, not a generic discovery algorithm.
 
-Implementation files:
+## Stable parser evidence retained
 
-- `.github/scripts/hfamap_v193710_earntodie_verified_profile.py`;
-- `.github/workflows/theos-hfamap-v193710-unified-feature-model.yml`;
-- `tests/earntodie_rogue_1.28.251_verified_profile.json`;
-- `docs/EARN_TO_DIE_ROGUE_1.28.251_ANALYSIS.md`.
+WayOfKings/iGMM v1.9.36.4 remains the last device-confirmed parser checkpoint:
 
-Runtime acceptance requires bundle/version/build, arm64, exact UnityFramework
-UUID and both original-byte checks. No address is reused on another build.
+- stable injection;
+- Full Scan completion;
+- 4-feature iGMM output;
+- normalized analysis output;
+- target identities for menu dylib + UnityFramework confirmed.
 
-## Verification boundary
+The old v1.9.37/v1.9.37.1 playback/Dobby merge remains retired after startup crashes.
 
-Static verification, the complete local generation chain and GitHub Actions
-compile/link/sign passed. Build run `35170319783` produced artifact
-`10476488771`; the downloaded arm64 dylib is 247824 bytes with SHA-256
-`afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`.
-Device enable/disable regression remains pending. Enabling the patch stops
-further depletion but does not refill a value that was already zero.
+## Next task
 
-The pre-existing package also has an unresolved overlap at
-`UnityFramework+0x2E25904`: Posters writes `08E0BF12`, while Prestige writes
-`20008052C0035FD6`. Resolve or explicitly arbitrate that conflict before calling
-the full 14-button package conflict-free.
+Stage 2 must add a provider-neutral mutation capture layer underneath the family adapters:
 
-## Current branch
+1. establish feature execution context;
+2. observe the actual code/data mutation rather than infer from storage class names;
+3. resolve runtime VA -> loaded Mach-O -> preferred VM offset;
+4. capture pre-write/post-write bytes;
+5. validate against the same truth gate;
+6. emit the same `HFACanonicalMutation` regardless of menu framework.
 
-`feature/hfamap-v19361-json-export`
-
-## Current direction
-
-HFAMapUniversal is a **parser/exporter only**:
-
-`original menu -> parser -> evidence -> normalized JSON`
-
-The runtime-consumer/Dobby merge from v1.9.37 and v1.9.37.1 is retired after both builds crashed on device injection. The frozen parser baseline is v1.9.36 ArchitectureTruth commit `75f94da37221343b6839465ad365ddec2679e63a`. JSONExport versions must preserve the v1.9.36 constructor, `run_full_scan()` and resolver core.
-
-## Current build: v1.9.36.4 JSONExport
-
-- Build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`.
-- GitHub Actions run: `34907671999` — success.
-- Artifact: `HFAMapUniversal-v1.9.36.4-JSONExport` (ID `10372928333`).
-- Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`.
-- Binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`.
-- Architecture: arm64 Mach-O dylib, NOUNDEFS.
-- Size: `192432` bytes.
-- SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`.
-
-## WayOfKings / iGMM device validation: PASSED
-
-Device archive `归档 6(1).zip` confirms v1.9.36.4 itself on device:
-
-- injection stayed stable; no startup crash;
-- Full Scan reached completion;
-- `com.hfa.igmm.runtime/v1` regenerated;
-- `com.hfa.menu.analysis/v1` regenerated;
-- `IGMM-RUNTIME-EXPORT` reported `features=4`;
-- `JSON-EXPORT` reported `status=pass features=4 sources=1 targetIdentities=2`.
-
-Normalized controls:
-
-- `Damage Multiplier`: `number`, default `1`;
-- `Defence Multiplier`: `number`, default `1`;
-- `God Mode`: `toggle`;
-- `Debug Menu`: source `kTypeButton` -> normalized `button`.
-
-Evidence-preserving primitive/reason handling is now device-confirmed:
-
-- Debug Menu raw `executionPrimitive = nativeHook` remains visible;
-- Debug Menu `normalizedExecutionPrimitive = runtimeAction`;
-- Debug Menu raw `canonicalReason = runtime-hook-requires-portable-equivalent` remains visible;
-- Debug Menu `normalizedCanonicalReason = runtime-action-not-static-bytes`.
-
-Other normalized reasons also remain consistent:
-
-- Damage / Defence -> `dynamic-numeric-state-not-static-bytes`;
-- God Mode -> `runtime-hook-requires-portable-equivalent`.
-
-Target identities remain correct on device:
-
-- `libpathofkings.dylib`: UUID `4C4C448B-5555-3144-A14F-4905D9ED4E59`, arm64, filetype `6`, preferred `__TEXT` VM `0x0`, cryptid `0`;
-- `UnityFramework`: UUID `E0039512-CCB0-33E3-A69A-3DBEBFF3641B`, arm64, filetype `6`, preferred `__TEXT` VM `0x0`, cryptid `0`.
-
-Observed implementation evidence remains diagnostic only:
-
-- Damage/Defence/God share handler evidence around `libpathofkings.dylib + 0x4128`, with trampoline evidence toward `UnityFramework + 0x3BF6D94`;
-- Debug Menu has `buttonBlock` evidence at `libpathofkings.dylib + 0x66B0`, nested handler `+0x66C4`, resolving to `UnityFramework + 0x3DEC9A0`.
-
-## Output contract
-
-Normal scan outputs may include:
-
-- `HFAMap_Learn.log`
-- `HFAMap_MenuMap.jsonl`
-- `HFAMap_JailpatchMap.jsonl`
-- canonical `*.hfapatch.json` only when true static byte patches are proven
-- `*.hfapatch.identity.json` for canonical identity when available
-- `*.hfamap.igmm.json` for iGMM runtime diagnostics
-- `*.hfamap.analysis.json` for normalized analysis-only descriptions
-
-The normalized schema remains `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
-
-## Next validation
-
-WayOfKings tuning is complete for this parser line. Do not keep changing the iGMM normalizer without new contradictory evidence.
-
-Next use the **same v1.9.36.4 dylib** for cross-family regression:
-
-1. runtime-record/static 5 MB family: require correct canonical `com.hfa.patch/v1`, target identity, preferred VM offsets, and original-byte truth;
-2. legacy ~15 MB family: require the historical static patch path to remain functional;
-3. compare normalized analysis output across all three families.
+Use the supplied five menu-dylib + host-binary pairs as the primary regression corpus. A family is not considered supported merely because its strings/classes are recognized.
 
 ## Verification discipline
 
-- v1.9.36 parser baseline: frozen/reference.
-- v1.9.36.1 WayOfKings startup/scan/export: passed.
-- v1.9.36.3 WayOfKings controls/target identities: device passed.
-- v1.9.36.4 compile/link/sign: passed.
-- v1.9.36.4 CI: passed on run `34907671999`.
-- v1.9.36.4 artifact re-hash: passed.
-- v1.9.36.4 WayOfKings device validation: **passed**.
-- runtime-record/static 5 MB current-line regression: pending.
-- legacy ~15 MB current-line regression: pending.
-- v1.9.37/v1.9.37.1 runtime merge: failed on device / retired.
+Strictly distinguish:
+
+- source changed: yes;
+- generated source assertions: passed;
+- arm64 compile/link/strip/sign: passed;
+- GitHub Actions CI: passed;
+- artifact uploaded: passed;
+- device runtime: pending;
+- cross-family regression: pending;
+- full generic/universal claim: not yet justified.
