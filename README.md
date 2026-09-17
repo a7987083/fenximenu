@@ -1,6 +1,6 @@
 # fenximenu
 
-HFAMap / iOSGods 菜单分析专用仓库。
+HFAMap /。
 
 源历史仓库：`a7987083/UnitXP_SP3-Moonstone`
 
