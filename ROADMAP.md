@@ -25,12 +25,20 @@ Current milestone:
 
 Next tasks:
 
-1. run GitHub Actions for the new commit and record build/artifact hashes;
-2. run a clean device scan and require 14 canonical features / 20 patches;
-3. enable Fuel and Boost separately before depletion and verify values/HUD;
-4. disable both and verify original-byte restoration;
-5. reproduce and resolve the existing Posters/Prestige overlap at
+1. run a clean device scan and require 14 canonical features / 20 patches;
+2. enable Fuel and Boost separately before depletion and verify values/HUD;
+3. disable both and verify original-byte restoration;
+4. reproduce and resolve the existing Posters/Prestige overlap at
    `UnityFramework + 0x2E25904`.
+
+CI checkpoint:
+
+- run: `35170319783` — success;
+- artifact: `10476488771`;
+- artifact digest:
+  `sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4`;
+- dylib SHA-256:
+  `afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`.
 
 ## Current phase
 

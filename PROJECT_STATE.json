@@ -8,10 +8,16 @@
   "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
   "build": {
     "local_generation": "passed",
-    "ci": "pending",
-    "run_id": null,
-    "artifact": null,
-    "binary_sha256": null
+    "ci": "success",
+    "run_id": 35170319783,
+    "build_commit": "5db1f384c49a4a4cd243b722881083f0893692e5",
+    "artifact_id": 10476488771,
+    "artifact": "HFAMapUniversal-v1.9.37.10-UnifiedFeatureModel",
+    "artifact_digest": "sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4",
+    "binary": "HFAMapUniversal_v1.9.37.10_UnifiedFeatureModel.dylib",
+    "architecture": "arm64",
+    "size_bytes": 247824,
+    "binary_sha256": "afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58"
   },
   "target_profile": {
     "id": "earntodie-1.28.251-1",
@@ -53,7 +59,9 @@
     "json_fixture": "passed",
     "workflow_yaml_parse": "passed",
     "git_diff_check": "passed",
-    "ios_build_link_sign": "pending",
+    "ios_build_link_sign": "passed",
+    "artifact_rehash": "passed",
+    "compiled_profile_markers": "passed",
     "device_runtime": "pending"
   },
   "known_issues": [
@@ -61,5 +69,5 @@
     "Posters and Prestige overlap at UnityFramework+0x2E25904",
     "generic observed-action classification remains broader than the available evidence"
   ],
-  "next_task": "Verify the v1.9.37.10 GitHub Actions build, record artifact hashes, then run a clean 14-feature/20-patch device regression."
+  "next_task": "Run a clean 14-feature/20-patch device regression, verify Fuel/Boost independently, then resolve the Posters/Prestige overlap."
 }

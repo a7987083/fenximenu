@@ -8,6 +8,18 @@ Baseline: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`
 
 Implementation commit: `13fff6fd49d84348c618cc7845527e0b5c8413fa`
 
+Build commit: `5db1f384c49a4a4cd243b722881083f0893692e5`
+
+GitHub Actions run: `35170319783` — success
+
+Artifact ID: `10476488771`
+
+Artifact digest:
+`sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4`
+
+Binary SHA-256:
+`afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`
+
 ### Changed
 
 - Added a post-v1.9.37.10 generation step that appends two exact-build static
@@ -31,7 +43,9 @@ Implementation commit: `13fff6fd49d84348c618cc7845527e0b5c8413fa`
 - generated-source fixture assertions: passed;
 - Python syntax / JSON syntax / workflow YAML parse: passed;
 - `git diff --check`: passed;
-- iOS compile/link/sign: pending GitHub Actions;
+- iOS compile/link/sign: passed;
+- downloaded artifact ZIP integrity/re-hash: passed;
+- built arm64 Mach-O and profile marker inspection: passed;
 - device runtime/regression: pending.
 
 ## v1.9.36.4 JSONExport — CI passed / WayOfKings device passed

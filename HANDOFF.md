@@ -52,10 +52,12 @@ UUID and both original-byte checks. No address is reused on another build.
 
 ## Verification boundary
 
-Static verification and the complete local generation chain passed. GitHub
-Actions compile/link/sign and device enable/disable regression remain pending.
-Enabling the patch stops further depletion but does not refill a value that was
-already zero.
+Static verification, the complete local generation chain and GitHub Actions
+compile/link/sign passed. Build run `35170319783` produced artifact
+`10476488771`; the downloaded arm64 dylib is 247824 bytes with SHA-256
+`afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`.
+Device enable/disable regression remains pending. Enabling the patch stops
+further depletion but does not refill a value that was already zero.
 
 The pre-existing package also has an unresolved overlap at
 `UnityFramework+0x2E25904`: Posters writes `08E0BF12`, while Prestige writes

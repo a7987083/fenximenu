@@ -118,6 +118,7 @@ item before the full 14-button package is promoted as conflict-free.
 - IL2CPP field and method mapping: passed;
 - ARM64 instruction/data-flow review: passed;
 - static original-byte verification: passed (`20/20` including the new sites);
-- repository generation checks: required in CI;
-- build/link/sign: pending the next GitHub Actions run;
+- repository generation checks: passed;
+- build/link/sign: passed in GitHub Actions run `35170319783`;
+- artifact re-hash and compiled marker inspection: passed;
 - device enable/disable regression: pending.
