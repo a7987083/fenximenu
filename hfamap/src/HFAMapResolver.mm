@@ -137,16 +137,17 @@ static NSArray<NSDictionary *> *HFAExecutableImages(void) {
     NSMutableArray *images = [NSMutableArray array];
     NSString *bundle = NSBundle.mainBundle.bundlePath.stringByStandardizingPath;
     for (uint32_t i = 0, n = MIN(_dyld_image_count(), 512U); i < n; ++i) {
-        const char *raw = _dyld_get_image_name(i); const struct mach_header_64 *h = (void *)_dyld_get_image_header(i);
+        const char *raw = _dyld_get_image_name(i);
+        const struct mach_header_64 *h = reinterpret_cast<const struct mach_header_64 *>(_dyld_get_image_header(i));
         if (!raw || !h || h->magic != MH_MAGIC_64) continue;
         NSString *path = [NSString stringWithUTF8String:raw];
         if (![path.stringByStandardizingPath hasPrefix:bundle]) continue;
         const uint8_t *p = (const uint8_t *)(h + 1), *end = p + h->sizeofcmds;
         for (uint32_t c = 0; c < h->ncmds && p + sizeof(struct load_command) <= end; ++c) {
-            const struct load_command *lc = (const void *)p;
+            const struct load_command *lc = reinterpret_cast<const struct load_command *>(p);
             if (lc->cmdsize < sizeof(*lc) || p + lc->cmdsize > end) break;
             if (lc->cmd == LC_SEGMENT_64) {
-                const struct segment_command_64 *seg = (const void *)p;
+                const struct segment_command_64 *seg = reinterpret_cast<const struct segment_command_64 *>(p);
                 if ((seg->initprot & VM_PROT_EXECUTE) && seg->vmsize)
                     [images addObject:@{ @"image": path.lastPathComponent, @"path": path,
                                          @"vmaddr": @(seg->vmaddr), @"vmsize": @(seg->vmsize),
@@ -180,7 +181,8 @@ static NSDictionary *HFAValidatedFeature(NSDictionary *source, NSString *fallbac
     id originalValue = HFAValueForAliases(source, @[@"original",@"originalbytes",@"disabled",@"disabledbytes"]);
     NSData *original = HFABytesValue(originalValue);
     NSString *(^hex)(NSData *) = ^NSString *(NSData *data) {
-        const uint8_t *b = data.bytes; NSMutableString *s = [NSMutableString stringWithCapacity:data.length * 2];
+        const uint8_t *b = static_cast<const uint8_t *>(data.bytes);
+        NSMutableString *s = [NSMutableString stringWithCapacity:data.length * 2];
         for (NSUInteger i=0;i<data.length;i++) [s appendFormat:@"%02X",b[i]]; return s;
     };
     NSMutableDictionary *result = [@{ @"name": label, @"offset": [NSString stringWithFormat:@"0x%llX", rva],
