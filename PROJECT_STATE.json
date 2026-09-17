@@ -5,7 +5,7 @@
   "repository": "a7987083/fenximenu",
   "branch": "feature/hfamap-v2-bounded-universal-analyzer",
   "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
-  "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
+  "implementation_commit": "f6a82af5fd21582df8894c13491a8bdc7b6e0176",
   "v2_analyzer": {
     "discovery": "loaded-app-local-images-and-bounded-sections",
     "selection": "multi-evidence-with-ambiguity-rejection",
