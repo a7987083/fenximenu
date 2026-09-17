@@ -1,6 +1,43 @@
 # HFAMap Roadmap
 
-## Current phase — v1.9.37.10 Earn to Die Rogue completion
+## Current phase — v1.9.38.0 Stage 1 Universal Mutation IR
+
+Branch: `feature/universal-mutation-refactor`
+
+Baseline: `feature/hfamap-v193710-unified-feature-model @ 9fe759fe8519bfcaa90c2461a256c18a4d6c2080`
+
+Build-tested implementation: `a26cab49985fbb675e76378899eeb02052e7f2c6`
+
+CI run `35194007919`: **success**.
+
+Stage 1 establishes a provider-neutral final truth model:
+
+`Evidence Provider -> existing truth gate -> com.hfa.mutation/v1 -> export/regression`
+
+Completed:
+
+- added `HFACanonicalMutation.h/.m`;
+- retained the existing original-byte/target truth gates;
+- bridged truth-gated `exportFeatures/exportTargets` into the new IR;
+- kept `com.hfa.patch/v1` unchanged for compatibility;
+- verified the canonical core contains no AP/iGameGod/Jailpatch/5M framework names;
+- built, linked, stripped and signed the arm64 dylib in GitHub Actions;
+- uploaded artifact `10484872379`;
+- binary SHA-256 `09f04e942d6f571048f26fe728e6a51974bb8c2aeeba29a06878befd28a5ea16`.
+
+Next tasks:
+
+1. Stage 2: capture provider-neutral memory/code mutations beneath the family adapters;
+2. correlate feature context -> actual mutation -> target Mach-O -> preferred VM offset;
+3. capture pre-write and post-write bytes before accepting a static mutation;
+4. run the supplied five menu-dylib + host-binary pairs as one regression corpus;
+5. require all proven static mutations to use the same `com.hfa.mutation/v1` contract;
+6. keep runtime-only numeric/hook/button features analysis-only until a portable static mutation is independently proven;
+7. perform device runtime validation of `HFAMap_CanonicalMutations.json`.
+
+Do not call the parser fully universal until the five-pair cross-family regression and device validation pass.
+
+## Previous phase — v1.9.37.10 Earn to Die Rogue completion
 
 Branch: `feature/hfamap-v193710-unified-feature-model`
 
@@ -23,7 +60,7 @@ Current milestone:
   original-byte matches before either patch is exported;
 - preserve generic resolver behavior for every other title/build.
 
-Next tasks:
+Previous next tasks:
 
 1. run a clean device scan and require 14 canonical features / 20 patches;
 2. enable Fuel and Boost separately before depletion and verify values/HUD;
@@ -40,80 +77,22 @@ CI checkpoint:
 - dylib SHA-256:
   `afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`.
 
-## Current phase
-
-v1.9.36.4 JSONExport — pure parser/exporter, CI passed, **WayOfKings/iGMM device validation passed**, cross-family regression next.
-
-## Product direction
-
-HFAMapUniversal stays focused on:
-
-`original menu -> parser -> evidence -> normalized JSON`
-
-The runtime execution engine is not part of the parser mainline. v1.9.37/v1.9.37.1 merged playback/Dobby into the parser and crashed on device startup, so that direction is retired.
-
 ## Stable foundation
 
 - Frozen parser baseline: v1.9.36 ArchitectureTruth, commit `75f94da37221343b6839465ad365ddec2679e63a`.
-- Preserve constructor, `run_full_scan()` and resolver/decrypt/original-byte core exactly.
-- Canonical static patches remain `com.hfa.patch/v1` with preferred Mach-O VM addresses.
+- Preserve constructor, `run_full_scan()` and resolver/decrypt/original-byte core unless a regression test proves a required change.
+- Canonical static patches remain `com.hfa.patch/v1` for compatibility while Stage 1 also emits `com.hfa.mutation/v1`.
 - iGMM runtime behavior remains diagnostic-only under `com.hfa.igmm.runtime/v1`.
 - Normalized cross-family analysis uses `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
 
-## Current milestone: v1.9.36.4
+## Device/regression checkpoints retained
 
-Build checkpoint:
-
-- branch: `feature/hfamap-v19361-json-export`;
-- build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`;
-- CI run: `34907671999` — success;
-- artifact ID: `10372928333`;
-- artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`;
-- binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`;
-- size: `192432` bytes;
-- SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`.
-
-## WayOfKings/iGMM validation: COMPLETE
-
-Device archive `归档 6(1).zip` confirmed:
-
-- stable injection / no startup crash;
-- Full Scan completion;
-- 4-feature iGMM diagnostic export;
-- normalized analysis export with `status=pass`;
-- `Damage Multiplier -> number`, default `1`;
-- `Defence Multiplier -> number`, default `1`;
-- `God Mode -> toggle`;
-- `Debug Menu: kTypeButton -> button`;
-- raw Debug Menu primitive/reason preserved;
-- `normalizedExecutionPrimitive = runtimeAction`;
-- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- target identities for `libpathofkings.dylib` and `UnityFramework` remain correct.
-
-The iGMM path should now be treated as a completed regression checkpoint for this parser line unless new contradictory device evidence appears.
-
-## Next validation: runtime-record/static 5 MB family
-
-Use the same v1.9.36.4 binary. Required evidence:
-
-1. no startup crash;
-2. Full Scan completes;
-3. canonical `com.hfa.patch/v1` is generated only after the existing truth gates pass;
-4. the target image is the intended executable/dylib, not an injected module;
-5. target identity UUID/architecture/preferred `__TEXT` values are consistent with the tested binary;
-6. every exported `original` byte sequence matches the real target code at the preferred Mach-O VM address;
-7. no stale package from a previous run is mistaken for current output;
-8. normalized `com.hfa.menu.analysis/v1` reflects the canonical features without changing the static patch contract.
-
-## Following validation: legacy ~15 MB family
-
-After the static 5 MB family passes:
-
-1. run the same v1.9.36.4 parser on the legacy AP/IGSecret-style sample;
-2. confirm the historically working static package path still exports correctly;
-3. compare control/patch/identity normalization across the 15 MB, static 5 MB and iGMM families;
-4. only then promote this parser/exporter line as a cross-family candidate.
+- v1.9.36.4 WayOfKings/iGMM device validation: passed.
+- v1.9.37.10 Earn to Die static Fuel/Boost analysis/build: passed; device regression pending.
+- runtime-record/static 5 MB current-line regression: pending.
+- legacy ~15 MB current-line regression: pending.
+- Universal Mutation Stage 1 CI: passed; device/cross-family regression pending.
 
 ## Deferred work
 
-Execution of generated JSON remains a separate project/module. Do not merge it back into HFAMapUniversal without a separately device-validated integration design.
+Execution of generated JSON remains a separate project/module. Do not merge a playback/runtime consumer back into HFAMapUniversal without a separately device-validated integration design.
