@@ -1,0 +1,60 @@
+{
+  "schema": "com.hfa.verified-profile/v1",
+  "profile": "earntodie-1.28.251-1",
+  "package": {
+    "bundleIdentifier": "com.notdoppler.earntodierogue",
+    "shortVersion": "1.28.251",
+    "buildVersion": "1",
+    "architecture": "arm64"
+  },
+  "target": {
+    "image": "UnityFramework",
+    "uuid": "8654D76C-B760-34FC-BEE0-FE70AE8C95C8",
+    "preferredTextVMAddr": "0x0",
+    "offsetSemantics": "preferred-mach-o-vmaddr",
+    "analyzedSha256": "7d19c706d3a2768799a4d1dd452ff0aa327e62221e5d59d88e706ed1347f7b57"
+  },
+  "metadata": {
+    "version": 31,
+    "sha256": "de4eac81ed758381ef929c65d7efddb8592ccaf1dacf9d9f523df8ee1041081b"
+  },
+  "method": {
+    "assembly": "Assembly-CSharp.dll",
+    "type": "com.notdoppler.ETDR.Car",
+    "name": "FixedUpdate",
+    "rva": "0x2D9827C",
+    "fields": {
+      "_fuelAmount": "0xB8",
+      "_boostAmount": "0xBC"
+    }
+  },
+  "features": [
+    {
+      "id": "Fuel",
+      "title": "Unlimited Fuel",
+      "target": "UnityFramework",
+      "offset": "0x2D98AC8",
+      "original": "0038211E",
+      "instruction": "fsub s0, s0, s1",
+      "enabled": "1F2003D5",
+      "enabledInstruction": "nop"
+    },
+    {
+      "id": "Boost",
+      "title": "Unlimited Boost",
+      "target": "UnityFramework",
+      "offset": "0x2D9887C",
+      "original": "0038281E",
+      "instruction": "fsub s0, s0, s8",
+      "enabled": "1F2003D5",
+      "enabledInstruction": "nop"
+    }
+  ],
+  "verification": {
+    "metadataPairIdentical": true,
+    "existingPatchOriginalsMatched": "18/18",
+    "newPatchOriginalsMatched": "2/2",
+    "staticAnalysis": "passed",
+    "deviceRuntime": "pending"
+  }
+}

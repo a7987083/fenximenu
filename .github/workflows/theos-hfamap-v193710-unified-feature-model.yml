@@ -46,6 +46,7 @@ jobs:
           cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/profiler.before193710
           cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before193710
           python3 .github/scripts/hfamap_v193710_unified_feature_model.py
+          python3 .github/scripts/hfamap_v193710_earntodie_verified_profile.py
           git diff --check
 
       - name: Verify unified feature catalog
@@ -83,6 +84,39 @@ jobs:
             echo 'old v19379 label filter remains'; exit 1
           fi
           grep -q 'runtime-observed-feature' "$f"
+
+      - name: Verify Earn to Die Rogue static profile
+        run: |
+          set -euo pipefail
+          f=hfamap/src/HFAMapPatchExecutionTrace.m
+          fixture=tests/earntodie_rogue_1.28.251_verified_profile.json
+          grep -q 'HFAAppendVerifiedEarnToDieRogueProfile' "$f"
+          grep -q '8654D76C-B760-34FC-BEE0-FE70AE8C95C8' "$f"
+          grep -q '0x2D98AC8' "$f"
+          grep -q '0038211E' "$f"
+          grep -q '0x2D9887C' "$f"
+          grep -q '0038281E' "$f"
+          grep -q '1F2003D5' "$f"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          fixture = json.loads(Path(
+              'tests/earntodie_rogue_1.28.251_verified_profile.json'
+          ).read_text())
+          expected = {
+              'Fuel': ('0x2D98AC8', '0038211E', '1F2003D5'),
+              'Boost': ('0x2D9887C', '0038281E', '1F2003D5'),
+          }
+          actual = {
+              f['id']: (f['offset'], f['original'], f['enabled'])
+              for f in fixture['features']
+          }
+          if actual != expected:
+              raise SystemExit(f'verified profile mismatch: {actual!r}')
+          if fixture['target']['uuid'] != '8654D76C-B760-34FC-BEE0-FE70AE8C95C8':
+              raise SystemExit('verified profile UUID mismatch')
+          PY
 
       - name: Verify success cleanup policy
         run: |
@@ -145,6 +179,8 @@ jobs:
           grep -q 'FEATURE-CATALOG-APPEND' dist/strings_v1.9.37.10.txt
           grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.10.txt
           grep -q 'runtime-feature-no-static-mapping' dist/strings_v1.9.37.10.txt
+          grep -q 'earntodie-1.28.251-1' dist/strings_v1.9.37.10.txt
+          grep -q 'VERIFIED-PROFILE-PATCH' dist/strings_v1.9.37.10.txt
           if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.10.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
           fi
