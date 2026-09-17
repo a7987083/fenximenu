@@ -15,3 +15,12 @@
 进入仓库顶部 **Actions**，打开 **Build UnitXP_SP3 Moonstone DLL** 即可查看结果。
 
 > 替换 DLL 前请备份原文件。首次版本属于实机测试版，如客户端无法启动，请立即换回旧 DLL。
+
+## HFAMapUniversal 当前逆向结论
+
+`feature/hfamap-v193710-unified-feature-model` 的 Earn to Die Rogue
+`1.28.251 (1)` Fuel/Boost 静态补丁、目标身份门、验证状态和交接信息见：
+
+- [完整分析](docs/EARN_TO_DIE_ROGUE_1.28.251_ANALYSIS.md)
+- [当前状态](PROJECT_STATE.json)
+- [交接说明](HANDOFF.md)

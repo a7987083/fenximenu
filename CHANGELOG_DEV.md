@@ -1,5 +1,39 @@
 # Development Changelog
 
+## v1.9.37.10 — verified Earn to Die Rogue Fuel/Boost profile
+
+Branch: `feature/hfamap-v193710-unified-feature-model`
+
+Baseline: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`
+
+Implementation commit: `13fff6fd49d84348c618cc7845527e0b5c8413fa`
+
+### Changed
+
+- Added a post-v1.9.37.10 generation step that appends two exact-build static
+  features only after bundle/version/architecture/UUID/original-byte checks.
+- Added `Fuel`: RVA `0x2D98AC8`, original `0038211E`, enabled `1F2003D5`.
+- Added `Boost`: RVA `0x2D9887C`, original `0038281E`, enabled `1F2003D5`.
+- Added the binary/metadata evidence report and a machine-readable profile
+  fixture.
+- Added GitHub Actions assertions for the profile, UUID, RVAs, byte sequences
+  and final binary markers.
+
+### Verification
+
+- GitHub remote branch/base commit check: passed;
+- matching metadata pair: byte-identical, version 31;
+- IL2CPP `Car.FixedUpdate()` mapping: passed;
+- ARM64 disassembly/data-flow review: passed;
+- existing canonical original bytes: `18/18` matched;
+- new Fuel/Boost original bytes: `2/2` matched;
+- full local generation chain: passed;
+- generated-source fixture assertions: passed;
+- Python syntax / JSON syntax / workflow YAML parse: passed;
+- `git diff --check`: passed;
+- iOS compile/link/sign: pending GitHub Actions;
+- device runtime/regression: pending.
+
 ## v1.9.36.4 JSONExport — CI passed / WayOfKings device passed
 
 Branch: `feature/hfamap-v19361-json-export`

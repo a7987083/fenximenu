@@ -1,71 +1,65 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.36.4",
-  "phase": "pure-parser-cross-family-regression",
-  "branch": "feature/hfamap-v19361-json-export",
-  "base_commit": "75f94da37221343b6839465ad365ddec2679e63a",
-  "stable_parser_baseline": {
-    "version": "1.9.36",
-    "branch": "feature/hfamap-v1936-architecture-truth",
-    "commit": "75f94da37221343b6839465ad365ddec2679e63a",
-    "policy": "preserve startup, full scan and resolver core; add analysis-only export after scan"
-  },
+  "version": "1.9.37.10",
+  "phase": "earntodie-verified-profile-ci-and-device-validation",
+  "repository": "a7987083/fenximenu",
+  "branch": "feature/hfamap-v193710-unified-feature-model",
+  "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
+  "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
   "build": {
-    "status": "success",
-    "ci": "success",
-    "run_id": 34907671999,
-    "build_commit": "c62b378220d1908c2788a5a359083b484b187c66",
-    "artifact_id": 10372928333,
-    "artifact": "HFAMapUniversal-v1.9.36.4-JSONExport",
-    "artifact_digest": "sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce",
-    "binary": "HFAMapUniversal_v1.9.36.4_JSONExport.dylib",
+    "local_generation": "passed",
+    "ci": "pending",
+    "run_id": null,
+    "artifact": null,
+    "binary_sha256": null
+  },
+  "target_profile": {
+    "id": "earntodie-1.28.251-1",
+    "bundle_identifier": "com.notdoppler.earntodierogue",
+    "short_version": "1.28.251",
+    "build_version": "1",
     "architecture": "arm64",
-    "size_bytes": 192432,
-    "sha256": "a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5"
+    "image": "UnityFramework",
+    "uuid": "8654D76C-B760-34FC-BEE0-FE70AE8C95C8",
+    "binary_sha256": "7d19c706d3a2768799a4d1dd452ff0aa327e62221e5d59d88e706ed1347f7b57",
+    "metadata_version": 31,
+    "metadata_sha256": "de4eac81ed758381ef929c65d7efddb8592ccaf1dacf9d9f523df8ee1041081b",
+    "offset_semantics": "preferred-mach-o-vmaddr"
+  },
+  "verified_patches": {
+    "Fuel": {
+      "title": "Unlimited Fuel",
+      "offset": "0x2D98AC8",
+      "original": "0038211E",
+      "enabled": "1F2003D5",
+      "status": "static-verified"
+    },
+    "Boost": {
+      "title": "Unlimited Boost",
+      "offset": "0x2D9887C",
+      "original": "0038281E",
+      "enabled": "1F2003D5",
+      "status": "static-verified"
+    }
   },
   "verification": {
-    "v1936_constructor_preserved": true,
-    "v1936_full_scan_preserved": true,
-    "v1936_trace_resolver_core_preserved": true,
-    "analysis_only_exporter_has_no_constructor": true,
-    "no_dobby_linkage": true,
-    "no_hfapatch_consumer": true,
-    "no_command_polling": true,
-    "wayofkings_control_fixture": "passed",
-    "button_kTypeButton_normalization": "device-confirmed",
-    "target_identity_export": "device-confirmed",
-    "normalized_execution_primitive": "device-confirmed",
-    "normalized_canonical_reason": "device-confirmed",
-    "v19364_wayofkings_device_startup": "passed",
-    "v19364_wayofkings_full_scan": "passed",
-    "v19364_wayofkings_igmm_export": "passed",
-    "v19364_wayofkings_analysis_export": "passed",
-    "runtime_record_static_5mb_regression": "pending",
-    "legacy_15mb_regression": "pending"
+    "github_remote_baseline": "passed",
+    "metadata_pair_identical": true,
+    "il2cpp_mapping": "passed",
+    "arm64_data_flow": "passed",
+    "existing_original_bytes": "18/18",
+    "new_original_bytes": "2/2",
+    "python_syntax": "passed",
+    "json_fixture": "passed",
+    "workflow_yaml_parse": "passed",
+    "git_diff_check": "passed",
+    "ios_build_link_sign": "pending",
+    "device_runtime": "pending"
   },
-  "runtime_evidence": {
-    "wayofkings_v19364": "Device archive 归档 6(1).zip confirmed stable injection, Full Scan completion, iGMM runtime diagnostic export and normalized analysis export with 4 features.",
-    "wayofkings_controls": {
-      "Damage Multiplier": "modtext -> number, default 1; normalizedExecutionPrimitive=numericRuntimeModifier; normalizedCanonicalReason=dynamic-numeric-state-not-static-bytes",
-      "Defence Multiplier": "modtext -> number, default 1; normalizedExecutionPrimitive=numericRuntimeModifier; normalizedCanonicalReason=dynamic-numeric-state-not-static-bytes",
-      "God Mode": "customSwitch -> toggle; raw and normalized primitive=nativeHook; normalizedCanonicalReason=runtime-hook-requires-portable-equivalent",
-      "Debug Menu": "kTypeButton -> button; raw executionPrimitive=nativeHook preserved; normalizedExecutionPrimitive=runtimeAction; raw canonicalReason preserved; normalizedCanonicalReason=runtime-action-not-static-bytes"
-    },
-    "wayofkings_target_identities": {
-      "libpathofkings.dylib": "UUID 4C4C448B-5555-3144-A14F-4905D9ED4E59, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0",
-      "UnityFramework": "UUID E0039512-CCB0-33E3-A69A-3DBEBFF3641B, arm64, filetype=6, preferredTextVMAddr=0x0, cryptid=0"
-    },
-    "wayofkings_log": "FULL-SCAN-END completed; IGMM-RUNTIME-EXPORT features=4; JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2.",
-    "retired_runtime_merge": "v1.9.37 and v1.9.37.1 injected runtime-consumer/Dobby builds crashed on device and are not the HFAMapUniversal parser baseline."
-  },
-  "outputs": [
-    "Documents/HFAMap_Learn.log",
-    "Documents/HFAMap_MenuMap.jsonl",
-    "Documents/HFAMap_JailpatchMap.jsonl",
-    "*.hfapatch.json only for proven canonical static patches",
-    "*.hfapatch.identity.json for canonical target identity when available",
-    "*.hfamap.igmm.json for iGMM runtime diagnostics",
-    "*.hfamap.analysis.json for normalized analysis-only menu description"
+  "known_issues": [
+    "Fuel/Boost stop future depletion but do not refill an already-zero value",
+    "Posters and Prestige overlap at UnityFramework+0x2E25904",
+    "generic observed-action classification remains broader than the available evidence"
   ],
-  "next_task": "Use the same v1.9.36.4 parser-only dylib for cross-family regression. First test the runtime-record/static 5 MB family and require trusted com.hfa.patch/v1 output with correct target identity and original bytes; then test the legacy ~15 MB family. Do not add an execution engine to HFAMapUniversal."
+  "next_task": "Verify the v1.9.37.10 GitHub Actions build, record artifact hashes, then run a clean 14-feature/20-patch device regression."
 }

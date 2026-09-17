@@ -1,5 +1,67 @@
 # HFAMap Handoff
 
+## Active work
+
+- repository: `a7987083/fenximenu`;
+- branch: `feature/hfamap-v193710-unified-feature-model`;
+- product version: `v1.9.37.10 UnifiedFeatureModel`;
+- previous build commit: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`;
+- verified-profile implementation: `13fff6fd49d84348c618cc7845527e0b5c8413fa`.
+
+## Earn to Die Rogue conclusion
+
+Target identity:
+
+```text
+bundle       com.notdoppler.earntodierogue
+version      1.28.251
+build        1
+architecture arm64
+image        UnityFramework
+UUID         8654D76C-B760-34FC-BEE0-FE70AE8C95C8
+```
+
+Missing canonical patches:
+
+```text
+Fuel  UnityFramework+0x2D98AC8  0038211E -> 1F2003D5
+Boost UnityFramework+0x2D9887C  0038281E -> 1F2003D5
+```
+
+Both sites belong to `Assembly-CSharp.dll!com.notdoppler.ETDR.Car.FixedUpdate()`
+at RVA `0x2D9827C`. Fuel is `_fuelAmount` at object offset `0xB8`; Boost is
+`_boostAmount` at `0xBC`. The original instructions subtract per-frame
+consumption and the replacement is one ARM64 `nop`.
+
+The original v1.9.37.10 result was incomplete because the shared Objective-C
+action (`AaNfXa -ddktmnuyvBoEK:`, `EarntoDieRogue.dylib+0x397098`) was treated
+as evidence of a runtime-only implementation. All 14 controls share that menu
+dispatcher, including the 12 already-proven static features, so that inference
+was invalid. The exact-build profile repairs Fuel/Boost without weakening the
+generic truth gates.
+
+Implementation files:
+
+- `.github/scripts/hfamap_v193710_earntodie_verified_profile.py`;
+- `.github/workflows/theos-hfamap-v193710-unified-feature-model.yml`;
+- `tests/earntodie_rogue_1.28.251_verified_profile.json`;
+- `docs/EARN_TO_DIE_ROGUE_1.28.251_ANALYSIS.md`.
+
+Runtime acceptance requires bundle/version/build, arm64, exact UnityFramework
+UUID and both original-byte checks. No address is reused on another build.
+
+## Verification boundary
+
+Static verification and the complete local generation chain passed. GitHub
+Actions compile/link/sign and device enable/disable regression remain pending.
+Enabling the patch stops further depletion but does not refill a value that was
+already zero.
+
+The pre-existing package also has an unresolved overlap at
+`UnityFramework+0x2E25904`: Posters writes `08E0BF12`, while Prestige writes
+`20008052C0035FD6`. Resolve or explicitly arbitrate that conflict before calling
+the full 14-button package conflict-free.
+
 ## Current branch
 
 `feature/hfamap-v19361-json-export`

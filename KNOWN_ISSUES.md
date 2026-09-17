@@ -1,5 +1,52 @@
 # Known Issues
 
+## v1.9.37.10 Earn to Die Rogue profile
+
+### Device runtime validation pending
+
+Status: open.
+
+Fuel/Boost are statically proven and generation-tested, but the new analyzer
+binary has not yet been built by GitHub Actions or exercised on device. Required
+checks are clean scan output, `14` canonical features, `20` patches, independent
+Fuel/Boost enable/disable and original-byte restoration.
+
+### Already-depleted values are not refilled
+
+Status: intentional behavior.
+
+The two patches NOP the subtraction instructions. They prevent additional
+consumption but do not assign a full tank. Enable them before Fuel/Boost reaches
+zero or start a new driving session.
+
+### Exact-build profile only
+
+Status: permanent safety gate.
+
+The RVAs are valid only for `com.notdoppler.earntodierogue` `1.28.251 (1)`,
+arm64, UnityFramework UUID `8654D76C-B760-34FC-BEE0-FE70AE8C95C8`, with exact
+original bytes. A game update requires fresh metadata and binary analysis.
+
+### Posters/Prestige patch overlap
+
+Status: open / pre-existing.
+
+Both features touch `UnityFramework+0x2E25904`. Posters writes `08E0BF12`
+(4 bytes), while Prestige writes `20008052C0035FD6` (8 bytes). Toggle order can
+overwrite the shared first instruction. Fuel/Boost do not introduce this
+conflict, but the package needs explicit conflict handling or a new independent
+Prestige/Posters patch site.
+
+### Generic observed-action classification remains too broad
+
+Status: mitigated for the verified target only.
+
+The generic v1.9.37.9/v1.9.37.10 logic can classify an observed action as
+`runtimeAction` even when the action is only a shared menu dispatcher. The exact
+Earn to Die profile corrects the two proven records; a future generic fix should
+use `dispatcher-observed/unresolved` until independent write/hook/static-byte
+evidence exists.
+
 ## Current parser-only line: v1.9.36.4 JSONExport
 
 ### v1.9.36.4 WayOfKings/iGMM validation

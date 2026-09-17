@@ -1,5 +1,37 @@
 # HFAMap Roadmap
 
+## Current phase — v1.9.37.10 Earn to Die Rogue completion
+
+Branch: `feature/hfamap-v193710-unified-feature-model`
+
+Baseline commit: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`
+
+Verified-profile implementation commit:
+`13fff6fd49d84348c618cc7845527e0b5c8413fa`
+
+The `com.notdoppler.earntodierogue` `1.28.251 (1)` scan originally exported
+12 canonical features and treated Fuel/Boost as runtime-observed records with
+empty patch arrays. Matching IL2CPP metadata and ARM64 data-flow analysis now
+prove both are static depletion sites in `Car.FixedUpdate()`.
+
+Current milestone:
+
+- append `Unlimited Fuel` at `UnityFramework + 0x2D98AC8`;
+- append `Unlimited Boost` at `UnityFramework + 0x2D9887C`;
+- replace only the relevant `fsub` with ARM64 `nop` (`1F2003D5`);
+- require exact bundle version, arm64 architecture, UnityFramework UUID and
+  original-byte matches before either patch is exported;
+- preserve generic resolver behavior for every other title/build.
+
+Next tasks:
+
+1. run GitHub Actions for the new commit and record build/artifact hashes;
+2. run a clean device scan and require 14 canonical features / 20 patches;
+3. enable Fuel and Boost separately before depletion and verify values/HUD;
+4. disable both and verify original-byte restoration;
+5. reproduce and resolve the existing Posters/Prestige overlap at
+   `UnityFramework + 0x2E25904`.
+
 ## Current phase
 
 v1.9.36.4 JSONExport — pure parser/exporter, CI passed, **WayOfKings/iGMM device validation passed**, cross-family regression next.
