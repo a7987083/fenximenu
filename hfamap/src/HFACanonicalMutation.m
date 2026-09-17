@@ -192,7 +192,7 @@ BOOL HFAFlushCanonicalMutations(void) {
     HFAMutationLog([NSString stringWithFormat:@"[MUTATION-IR-FLUSH] status=%@ count=%lu file=%@%@",
                     ok ? @"pass" : @"fail", (unsigned long)mutations.count,
                     path.lastPathComponent,
-                    error ? [NSString stringWithFormat:@" error=%@", error.localizedDescription] : @""]]);
+                    error ? [NSString stringWithFormat:@" error=%@", error.localizedDescription] : @""]);
     return ok;
 }
 
