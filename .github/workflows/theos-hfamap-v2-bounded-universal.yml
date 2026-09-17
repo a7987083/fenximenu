@@ -1,0 +1,73 @@
+name: HFAMap v2 Bounded Universal Analyzer
+
+on:
+  push:
+    branches: [feature/hfamap-v2-bounded-universal-analyzer]
+    paths:
+      - 'hfamap/**'
+      - 'tools/hfamap_macho_triage.py'
+      - 'tests/test_macho_triage_v2.py'
+      - '.github/workflows/theos-hfamap-v2-bounded-universal.yml'
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Host-side bounded parser tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v tests/test_macho_triage_v2.py
+          python3 -m py_compile tools/hfamap_macho_triage.py
+
+      - name: Architecture invariants
+        run: |
+          set -euo pipefail
+          grep -q 'kHFAMaxImages = 512' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'kHFAMaxViews = 1024' hfamap/src/HFAMapResolver.mm
+          grep -q 'same-descriptor' hfamap/src/HFAMapResolver.mm
+          grep -q 'executable-range' hfamap/src/HFAMapResolver.mm
+          grep -q 'canonicalEligible' hfamap/src/HFAMapResolver.mm
+          grep -q 'ambiguous-top-candidates' hfamap/src/HFAMapCore.mm
+          grep -q 'HFAMap_Process.jsonl' hfamap/src/HFAMapCore.mm
+          if grep -R -n 'objc_getClassList\|objc_copyClassList\|_dyld_register_func_for_add_image\|dataWithContentsOfFile' \
+             hfamap/src/HFAMapCore.mm hfamap/src/HFAMapImageProbe.mm hfamap/src/HFAMapResolver.mm; then
+            echo 'unbounded discovery primitive found'; exit 1
+          fi
+          if grep -q 'HFAMapLegacy.m\|HFAMapFamilyRuntimeResolver.m\|HFAMapGenericMenuResolver.m' hfamap/Makefile; then
+            echo 'legacy scanner still compiled'; exit 1
+          fi
+          git diff --check
+
+      - name: Install Theos dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Build arm64 analyzer
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          cp .theos/obj/HFAMapUniversal.dylib dist/HFAMapUniversal_v2.0.0_BoundedUniversal.dylib
+          file dist/HFAMapUniversal_v2.0.0_BoundedUniversal.dylib
+          shasum -a 256 dist/HFAMapUniversal_v2.0.0_BoundedUniversal.dylib | tee dist/SHA256_v2.0.0.txt
+          strings dist/HFAMapUniversal_v2.0.0_BoundedUniversal.dylib > dist/strings_v2.0.0.txt
+          grep -q 'com.hfa.patch/v2' dist/strings_v2.0.0.txt
+          grep -q 'ambiguous-top-candidates' dist/strings_v2.0.0.txt
+          grep -q 'HFAMap_Process.jsonl' dist/strings_v2.0.0.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.0.0-BoundedUniversal
+          path: |
+            hfamap/dist/HFAMapUniversal_v2.0.0_BoundedUniversal.dylib
+            hfamap/dist/SHA256_v2.0.0.txt
+          if-no-files-found: error

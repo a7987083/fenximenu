@@ -137,3 +137,13 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - v1.9.30: selector/secret-wrapper bridge device-confirmed.
 - v1.9.29: runtime-record structure/selectors device-confirmed.
 - v1.9.28: legacy ~15 MB static package export runtime-confirmed.
+# v2.0.0-dev — bounded universal analyzer
+
+- Replaced the compiled legacy/generator chain with four explicit v2 modules.
+- Removed recursive app-directory scanning, whole-file mapping, process-wide class scans, unknown getter invocation and broad runtime hooks from the active path.
+- Added loaded-image, named-section menu discovery with hard image/byte/time limits.
+- Added multi-evidence family classification and ambiguity rejection.
+- Added same-descriptor name/offset/patch extraction plus unique executable-range and live-byte validation.
+- Split canonical, analysis and process-log outputs.
+- Added a read-only host triage tool, synthetic parser tests and a 10-sample SHA/family regression manifest.
+- Device runtime validation remains pending.

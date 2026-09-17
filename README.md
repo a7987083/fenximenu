@@ -18,6 +18,20 @@
 
 ## HFAMapUniversal 当前逆向结论
 
+新的主线是 `feature/hfamap-v2-bounded-universal-analyzer`。它删除了旧扫描器的
+递归磁盘扫描、整文件映射、未知 getter 调用和 action 即 runtime patch 的推断，改用：
+
+- 已加载 app-local Mach-O 的有界段扫描；
+- 多证据菜单指纹和歧义拒绝；
+- 只处理当前菜单控件关联、且属于所选菜单镜像的对象；
+- 同一描述对象内的名称/offset/patch 关联；
+- 可执行段唯一归属和实时字节验证；
+- `HFAMap_Patches.json`、`HFAMap_Analysis.json`、`HFAMap_Process.jsonl` 三类输出。
+
+离线样本和设计细节见 [v2 架构说明](docs/HFAMAP_V2_BOUNDED_ANALYZER.md)。
+
+## 历史精确目标结论
+
 `feature/hfamap-v193710-unified-feature-model` 的 Earn to Die Rogue
 `1.28.251 (1)` Fuel/Boost 静态补丁、目标身份门、验证状态和交接信息见：
 

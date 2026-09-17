@@ -1,8 +1,10 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import "HFAMapCore.h"
 
 static UIView *gHFAMapPanel = nil;
 static UIButton *gHFAMapButton = nil;
+static UILabel *gHFAMapStatus = nil;
 
 static UIWindow *HFAMapFindWindow(void)
 {
@@ -32,6 +34,7 @@ static void HFAMapTogglePanel(void)
 @interface HFAMapFloatingTarget : NSObject
 + (instancetype)shared;
 - (void)toggle;
+- (void)scan;
 @end
 
 @implementation HFAMapFloatingTarget
@@ -45,6 +48,21 @@ static void HFAMapTogglePanel(void)
 - (void)toggle
 {
     HFAMapTogglePanel();
+}
+- (void)scan
+{
+    gHFAMapStatus.text = @"Scanning loaded images…";
+    HFAMapRunBoundedScan(^(NSDictionary *summary) {
+        NSString *status = summary[@"status"] ?: @"?";
+        NSArray *features = summary[@"features"] ?: @[];
+        NSArray *unresolved = summary[@"unresolved"] ?: @[];
+        NSString *reason = summary[@"reason"];
+        if (reason.length)
+            gHFAMapStatus.text = [NSString stringWithFormat:@"Stopped: %@\nSee HFAMap_Analysis.json", reason];
+        else
+            gHFAMapStatus.text = [NSString stringWithFormat:@"%@ — %lu validated, %lu unresolved\nJSON and process log exported",
+                                  status, (unsigned long)features.count, (unsigned long)unresolved.count];
+    });
 }
 @end
 
@@ -71,25 +89,36 @@ static BOOL HFAMapInstallFloatingUI(void)
                action:@selector(toggle)
      forControlEvents:UIControlEventTouchUpInside];
 
-    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 230.0, 118.0)];
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 250.0, 190.0)];
     panel.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.94];
     panel.layer.cornerRadius = 12.0;
     panel.layer.borderWidth = 1.0;
     panel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.22].CGColor;
     panel.hidden = YES;
 
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 202.0, 26.0)];
-    title.text = @"HFAMapUniversal";
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
+    title.text = @"HFAMap v2 Bounded";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
 
-    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 46.0, 202.0, 52.0)];
-    status.text = @"Injected: YES\nFloating UI: READY";
-    status.numberOfLines = 2;
+    UIButton *scan = [UIButton buttonWithType:UIButtonTypeSystem];
+    scan.frame = CGRectMake(14.0, 46.0, 222.0, 42.0);
+    scan.backgroundColor = [UIColor colorWithRed:0.15 green:0.34 blue:0.70 alpha:1.0];
+    scan.layer.cornerRadius = 8.0;
+    [scan setTitle:@"Scan Menu (5s budget)" forState:UIControlStateNormal];
+    [scan setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [scan addTarget:[HFAMapFloatingTarget shared] action:@selector(scan)
+      forControlEvents:UIControlEventTouchUpInside];
+    [panel addSubview:scan];
+
+    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 98.0, 222.0, 76.0)];
+    status.text = @"Ready. Open the target menu, then scan.";
+    status.numberOfLines = 3;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];
     [panel addSubview:status];
+    gHFAMapStatus = status;
 
     [window addSubview:panel];
     [window addSubview:button];

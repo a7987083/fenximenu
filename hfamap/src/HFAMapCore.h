@@ -1,11 +1,6 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void HFAMapInitialize(void);
-
-#ifdef __cplusplus
-}
+#ifdef __OBJC__
+#import <Foundation/Foundation.h>
+void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary));
 #endif

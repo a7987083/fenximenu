@@ -133,3 +133,20 @@ Authoritative candidate:
 - artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
 - WayOfKings/iGMM device validation: passed
 - cross-family regression: pending
+# v2 open issues
+
+### Device validation is pending
+
+The host-side parser passes all ten supplied dylib samples, but the new Objective-C++ runtime path has not
+yet been injected on a device. CI compile/link and clean-device regressions are required before release.
+
+### Runtime-generated descriptors are intentionally unresolved
+
+If a menu decrypts or constructs its patch only at interaction time, a read-only menu snapshot cannot prove
+the bytes. v2 reports this instead of converting UI actions into static patches. A future observer must target
+an evidenced registration/decryption boundary and remain bounded to the selected image.
+
+### Candidate ties require a future manual picker
+
+When the top two loaded app-local candidates differ by fewer than ten points, v2 refuses automatic selection.
+The JSON contains both candidates; a UI picker is not yet implemented.

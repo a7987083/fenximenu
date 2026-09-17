@@ -1,0 +1,16 @@
+{
+  "schema": "com.hfa.menu-sample-manifest/v2",
+  "sourceArchiveSha256": "cddd27170c62aa8954241db381a1ccea9e80e36eecf58785996e8f0c7c88c472",
+  "expected": {
+    "ArcheryClash.dylib": ["4862e32aea9e8bfa16425877df5a147a5aa7110d0c9c63a01fd37bb9e2dfb425", "legacy-ap"],
+    "BackpackBrawl.dylib": ["e7d54fe761d6d74e92a8ec068cd06ecb828dd6932c73d89414214367add39cbd", "legacy-ap"],
+    "DisneySolitaire.dylib": ["c38d78aea604ff2d285051a83840b000005c74a7a119d8196485fa62063e6e70", "legacy-ap"],
+    "EarntoDieRogue.dylib": ["604fe7406a42e36e8a2f1ad0ec96cd00f86ba2d7ee89727a321039bc159a9c4f", "legacy-ap"],
+    "MarmotDefenseRogueSurvival.dylib": ["1f900db039d4d77b591db8a8713f555d1193a260946b533ae0c5ab97aaaa0839", "legacy-ap"],
+    "ZombieCatchers.dylib": ["1186f3004a9f7245f0b806631562f1cb52f6af6a83da1f68118d3591003b87c8", "legacy-ap"],
+    "heavenfallarena.dylib": ["0804a473d4e52066ce3bf43b906f934a03d158ce0c4cc96e0b2dfea7f3ed81b6", "legacy-ap"],
+    "libRiseofBerk.dylib": ["e1831a9751b2f75f1840660d54872405673c8256a5ee7e71ac9ccb4c2503d971", "jailpatch"],
+    "libdragonfevertd.dylib": ["324a90b2b39be6654723c4f37682d58074dfef3dda60662499bcac50c1fca7d6", "jailpatch"],
+    "libpolicechief.dylib": ["902e63a9a15eb36de96535a7904f9a780ab83f1bd7d15daff7a5b4c7a1c7e245", "jailpatch"]
+  }
+}

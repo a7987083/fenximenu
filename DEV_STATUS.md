@@ -45,3 +45,14 @@ Pure parser/exporter only. No playback engine, no Dobby, no runtime takeover, no
 ### Next required evidence
 
 Use the same v1.9.36.4 binary on the runtime-record/static 5 MB family. Require trusted canonical output, correct target identity and original-byte truth. Then run the legacy ~15 MB family. Only after both pass should this parser line be called cross-family validated.
+# Development Status — v2.0.0-dev
+
+Active branch: `feature/hfamap-v2-bounded-universal-analyzer`
+
+- architecture replacement: complete;
+- old scanner removed from active Makefile: complete;
+- host parser unit tests: pass;
+- supplied real-dylib regression: 10/10 pass;
+- arm64 Theos CI: pending;
+- device runtime: pending;
+- release status: not yet device-validated.

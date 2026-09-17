@@ -163,3 +163,15 @@ Next use the **same v1.9.36.4 dylib** for cross-family regression:
 - runtime-record/static 5 MB current-line regression: pending.
 - legacy ~15 MB current-line regression: pending.
 - v1.9.37/v1.9.37.1 runtime merge: failed on device / retired.
+# Current handoff: v2 bounded analyzer
+
+Active branch: `feature/hfamap-v2-bounded-universal-analyzer`.
+
+The active Makefile compiles only Entry/Core/ImageProbe/Resolver. Do not restore the historical generated
+source chain into this branch. Run `python3 -m unittest -v tests/test_macho_triage_v2.py`, then test the
+new workflow. On device, first open the target menu, press `Scan Menu`, and collect
+`HFAMap_Patches.json`, `HFAMap_Analysis.json`, and `HFAMap_Process.jsonl`.
+
+Acceptance requires one legacy-ap and one jailpatch sample to finish without blocking, select the correct
+menu dylib, and either export byte-validated patches or explicit unresolved reasons. An empty canonical file
+with honest unresolved evidence is preferable to a guessed patch.

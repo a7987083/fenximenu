@@ -117,3 +117,11 @@ After the static 5 MB family passes:
 ## Deferred work
 
 Execution of generated JSON remains a separate project/module. Do not merge it back into HFAMapUniversal without a separately device-validated integration design.
+# v2 bounded analyzer roadmap
+
+1. Pass arm64 Theos compile/link/sign CI on the new branch.
+2. Validate correct dylib selection and bounded completion on one 14 MiB legacy-ap sample.
+3. Validate the same on one 5.75 MiB Jailpatch sample.
+4. Use process logs to identify the exact registration/decryption boundary only for families whose descriptors remain runtime-generated.
+5. Add a manual candidate picker for legitimate score ties.
+6. Promote only after canonical records are independently checked against the target image bytes.

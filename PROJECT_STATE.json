@@ -1,11 +1,20 @@
 {
   "project": "HFAMapUniversal",
-  "version": "1.9.37.10",
-  "phase": "earntodie-verified-profile-ci-and-device-validation",
+  "version": "2.0.0-dev",
+  "phase": "bounded-universal-analyzer-implementation",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfamap-v193710-unified-feature-model",
+  "branch": "feature/hfamap-v2-bounded-universal-analyzer",
   "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
   "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
+  "v2_analyzer": {
+    "discovery": "loaded-app-local-images-and-bounded-sections",
+    "selection": "multi-evidence-with-ambiguity-rejection",
+    "resolution": "same-descriptor-plus-unique-executable-range",
+    "outputs": ["HFAMap_Patches.json", "HFAMap_Analysis.json", "HFAMap_Process.jsonl"],
+    "sample_regression": "10/10 passed",
+    "ios_ci": "pending",
+    "device_runtime": "pending"
+  },
   "build": {
     "local_generation": "passed",
     "ci": "success",
@@ -67,7 +76,7 @@
   "known_issues": [
     "Fuel/Boost stop future depletion but do not refill an already-zero value",
     "Posters and Prestige overlap at UnityFramework+0x2E25904",
-    "generic observed-action classification remains broader than the available evidence"
+    "runtime-encrypted or generated descriptors remain unresolved until a bounded boundary observer is evidenced"
   ],
-  "next_task": "Run a clean 14-feature/20-patch device regression, verify Fuel/Boost independently, then resolve the Posters/Prestige overlap."
+  "next_task": "Run v2 arm64 CI, then perform clean-device discovery/export regression on one legacy-ap and one jailpatch sample."
 }
