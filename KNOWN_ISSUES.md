@@ -1,135 +1,92 @@
 # Known Issues
 
-## v1.9.37.10 Earn to Die Rogue profile
+## Universal Mutation Refactor — Stage 1
 
-### Device runtime validation pending
+### Provider-neutral discovery is not finished
+
+Status: open / primary engineering task.
+
+Stage 1 normalizes mutations that already passed the existing canonical truth gates. It does **not** yet generically discover arbitrary unknown menu implementations. Family-specific AP/IGCodePatch/Jailpatch/5M/iGMM code still participates in discovery before the final IR.
+
+Required next step: add provider-neutral mutation capture beneath family adapters and prove it on the supplied five menu+host sample pairs.
+
+### Device runtime validation is pending
 
 Status: open.
 
-Fuel/Boost are statically proven and generation-tested, but the new analyzer
-binary has not yet been built by GitHub Actions or exercised on device. Required
-checks are clean scan output, `14` canonical features, `20` patches, independent
-Fuel/Boost enable/disable and original-byte restoration.
+CI run `35194007919` proves generation, arm64 compile, link, strip and sign. It does not prove injected-device behavior. Required device checks:
+
+- no startup crash;
+- Full Scan completes;
+- `HFAMap_CanonicalMutations.json` is generated;
+- mutation count matches trusted canonical static patches;
+- target/offset/original/enabled fields agree with the actual target image;
+- legacy `com.hfa.patch/v1` output remains unchanged.
+
+### Five-pair cross-family regression is pending
+
+Status: open.
+
+Use the supplied sample corpus covering new ~14 MB AP/iGameGod-style menus and old ~5.75 MB Jailpatch-style menus. Do not claim universal coverage until the same `com.hfa.mutation/v1` contract works for all independently verified static mutations.
+
+### Mutation IR currently models only proven static byte patches
+
+Status: intentional Stage 1 limitation.
+
+Dynamic numeric state, runtime hooks, button actions and unresolved dispatchers remain analysis evidence. They must not be fabricated into static `offset/original/enabled` records.
+
+## Pre-existing issues retained
+
+### Fuel/Boost device regression pending
+
+Status: open.
+
+Fuel/Boost are statically proven for `com.notdoppler.earntodierogue` `1.28.251 (1)` and build-tested, but independent on-device enable/disable/original-byte restoration is still pending.
 
 ### Already-depleted values are not refilled
 
 Status: intentional behavior.
 
-The two patches NOP the subtraction instructions. They prevent additional
-consumption but do not assign a full tank. Enable them before Fuel/Boost reaches
-zero or start a new driving session.
+Fuel/Boost patches NOP the subtraction instructions. They stop future depletion but do not assign a full value.
 
-### Exact-build profile only
+### Exact-build Fuel/Boost profile only
 
 Status: permanent safety gate.
 
-The RVAs are valid only for `com.notdoppler.earntodierogue` `1.28.251 (1)`,
-arm64, UnityFramework UUID `8654D76C-B760-34FC-BEE0-FE70AE8C95C8`, with exact
-original bytes. A game update requires fresh metadata and binary analysis.
+The RVAs are valid only for the verified bundle/version/build/architecture/UnityFramework UUID/original bytes. A game update requires fresh binary and metadata analysis.
 
 ### Posters/Prestige patch overlap
 
 Status: open / pre-existing.
 
-Both features touch `UnityFramework+0x2E25904`. Posters writes `08E0BF12`
-(4 bytes), while Prestige writes `20008052C0035FD6` (8 bytes). Toggle order can
-overwrite the shared first instruction. Fuel/Boost do not introduce this
-conflict, but the package needs explicit conflict handling or a new independent
-Prestige/Posters patch site.
+Both features touch `UnityFramework+0x2E25904`. Posters writes `08E0BF12`; Prestige writes `20008052C0035FD6`. Conflict handling or an independent replacement site is still required.
 
-### Generic observed-action classification remains too broad
+### Generic observed-action classification can be broader than evidence
 
-Status: mitigated for the verified target only.
+Status: open / mitigated by the new IR boundary.
 
-The generic v1.9.37.9/v1.9.37.10 logic can classify an observed action as
-`runtimeAction` even when the action is only a shared menu dispatcher. The exact
-Earn to Die profile corrects the two proven records; a future generic fix should
-use `dispatcher-observed/unresolved` until independent write/hook/static-byte
-evidence exists.
-
-## Current parser-only line: v1.9.36.4 JSONExport
-
-### v1.9.36.4 WayOfKings/iGMM validation
-
-Status: **passed / closed**.
-
-Device archive `归档 6(1).zip` confirmed stable injection, Full Scan completion, 4-feature iGMM diagnostic export and normalized analysis export. It also confirmed:
-
-- `kTypeButton -> button`;
-- raw Debug Menu `executionPrimitive = nativeHook` remains preserved;
-- `normalizedExecutionPrimitive = runtimeAction`;
-- raw `canonicalReason = runtime-hook-requires-portable-equivalent` remains preserved;
-- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- `targetIdentities` resolves both `libpathofkings.dylib` and `UnityFramework` with the expected UUID/arm64/cryptid evidence;
-- `JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2`.
-
-### Cross-family regression is still pending
-
-Status: open / primary validation gate.
-
-The current v1.9.36.4 parser has now passed the WayOfKings/iGMM family, but the same binary still must be regression-tested on:
-
-- runtime-record/static 5 MB family;
-- legacy ~15 MB family.
-
-Do not claim universal/cross-family coverage until both current-line regressions pass.
-
-### Target identities are analysis evidence, not execution authorization
-
-Status: permanent rule.
-
-Read-only UUID/architecture/filetype/preferred-`__TEXT`/cryptid records are for build matching and analysis quality only. They do not authorize hook installation or package execution.
-
-### iGMM runtime features remain non-canonical static patches
-
-Status: intentional / device-confirmed.
-
-WayOfKings uses runtime numeric/native-hook/block behavior. These records remain diagnostic and analysis-only and are not fabricated into `target/offset/original/enabled` static patches.
-
-### v1.9.37 and v1.9.37.1 are retired from the parser mainline
-
-Status: confirmed device startup failure / architecture reverted.
-
-Those builds merged the independent playback/runtime consumer and Dobby into HFAMapUniversal. Both crashed immediately when injected. HFAMapUniversal remains a parser/exporter only.
-
-### Stale generated files can confuse device validation
-
-Status: test-environment hazard.
-
-Before testing a new menu family, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs. A stale canonical package must never be mistaken for current output.
-
-### Canonical structural validity is not sufficient
-
-Status: permanent verification rule.
-
-A static package is trusted only when structure, target identity and original-byte truth all agree. Preferred Mach-O VM address semantics remain required for canonical offsets.
+A shared menu dispatcher must not by itself prove a runtime-only or static implementation. The Mutation IR accepts static records only after byte-level truth is already available.
 
 ### Original-byte fallback branches remain incompletely runtime-exercised
 
 Status: open.
 
-The v1.9.33 multi-source original-byte readers remain part of the frozen parser core. Their fallback branches still need dedicated runtime evidence on samples where the preferred read path is unavailable.
+The v1.9.33 multi-source readers remain in the frozen parser core. Fallback branches still need dedicated runtime samples where the preferred read path is unavailable.
 
-### Runtime-record/static 5 MB regression
+### Stale generated files can confuse validation
 
-Status: open / next test.
+Status: test-environment hazard.
 
-The current v1.9.36.4 build must reproduce a trusted `com.hfa.patch/v1` package for the static 5 MB family. Required checks include real target identity, preferred VM offsets, original-byte truth and no stale-output contamination.
-
-### Legacy ~15 MB regression
-
-Status: open / follows the 5 MB static test.
-
-The legacy AP/IGSecret family was previously runtime-confirmed on older parser versions. The current v1.9.36.4 binary must still prove that path has not regressed.
+Archive/remove prior `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, `HFAMap_CanonicalMutations.json`, and old logs before comparing a new run.
 
 ## Current CI delivery
 
-Authoritative candidate:
-
-- binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`
-- run: `34907671999`
-- artifact: `10372928333`
-- binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
-- artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
-- WayOfKings/iGMM device validation: passed
+- branch: `feature/universal-mutation-refactor`
+- build-tested implementation: `a26cab49985fbb675e76378899eeb02052e7f2c6`
+- run: `35194007919` — success
+- artifact: `10484872379`
+- artifact digest: `sha256:d3ff65db4470250f008134a180ae01c866e410cc13b4e6bff258069355ac9876`
+- binary: `HFAMapUniversal_UniversalMutationRefactor.dylib`
+- binary SHA256: `09f04e942d6f571048f26fe728e6a51974bb8c2aeeba29a06878befd28a5ea16`
+- device validation: pending
 - cross-family regression: pending
