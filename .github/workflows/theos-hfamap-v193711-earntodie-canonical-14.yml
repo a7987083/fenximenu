@@ -1,0 +1,184 @@
+name: HFAMapUniversal v1.9.37.11 Canonical14Profile
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v193711-earntodie-canonical-14
+    paths:
+      - 'hfamap/**'
+      - 'tests/earntodie_rogue_1.28.251_verified_profile.json'
+      - '.github/scripts/hfamap_v*.py'
+      - '.github/scripts/apply_hfamap_v*.py'
+      - '.github/workflows/theos-hfamap-v193711-earntodie-canonical-14.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate v1.9.37.11
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          python3 .github/scripts/hfamap_v19372_5m_dual_backend_fix.py
+          python3 .github/scripts/hfamap_v19373_app_local_dylib_discovery_v2.py
+          python3 .github/scripts/hfamap_v19374_prepare_patch.py
+          python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
+          python3 .github/scripts/hfamap_v19374_finalize_markers.py
+          python3 .github/scripts/hfamap_v19375_loaded_macho_dependency_discovery.py
+          python3 .github/scripts/hfamap_v19376_loaded_image_fingerprint.py
+          python3 .github/scripts/hfamap_v19377_two_stage_class_metadata_scan.py
+          python3 .github/scripts/hfamap_v19378_structural_relation_expansion.py
+          python3 .github/scripts/hfamap_v19379_complete_feature_export.py
+          cp hfamap/src/HFAMapFamilyRuntimeResolver.m /tmp/family.before193711
+          cp hfamap/src/HFAMapJailpatchRuntimeProfiler.m /tmp/profiler.before193711
+          cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before193711
+          python3 .github/scripts/hfamap_v193710_unified_feature_model.py
+          python3 .github/scripts/hfamap_v193710_earntodie_verified_profile.py
+          python3 .github/scripts/hfamap_v193711_release_promotion.py
+          git diff --check
+
+      - name: Verify v1.9.37.11 release marker
+        run: |
+          set -euo pipefail
+          grep -R -q 'v1.9.37.11 Canonical14Profile' hfamap/src
+          grep -q 'HFAAppendVerifiedEarnToDieRogueProfile' hfamap/src/HFAMapPatchExecutionTrace.m
+
+      - name: Verify Earn to Die canonical profile
+        run: |
+          set -euo pipefail
+          f=hfamap/src/HFAMapPatchExecutionTrace.m
+          fixture=tests/earntodie_rogue_1.28.251_verified_profile.json
+          grep -q 'com.notdoppler.earntodierogue' "$f"
+          grep -q '1.28.251' "$f"
+          grep -q '8654D76C-B760-34FC-BEE0-FE70AE8C95C8' "$f"
+          grep -q '0x2D98AC8' "$f"
+          grep -q '0038211E' "$f"
+          grep -q '0x2D9887C' "$f"
+          grep -q '0038281E' "$f"
+          grep -q '1F2003D5' "$f"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          fixture = json.loads(Path('tests/earntodie_rogue_1.28.251_verified_profile.json').read_text())
+          assert fixture['package'] == {
+              'bundleIdentifier': 'com.notdoppler.earntodierogue',
+              'shortVersion': '1.28.251',
+              'buildVersion': '1',
+              'architecture': 'arm64',
+          }
+          assert fixture['target']['image'] == 'UnityFramework'
+          assert fixture['target']['uuid'] == '8654D76C-B760-34FC-BEE0-FE70AE8C95C8'
+          assert fixture['method']['assembly'] == 'Assembly-CSharp.dll'
+          assert fixture['method']['type'] == 'com.notdoppler.ETDR.Car'
+          assert fixture['method']['name'] == 'FixedUpdate'
+          assert fixture['method']['fields'] == {'_fuelAmount': '0xB8', '_boostAmount': '0xBC'}
+          expected = {
+              'Fuel': ('Unlimited Fuel', '0x2D98AC8', '0038211E', '1F2003D5'),
+              'Boost': ('Unlimited Boost', '0x2D9887C', '0038281E', '1F2003D5'),
+          }
+          actual = {f['id']: (f['title'], f['offset'], f['original'], f['enabled']) for f in fixture['features']}
+          assert actual == expected, actual
+          assert fixture['verification']['existingPatchOriginalsMatched'] == '18/18'
+          assert fixture['verification']['newPatchOriginalsMatched'] == '2/2'
+          PY
+
+      - name: Verify canonical profile ordering and no duplicate downgrade
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+          fn = s.index('unsigned HFAPatchTraceFinalizeScan(void)')
+          profile_call = s.index('HFAAppendVerifiedEarnToDieRogueProfile(exportFeatures, exportTargets)', fn)
+          catalog = s.index('[FEATURE-CATALOG]', fn)
+          write = s.index('HFAWritePatchPackage(exportFeatures, exportTargets)', fn)
+          if not (profile_call < catalog < write):
+              raise SystemExit(f'bad ordering profile={profile_call} catalog={catalog} write={write}')
+          for ident in ('Fuel', 'Boost'):
+              if s.count(f'"{ident}"') < 1:
+                  raise SystemExit(f'{ident} canonical profile missing')
+          if 'HFAFeatureListContainsIdentifier(features, identifier)' not in s:
+              raise SystemExit('duplicate canonical/runtime guard missing')
+          PY
+
+      - name: Verify success cleanup policy
+        run: |
+          set -euo pipefail
+          f=hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAJSONCleanupSuccessfulIntermediates' "$f"
+          grep -q 'HFAMap_AppLocalCandidates.json' "$f"
+          grep -q 'HFAMap_ClassMetadata.json' "$f"
+          grep -q 'HFAMap_JailpatchMap.jsonl' "$f"
+          grep -q 'HFAMap_Mapping.log' "$f"
+          grep -q 'HFAMap_MenuMap.jsonl' "$f"
+          grep -q '\[ARTIFACT-CLEANUP\]' "$f"
+
+      - name: Verify parser backends unchanged
+        run: |
+          set -euo pipefail
+          cmp /tmp/family.before193711 hfamap/src/HFAMapFamilyRuntimeResolver.m
+          cmp /tmp/profiler.before193711 hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          cmp /tmp/dispatch.before193711 hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -q 'runtime-5m-jailpatch-target' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFA5MDispatcherObserveFeatureArray' hfamap/src/HFAMapFamilyRuntimeResolver.m
+
+      - name: Verify no broad scan regression
+        run: |
+          set -euo pipefail
+          if grep -R -n 'objc_getClassList\|objc_copyClassList\|_dyld_register_func_for_add_image' hfamap/src; then
+            echo 'forbidden process-wide scan/listener present'; exit 1
+          fi
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build HFAMapUniversal v1.9.37.11
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFAMapUniversal_v1.9.37.11_Canonical14Profile.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.11.txt
+          strings "$out" > dist/strings_v1.9.37.11.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.11.txt
+          grep -q 'v1.9.37.11 Canonical14Profile' dist/strings_v1.9.37.11.txt
+          grep -q 'earntodie-1.28.251-1' dist/strings_v1.9.37.11.txt
+          grep -q 'VERIFIED-PROFILE-PATCH' dist/strings_v1.9.37.11.txt
+          grep -q '2D98AC8' dist/strings_v1.9.37.11.txt
+          grep -q '2D9887C' dist/strings_v1.9.37.11.txt
+          grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.11.txt
+          if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.11.txt; then
+            echo 'forbidden symbol leaked into final dylib'; exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v1.9.37.11-Canonical14Profile
+          path: |
+            hfamap/dist/HFAMapUniversal_v1.9.37.11_Canonical14Profile.dylib
+            hfamap/dist/SHA256_v1.9.37.11.txt
+          if-no-files-found: error
