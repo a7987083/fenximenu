@@ -1,7 +1,7 @@
 {
   "project": "HFAMapUniversal",
   "version": "2.0.1-dev",
-  "phase": "device-log-corrective-build",
+  "phase": "runtime-boundary-evidence",
   "repository": "a7987083/fenximenu",
   "branch": "feature/hfamap-v2-bounded-universal-analyzer",
   "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
@@ -13,20 +13,22 @@
     "outputs": ["HFAMap_Patches.json", "HFAMap_Analysis.json", "HFAMap_Process.jsonl"],
     "sample_regression": "10/10 passed",
     "ios_ci": "success",
-    "build_commit": "ac74cfaff43fa19ea3f83491c1e955a81946103c",
-    "run_id": 35186351403,
-    "artifact_id": 10481758150,
-    "artifact": "HFAMapUniversal-v2.0.0-BoundedUniversal",
-    "artifact_digest": "sha256:95a736d9f51916b59cc733b16796a214c9c7877d5a87c1b83abb55074dd76527",
-    "binary": "HFAMapUniversal_v2.0.0_BoundedUniversal.dylib",
-    "binary_sha256": "d6605ec4b3c36bd3daa7d944d9cd24f230dc4905d33ac67ab5659557b6d57413",
-    "device_runtime": "partial: discovery stable; extraction incomplete",
-    "device_archive_sha256": "2f92bfc64b37c47a57cfcf42b9e5b84594f401d5cb10877d23f1c67a74f65855",
+    "build_commit": "dec58086d52b6ead209f7b99e88b1dcb6d898ac1",
+    "run_id": 35189032554,
+    "artifact_id": 10483940522,
+    "artifact": "HFAMapUniversal-v2.0.1-BoundedUniversal",
+    "artifact_digest": "sha256:d8de0530930359068fb49541fe556b1c60158c79098e202d663c272ddd40c711",
+    "binary": "HFAMapUniversal_v2.0.1_BoundedUniversal.dylib",
+    "binary_sha256": "33ccf82f70f69a470304db7b280b9c90985f20376bc419f94a053265d66e0f39",
+    "device_runtime": "passed for bounded discovery/selection; extraction incomplete",
+    "device_archive_sha256": "91fbbfa901d3a75cb35d97dcde58d745a1a75e627532ff4242537f024a661b74",
     "device_findings": [
-      "three runs missed late-loaded images because the 512-image cap was exhausted",
-      "one dual-candidate run rejected a strong Jailpatch payload behind a generic menu shell",
-      "one Jailpatch run completed in 114ms but exported zero canonical features",
-      "UIKit/Foundation traversal produced 58 duplicate missing-offset diagnostics"
+      "all five runs inspected every loaded image (948-985) without hitting the 2048 cap",
+      "all five scans completed in 86.8-137.0ms without blocking",
+      "wrapper/payload dominance selected libRiseofBerk.dylib for actual resolution",
+      "descriptor filtering reduced unresolved output to one or two relevant records per run",
+      "all five runs exported zero canonical features; runtime-table observation is required",
+      "image-discovery selected label is pre-policy and can differ from the actual selected candidate"
     ],
     "corrective_changes": [
       "raise bounded image cap to 2048 and log total versus inspected counts",
@@ -97,5 +99,5 @@
     "Posters and Prestige overlap at UnityFramework+0x2E25904",
     "runtime-encrypted or generated descriptors remain unresolved until a bounded boundary observer is evidenced"
   ],
-  "next_task": "Build v2.0.1, rerun the five-device matrix, then instrument the exact Jailpatch loadConfig/runtime-table boundary if static descriptors remain unavailable."
+  "next_task": "Fix the pre-policy candidate log label, then implement a selected-image-only read-only observer for the evidenced loadConfig/runtime-table boundary and re-run the five-device matrix."
 }

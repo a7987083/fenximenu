@@ -126,6 +126,7 @@ Execution of generated JSON remains a separate project/module. Do not merge it b
 5. Add a manual candidate picker for legitimate score ties.
 6. Promote only after canonical records are independently checked against the target image bytes.
 
-Current next task: build v2.0.1 and repeat the same five-device matrix. Only if the correct Jailpatch payload
-still exports zero static descriptors, add a selected-image-only observer at the verified `loadConfig:` /
-runtime-table boundary.
+Current next task: add a selected-image-only, read-only observer at the verified `loadConfig:` / runtime-table
+boundary. The v2.0.1 five-device matrix completed without hangs or truncation and selected the intended payloads,
+but every target still exported zero static descriptors. First fix the pre-policy `selected` event label, then
+capture registration arguments and table ownership without invoking unknown getters or scanning process-wide state.

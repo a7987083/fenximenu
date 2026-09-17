@@ -185,3 +185,11 @@ the correct payload and completed in about 114 ms, but produced zero canonical f
 58 `missing-offset` entries as features; they were traversal pollution and are filtered in v2.0.1. If the next
 run still has no static descriptors, the next evidence boundary is the selected image's exact `loadConfig:` /
 Jailpatch runtime-table initialization path, not a broad Objective-C hook.
+
+The v2.0.1 five-device re-test is now complete. Archive SHA-256:
+`91fbbfa901d3a75cb35d97dcde58d745a1a75e627532ff4242537f024a661b74`.
+Every run inspected the full dyld image set (948–985) and completed in 86.8–137.0 ms. Candidate selection
+and traversal filtering are device-confirmed. All runs still exported zero canonical features, so the next
+implementation must observe only the selected image's evidenced configuration/runtime-table boundary.
+Do not enable the historical process-wide profiler unchanged: its broad class/object traversal violates the
+v2 bounded architecture and does not prove the runtime-table layout.

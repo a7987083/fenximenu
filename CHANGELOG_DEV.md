@@ -158,3 +158,12 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - Added descriptor-strength tie-breaking for a generic legacy shell (`97`) versus a full Jailpatch payload (`89`, Jailpatch evidence `116`).
 - Stopped recursively turning UIKit/Foundation implementation objects into duplicate `missing-offset` features.
 - Confirmed the 5 MB Jailpatch family still needs an evidenced `loadConfig:`/runtime-table observer; no static patch was claimed.
+
+### v2.0.1 five-device result
+
+- Parsed the v2.0.1 re-test archive with SHA-256 `91fbbfa901d3a75cb35d97dcde58d745a1a75e627532ff4242537f024a661b74`.
+- All five bounded scans completed in 86.8–137.0 ms while inspecting every loaded image (948–985 images); no hang or image-cap truncation occurred.
+- Correctly resolved `MarmotDefenseRogueSurvival.dylib`, `ArcheryClash.dylib`, `libdragonfevertd.dylib`, `libRiseofBerk.dylib`, and `heavenfallarena.dylib`.
+- Descriptor-only traversal reduced the previous UIKit/Foundation noise to one or two relevant unresolved records per run.
+- All five runs still produced zero byte-validated canonical features. The runtime-generated descriptor boundary is now the confirmed blocker.
+- Found a process-log presentation defect: image discovery reports the sorted first candidate as `selected` before the selection policy runs. The resolver and final analysis used the correct `libRiseofBerk.dylib`; only the discovery event label was stale.

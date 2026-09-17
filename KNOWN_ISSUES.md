@@ -137,16 +137,26 @@ Authoritative candidate:
 
 ### Jailpatch runtime table is not yet decoded
 
-Status: confirmed by first device archive.
+Status: confirmed by both device archives; v2.0.1 re-test reproduced on five targets.
 
 `libdragonfevertd.dylib` was selected correctly and the scan completed, but UI-target object traversal exposed
 no offset/patch descriptor. Static strings and Mach-O structure identify a Jailpatch `loadConfig:` and runtime
 metadata path, but strings alone do not prove its structure. A bounded observer at that exact boundary is the
-next task if v2.0.1 still exports no descriptors.
+next task. The v2.0.1 matrix inspected all 948–985 loaded images and selected the intended payloads, but
+all five targets remained at `validated=0`; broader UI traversal is therefore ruled out as the solution.
+
+### Discovery event can mislabel the pre-policy candidate
+
+Status: confirmed; output correctness unaffected.
+
+`HFAMapImageProbe` currently writes `selected=found.firstObject` before `HFASelectCandidate` applies descriptor
+dominance. In the Rise of Berk wrapper/payload case that event named `CustomOffsetPatcheriOSGodsCom.dylib`,
+while feature resolution and `HFAMap_Analysis.json` correctly used `libRiseofBerk.dylib`. Rename the discovery
+field to `topCandidate` and emit the actual selected image from the selection stage in the next build.
 
 ### First device build had discovery/traversal defects
 
-Status: fixed in v2.0.1-dev; device re-test pending.
+Status: fixed and device-confirmed in v2.0.1.
 
 The 512-image cap omitted late-loaded menu images in three runs. A wrapper/payload pair was rejected because
 their total scores differed by only eight points. UIKit/Foundation objects polluted unresolved output. The
