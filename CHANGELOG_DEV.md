@@ -1,5 +1,52 @@
 # Development Changelog
 
+## v1.9.38.0 Stage 1 — Universal Mutation IR
+
+Branch: `feature/universal-mutation-refactor`
+
+Baseline: `feature/hfamap-v193710-unified-feature-model @ 9fe759fe8519bfcaa90c2461a256c18a4d6c2080`
+
+Build-tested implementation: `a26cab49985fbb675e76378899eeb02052e7f2c6`
+
+GitHub Actions run: `35194007919` — success
+
+Artifact ID: `10484872379`
+
+Artifact digest:
+`sha256:d3ff65db4470250f008134a180ae01c866e410cc13b4e6bff258069355ac9876`
+
+Binary SHA-256:
+`09f04e942d6f571048f26fe728e6a51974bb8c2aeeba29a06878befd28a5ea16`
+
+### Changed
+
+- Added provider-neutral `HFACanonicalMutation.h/.m`.
+- Added schema `com.hfa.mutation/v1`.
+- Added validation for feature/target/offset/original/enabled byte tuples.
+- Added canonical mutation deduplication by feature + target + offset + enabled bytes.
+- Added provider evidence aggregation without embedding provider-specific framework names in the IR core.
+- Added `.github/scripts/hfamap_v19380_canonical_mutation_ir.py` to bridge truth-gated `exportFeatures/exportTargets` after the historical generation chain.
+- Added dedicated CI workflow for `feature/universal-mutation-refactor`.
+- Preserved the existing `com.hfa.patch/v1` package and its original-byte/target truth gates.
+- Added `docs/UNIVERSAL_MUTATION_REFACTOR.md`.
+
+### Verification
+
+- historical generation chain: passed;
+- mutation IR integration assertions: passed;
+- provider-specific name exclusion from IR core: passed;
+- existing original-byte truth gates: preserved;
+- first CI run exposed one local syntax error in the new logging expression;
+- first real compiler error fixed without changing architecture;
+- arm64 compile: passed;
+- link: passed;
+- strip: passed;
+- sign: passed;
+- final binary schema/log markers: passed;
+- artifact upload: passed;
+- device runtime: pending;
+- five-pair cross-family regression: pending.
+
 ## v1.9.37.10 — verified Earn to Die Rogue Fuel/Boost profile
 
 Branch: `feature/hfamap-v193710-unified-feature-model`
@@ -48,86 +95,12 @@ Binary SHA-256:
 - built arm64 Mach-O and profile marker inspection: passed;
 - device runtime/regression: pending.
 
-## v1.9.36.4 JSONExport — CI passed / WayOfKings device passed
+## Historical parser checkpoints
 
-Branch: `feature/hfamap-v19361-json-export`
-Parser baseline: `v1.9.36 ArchitectureTruth @ 75f94da37221343b6839465ad365ddec2679e63a`
-Build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`
-Successful CI run: `34907671999`
-Artifact ID: `10372928333`
-Binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`
-Binary size: `192432` bytes
-Binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
-Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
-
-### v1.9.36.4 device result
-
-WayOfKings device archive `归档 6(1).zip` confirmed:
-
-- injection did not crash;
-- Full Scan completed;
-- `com.hfa.igmm.runtime/v1` regenerated with 4 features;
-- `com.hfa.menu.analysis/v1` regenerated;
-- `JSON-EXPORT` reported `status=pass features=4 sources=1 targetIdentities=2`.
-
-Normalized controls and evidence:
-
-- Damage Multiplier: `modtext -> number`, default `1`;
-- Defence Multiplier: `modtext -> number`, default `1`;
-- God Mode: `customSwitch -> toggle`;
-- Debug Menu: `kTypeButton -> button`;
-- Debug Menu raw `executionPrimitive = nativeHook` preserved;
-- Debug Menu `normalizedExecutionPrimitive = runtimeAction`;
-- Debug Menu raw `canonicalReason = runtime-hook-requires-portable-equivalent` preserved;
-- Debug Menu `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- Damage/Defence normalized reason = `dynamic-numeric-state-not-static-bytes`;
-- God Mode normalized reason = `runtime-hook-requires-portable-equivalent`.
-
-Target identities remained stable:
-
-- `libpathofkings.dylib`: UUID `4C4C448B-5555-3144-A14F-4905D9ED4E59`, arm64, filetype 6, text VM `0x0`, cryptid 0;
-- `UnityFramework`: UUID `E0039512-CCB0-33E3-A69A-3DBEBFF3641B`, arm64, filetype 6, text VM `0x0`, cryptid 0.
-
-Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further WayOfKings normalizer changes are required without new contradictory evidence.
-
-### Verification
-
-- baseline constructor preserved: PASS;
-- baseline `run_full_scan()` preserved: PASS;
-- baseline trace/resolver core preserved: PASS;
-- WayOfKings normalization fixture: PASS;
-- analysis-only invariants: PASS;
-- arm64 compile/link/strip/sign: PASS;
-- no Dobby symbols in final binary: PASS;
-- artifact upload/re-hash: PASS;
-- v1.9.36.4 WayOfKings device validation: PASS;
-- runtime-record/static 5 MB current-line regression: PENDING;
-- legacy ~15 MB current-line regression: PENDING.
-
-## v1.9.36.3 JSONExport — device passed on WayOfKings
-
-- Added evidence-preserving `normalizedExecutionPrimitive`.
-- Added read-only `targetIdentities`.
-- Device archive confirmed stable startup, scan, button normalization and target identity output.
-
-## v1.9.36.2 JSONExport — CI passed
-
-- Added exact `kTypeButton -> button` normalization.
-
-## v1.9.36.1 JSONExport — device tested on WayOfKings
-
-- Rebased onto the stable v1.9.36 parser.
-- Added analysis-only serializer after Full Scan.
-- Device archive proved stable injection and JSON export, and exposed the `kTypeButton` gap.
-
-## Retired experiment: v1.9.37 / v1.9.37.1
-
-- Combined parser, dynamic JSON UI, playback consumer, Dobby and runtime takeover into one dylib.
-- CI/build succeeded, but both device injections crashed at startup.
-- Combined architecture abandoned for the HFAMapUniversal parser mainline.
-
-## Earlier parser checkpoints
-
+- v1.9.36.4 JSONExport: CI passed / WayOfKings device passed.
+- v1.9.36.3 JSONExport: device passed on WayOfKings.
+- v1.9.36.2 JSONExport: CI passed.
+- v1.9.36.1 JSONExport: first stable analysis-only serializer validation.
 - v1.9.36: ArchitectureTruth frozen parser baseline.
 - v1.9.35: MainImageTruth.
 - v1.9.34: CanonicalTruthGate.
@@ -137,3 +110,9 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - v1.9.30: selector/secret-wrapper bridge device-confirmed.
 - v1.9.29: runtime-record structure/selectors device-confirmed.
 - v1.9.28: legacy ~15 MB static package export runtime-confirmed.
+
+## Retired experiment: v1.9.37 / v1.9.37.1
+
+- Combined parser, dynamic JSON UI, playback consumer, Dobby and runtime takeover into one dylib.
+- CI/build succeeded, but both device injections crashed at startup.
+- Combined architecture remains retired from the parser mainline.
