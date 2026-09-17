@@ -167,8 +167,10 @@ jobs:
           grep -q 'v1.9.37.11 Canonical14Profile' dist/strings_v1.9.37.11.txt
           grep -q 'earntodie-1.28.251-1' dist/strings_v1.9.37.11.txt
           grep -q 'VERIFIED-PROFILE-PATCH' dist/strings_v1.9.37.11.txt
-          grep -q '2D98AC8' dist/strings_v1.9.37.11.txt
-          grep -q '2D9887C' dist/strings_v1.9.37.11.txt
+          grep -q '8654D76C-B760-34FC-BEE0-FE70AE8C95C8' dist/strings_v1.9.37.11.txt
+          grep -q '0038211E' dist/strings_v1.9.37.11.txt
+          grep -q '0038281E' dist/strings_v1.9.37.11.txt
+          grep -q '1F2003D5' dist/strings_v1.9.37.11.txt
           grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.11.txt
           if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.11.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
