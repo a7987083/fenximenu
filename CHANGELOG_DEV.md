@@ -1,5 +1,16 @@
 # Development Changelog
 
+## v2.1.0-dev — first-pass family analyzer and live diagnostics
+
+- Split UI capture from descriptor analysis: main-thread work is capped at 350 ms; object graph analysis runs on the serial worker queue.
+- Added Objective-C structural evidence: image class count and the stable 160-byte descriptor selector signature.
+- Added live `HFAMap_Diagnostics.jsonl` and `HFAMap_Diagnostics.log` with session ID, elapsed time, thread, stage, candidate scores, accepted features and rejection reasons.
+- Added descriptor class/size/family/field evidence to canonical and unresolved records.
+- Added explicit `preferred-mach-o-vmaddr` semantics and optional declared target-image filtering.
+- Renamed the pre-policy discovery field from `selected` to `topCandidate`.
+- Added the 11-dylib archive manifest; local family regression passed 11/11.
+- Host unit tests passed 4/4. Local Theos build is unavailable because this environment has no `THEOS`; arm64 CI and device verification remain pending.
+
 ## v1.9.37.10 — verified Earn to Die Rogue Fuel/Boost profile
 
 Branch: `feature/hfamap-v193710-unified-feature-model`

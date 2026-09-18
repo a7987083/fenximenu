@@ -1,4 +1,5 @@
 #import "HFAMapResolver.h"
+#import "HFAMapDiagnostics.h"
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <mach-o/dyld.h>
@@ -8,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const NSUInteger kHFAMaxViews = 1024, kHFAMaxTargets = 256;
+static const NSUInteger kHFAMaxViews = 768, kHFAMaxTargets = 192;
 static const NSUInteger kHFAMaxContainers = 256, kHFAMaxItems = 128;
 
 static void HFAResolveEvent(NSMutableArray *events, NSString *status, NSDictionary *details) {
@@ -190,11 +191,17 @@ static NSDictionary *HFAValidatedFeature(NSDictionary *source, NSString *fallbac
     NSNumber *offset = HFAOffsetValue(HFAValueForAliases(source, @[@"offset",@"patchoffset",@"targetoffset",@"address",@"rva"]));
     id patchValue = HFAValueForAliases(source, @[@"enabled",@"enabledbytes",@"patch",@"patchbytes",@"bytes",@"instruction"]);
     NSData *patch = HFABytesValue(patchValue);
+    id declaredImageValue = HFAValueForAliases(source, @[@"image",@"targetimage",@"module",@"binary"]);
+    NSString *declaredImage = [declaredImageValue isKindOfClass:NSString.class] ?
+        [(NSString *)declaredImageValue lastPathComponent] : nil;
     if (!label.length) { if (reason) *reason = @"missing-label"; return nil; }
     if (!offset) { if (reason) *reason = @"missing-offset"; return nil; }
     if (!patch.length || patch.length > 256) { if (reason) *reason = @"missing-or-invalid-patch"; return nil; }
     NSMutableArray *matches = [NSMutableArray array]; uint64_t rva = offset.unsignedLongLongValue;
     for (NSDictionary *image in execImages) {
+        if (declaredImage.length && ![declaredImage isEqualToString:image[@"image"]] &&
+            ![declaredImage.stringByDeletingPathExtension
+              isEqualToString:[image[@"image"] stringByDeletingPathExtension]]) continue;
         uint64_t vmaddr = [image[@"vmaddr"] unsignedLongLongValue], size = [image[@"vmsize"] unsignedLongLongValue];
         if (rva >= vmaddr && rva + patch.length <= vmaddr + size) [matches addObject:image];
     }
@@ -211,32 +218,54 @@ static NSDictionary *HFAValidatedFeature(NSDictionary *source, NSString *fallbac
     };
     NSMutableDictionary *result = [@{ @"name": label, @"offset": [NSString stringWithFormat:@"0x%llX", rva],
               @"patch": hex(patch), @"currentBytes": hex(current), @"targetImage": image[@"image"],
+              @"offsetSemantics": @"preferred-mach-o-vmaddr",
               @"canonicalEligible": @YES, @"confidence": @"byte-validated",
               @"evidence": @[@"same-descriptor", @"executable-range", @"live-current-bytes"] } mutableCopy];
     if (original.length == patch.length) result[@"original"] = hex(original);
     return result;
 }
 
-NSDictionary *HFAMapResolveFeatures(NSDictionary *candidate, NSTimeInterval deadline,
-                                    NSMutableArray<NSDictionary *> *events) {
-    HFAResolveEvent(events, @"start", @{ @"image": candidate[@"image"] ?: @"" });
-    NSArray *views = HFACollectRoots(deadline), *execImages = HFAExecutableImages();
-    NSMutableArray *features = [NSMutableArray array], *unresolved = [NSMutableArray array];
-    NSMutableSet *featureKeys = [NSMutableSet set], *unresolvedKeys = [NSMutableSet set];
+NSDictionary *HFAMapCaptureFeatureSeeds(NSDictionary *candidate, NSTimeInterval deadline,
+                                        NSMutableArray<NSDictionary *> *events) {
+    HFAResolveEvent(events, @"snapshot-start", @{ @"image": candidate[@"image"] ?: @"" });
+    NSArray *views = HFACollectRoots(deadline);
     NSHashTable *seenTargets = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
-    NSHashTable *seenContainers = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
-    NSMutableArray *containers = [NSMutableArray array];
+    NSMutableArray *seeds = [NSMutableArray array];
     for (UIView *view in views) {
+        if (NSDate.date.timeIntervalSince1970 > deadline) break;
         if (![view isKindOfClass:UIControl.class]) continue;
-        UIControl *control = (UIControl *)view; NSString *label = HFALabelForControl(control);
+        UIControl *control = (UIControl *)view;
+        NSString *label = HFALabelForControl(control);
         for (id target in control.allTargets) {
             if (seenTargets.count >= kHFAMaxTargets || [seenTargets containsObject:target]) continue;
             const char *ownerPath = class_getImageName(object_getClass(target));
             NSString *ownerImage = ownerPath ? [NSString stringWithUTF8String:ownerPath].lastPathComponent : @"";
             if (![ownerImage isEqualToString:candidate[@"image"]]) continue;
-            [seenTargets addObject:target]; [containers addObject:@{ @"value": target, @"label": label ?: @"" }];
+            [seenTargets addObject:target];
+            [seeds addObject:@{ @"value": target, @"label": label ?: @"",
+                                @"class": NSStringFromClass(object_getClass(target)) ?: @"?" }];
+            HFADiagnosticsLog(@"ui-target", @"captured", @{
+                @"label": label ?: @"", @"class": NSStringFromClass(object_getClass(target)) ?: @"?",
+                @"image": ownerImage
+            });
         }
     }
+    NSString *status = NSDate.date.timeIntervalSince1970 > deadline ? @"timeout" : @"complete";
+    NSDictionary *metrics = @{ @"views": @(views.count), @"targets": @(seenTargets.count),
+                                @"seedCount": @(seeds.count), @"budgetMs": @350 };
+    HFAResolveEvent(events, [@"snapshot-" stringByAppendingString:status], metrics);
+    return @{ @"seeds": seeds, @"metrics": metrics, @"status": status };
+}
+
+NSDictionary *HFAMapResolveFeatureSeeds(NSDictionary *candidate, NSDictionary *snapshot,
+                                        NSTimeInterval deadline,
+                                        NSMutableArray<NSDictionary *> *events) {
+    HFAResolveEvent(events, @"start", @{ @"image": candidate[@"image"] ?: @"" });
+    NSArray *execImages = HFAExecutableImages();
+    NSMutableArray *features = [NSMutableArray array], *unresolved = [NSMutableArray array];
+    NSMutableSet *featureKeys = [NSMutableSet set], *unresolvedKeys = [NSMutableSet set];
+    NSHashTable *seenContainers = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
+    NSMutableArray *containers = [NSMutableArray arrayWithArray:snapshot[@"seeds"] ?: @[]];
     for (NSUInteger cursor = 0; cursor < containers.count && cursor < kHFAMaxContainers; ++cursor) {
         if ([NSDate.date timeIntervalSince1970] > deadline) break;
         id object = containers[cursor][@"value"]; NSString *label = containers[cursor][@"label"];
@@ -244,14 +273,33 @@ NSDictionary *HFAMapResolveFeatures(NSDictionary *candidate, NSTimeInterval dead
         NSDictionary *dictionary = HFADictionaryFromObject(object); if (!dictionary) continue;
         NSString *reason = nil; NSDictionary *feature = HFAValidatedFeature(dictionary, label, execImages, &reason);
         if (feature) {
+            NSMutableDictionary *enriched = [feature mutableCopy];
+            enriched[@"descriptorClass"] = NSStringFromClass(object_getClass(object)) ?: @"?";
+            enriched[@"descriptorInstanceSize"] = @(class_getInstanceSize(object_getClass(object)));
+            enriched[@"sourceFamily"] = candidate[@"family"] ?: @"unknown";
+            feature = enriched;
             NSString *key = [NSString stringWithFormat:@"%@:%@:%@", feature[@"targetImage"], feature[@"offset"], feature[@"patch"]];
-            if (![featureKeys containsObject:key]) { [featureKeys addObject:key]; [features addObject:feature]; }
+            if (![featureKeys containsObject:key]) {
+                [featureKeys addObject:key]; [features addObject:feature];
+                HFADiagnosticsLog(@"feature", @"accepted", feature);
+            }
         } else if (label.length && HFADescriptorSignal(dictionary)) {
             NSString *className = NSStringFromClass(object_getClass(object)) ?: @"?";
             NSString *key = [NSString stringWithFormat:@"%@:%@:%@", label, reason ?: @"no-static-descriptor", className];
             if (![unresolvedKeys containsObject:key]) { [unresolvedKeys addObject:key];
-                [unresolved addObject:@{ @"name": label, @"reason": reason ?: @"no-static-descriptor",
-                                         @"canonicalEligible": @NO, @"class": className }]; }
+                NSArray *fieldNames = [[dictionary.allKeys filteredArrayUsingPredicate:
+                    [NSPredicate predicateWithBlock:^BOOL(id key, __unused NSDictionary *bindings) {
+                        return [key isKindOfClass:NSString.class];
+                    }]] sortedArrayUsingSelector:@selector(compare:)];
+                NSDictionary *record = @{ @"name": label, @"reason": reason ?: @"no-static-descriptor",
+                                           @"canonicalEligible": @NO, @"class": className,
+                                           @"instanceSize": @(class_getInstanceSize(object_getClass(object))),
+                                           @"fieldNames": [fieldNames subarrayWithRange:
+                                               NSMakeRange(0, MIN(fieldNames.count, 64U))],
+                                           @"sourceFamily": candidate[@"family"] ?: @"unknown" };
+                [unresolved addObject:record];
+                HFADiagnosticsLog(@"feature", @"rejected", record);
+            }
         }
         for (id value in dictionary.allValues) {
             if (containers.count >= kHFAMaxContainers) break;
@@ -270,10 +318,17 @@ NSDictionary *HFAMapResolveFeatures(NSDictionary *candidate, NSTimeInterval dead
         }
     }
     NSString *status = [NSDate.date timeIntervalSince1970] > deadline ? @"timeout" : @"complete";
-    HFAResolveEvent(events, status, @{ @"views": @(views.count), @"targets": @(seenTargets.count),
+    NSDictionary *snapshotMetrics = snapshot[@"metrics"] ?: @{};
+    HFAResolveEvent(events, status, @{ @"views": snapshotMetrics[@"views"] ?: @0,
+                                      @"targets": snapshotMetrics[@"targets"] ?: @0,
                                       @"containers": @(MIN(containers.count,kHFAMaxContainers)),
                                       @"validated": @(features.count), @"unresolved": @(unresolved.count) });
-    return @{ @"features": features, @"unresolved": unresolved,
-              @"metrics": @{ @"views": @(views.count), @"targets": @(seenTargets.count),
-                               @"containers": @(MIN(containers.count,kHFAMaxContainers)) } };
+    NSDictionary *metrics = @{ @"views": snapshotMetrics[@"views"] ?: @0,
+                                @"targets": snapshotMetrics[@"targets"] ?: @0,
+                                @"containers": @(MIN(containers.count,kHFAMaxContainers)),
+                                @"executableSegments": @(execImages.count),
+                                @"validated": @(features.count), @"unresolved": @(unresolved.count) };
+    HFADiagnosticsLog(@"feature-resolution", status, metrics);
+    return @{ @"status": status, @"features": features, @"unresolved": unresolved,
+              @"metrics": metrics };
 }

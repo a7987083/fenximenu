@@ -97,7 +97,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.0.1 Bounded";
+    title.text = @"HFAMap v2.1.0 Analyzer";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
@@ -113,7 +113,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:scan];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 98.0, 222.0, 76.0)];
-    status.text = @"Ready. Open the target menu, then scan.";
+    status.text = @"Ready. Open the target menu, then scan.\nDetailed diagnostics are written live.";
     status.numberOfLines = 3;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];

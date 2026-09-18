@@ -1,0 +1,17 @@
+{
+  "schema": "com.hfa.menu-sample-manifest/v2",
+  "sourceArchiveSha256": "3f81a562530778957793f5e161dddbd1efe315c7d83f381405ca3298a6e3c461",
+  "expected": {
+    "ArcheryClash.dylib": ["4862e32aea9e8bfa16425877df5a147a5aa7110d0c9c63a01fd37bb9e2dfb425", "legacy-ap"],
+    "BackpackBrawl.dylib": ["e7d54fe761d6d74e92a8ec068cd06ecb828dd6932c73d89414214367add39cbd", "legacy-ap"],
+    "DisneySolitaire.dylib": ["c38d78aea604ff2d285051a83840b000005c74a7a119d8196485fa62063e6e70", "legacy-ap"],
+    "EarntoDieRogue.dylib": ["d64997d10679d554f454b327e150ba4844ee430fbdd38dda513684f8ecedae04", "legacy-ap"],
+    "MarmotDefenseRogueSurvival.dylib": ["1f900db039d4d77b591db8a8713f555d1193a260946b533ae0c5ab97aaaa0839", "legacy-ap"],
+    "WhisperCastleMergeStory.dylib": ["3d5ed747e18d637c1002520db0348084c0724f5702b88d61f1d262cd7500fcce", "legacy-ap"],
+    "ZombieCatchers.dylib": ["1186f3004a9f7245f0b806631562f1cb52f6af6a83da1f68118d3591003b87c8", "legacy-ap"],
+    "heavenfallarena.dylib": ["0804a473d4e52066ce3bf43b906f934a03d158ce0c4cc96e0b2dfea7f3ed81b6", "legacy-ap"],
+    "libRiseofBerk.dylib": ["e1831a9751b2f75f1840660d54872405673c8256a5ee7e71ac9ccb4c2503d971", "jailpatch"],
+    "libdragonfevertd.dylib": ["324a90b2b39be6654723c4f37682d58074dfef3dda60662499bcac50c1fca7d6", "jailpatch"],
+    "libpolicechief.dylib": ["902e63a9a15eb36de96535a7904f9a780ab83f1bd7d15daff7a5b4c7a1c7e245", "jailpatch"]
+  }
+}

@@ -1,11 +1,44 @@
 #import "HFAMapImageProbe.h"
+#import "HFAMapDiagnostics.h"
 
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
+#import <objc/runtime.h>
 #include <string.h>
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
-static const uint32_t kHFAMaxImages = 2048;
+static const uint32_t kHFAMaxImages = 512;
+
+static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
+    unsigned classCount = 0;
+    const char **names = objc_copyClassNamesForImage(path.fileSystemRepresentation, &classCount);
+    const unsigned boundedCount = MIN(classCount, 512U);
+    unsigned descriptorCount = 0, bestSelectorCount = 0;
+    NSArray<NSString *> *selectors = @[@"identifier", @"setIdentifier:", @"active", @"setActive:",
+                                       @"offset", @"setOffset:", @"signature", @"setSignature:",
+                                       @"range", @"setRange:"];
+    NSMutableArray *descriptorClasses = [NSMutableArray array];
+    for (unsigned i = 0; names && i < boundedCount; ++i) {
+        Class cls = objc_getClass(names[i]);
+        if (!cls || class_getInstanceSize(cls) != 160) continue;
+        unsigned selectorCount = 0;
+        for (NSString *name in selectors)
+            if (class_getInstanceMethod(cls, NSSelectorFromString(name))) ++selectorCount;
+        bestSelectorCount = MAX(bestSelectorCount, selectorCount);
+        if (selectorCount >= 8) {
+            ++descriptorCount;
+            if (descriptorClasses.count < 8)
+                [descriptorClasses addObject:NSStringFromClass(cls) ?: @"?"];
+        }
+    }
+    free(names);
+    unsigned structureScore = 0;
+    if (classCount >= 180 && classCount <= 220) structureScore += 25;
+    if (descriptorCount) structureScore += 50;
+    return @{ @"objcClassCount": @(classCount), @"inspectedClassCount": @(boundedCount),
+              @"descriptor160Count": @(descriptorCount), @"descriptorSelectorCount": @(bestSelectorCount),
+              @"descriptorClasses": descriptorClasses, @"structureScore": @(structureScore) };
+}
 
 static BOOL HFAContains(const uint8_t *bytes, size_t length, const char *token) {
     const size_t n = strlen(token);
@@ -70,6 +103,8 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
                     strncmp(sects[i].sectname, "__objc_methname", 16) &&
                     strncmp(sects[i].sectname, "__const", 16)) continue;
                 uint64_t size = MIN(sects[i].size, kHFAMaxStringSection - scanned);
+                if (sects[i].addr < seg->vmaddr || size > seg->vmsize ||
+                    sects[i].addr - seg->vmaddr > seg->vmsize - size) continue;
                 const uint8_t *bytes = (const uint8_t *)(uintptr_t)(sects[i].addr + slide);
                 scanned += size;
                 for (NSUInteger r = 0; r < sizeof(rules) / sizeof(rules[0]); ++r) {
@@ -84,14 +119,19 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         }
         cursor += lc->cmdsize;
     }
+    NSDictionary *objc = HFAObjectiveCFingerprint(path);
+    unsigned structure = [objc[@"structureScore"] unsignedIntValue];
     NSString *family = @"unknown";
     if (ui >= 30 && legacy >= 30 && legacy > jail) family = @"legacy-ap";
     else if (ui >= 30 && jail >= 28) family = @"jailpatch";
-    else if (ui >= 30) family = @"runtime-menu";
-    unsigned score = [family isEqualToString:@"unknown"] ? 0U : MIN(100U, ui + MIN(MAX(legacy, jail), 35U));
-    return @{ @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
+    else if (ui >= 30 || (ui >= 20 && structure >= 50)) family = @"runtime-menu";
+    unsigned score = [family isEqualToString:@"unknown"] ? 0U
+        : MIN(100U, ui + MIN(MAX(legacy, jail), 35U) + MIN(structure, 25U));
+    NSMutableDictionary *record = [@{ @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
               @"score": @(score), @"menuScore": @(ui), @"legacyScore": @(legacy),
-              @"jailpatchScore": @(jail), @"evidence": hits, @"scannedBytes": @(scanned) };
+              @"jailpatchScore": @(jail), @"evidence": hits, @"scannedBytes": @(scanned) } mutableCopy];
+    [record addEntriesFromDictionary:objc];
+    return record;
 }
 
 NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
@@ -113,7 +153,10 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         if (!HFAAppOwnedPath(path) || HFAExcludedImage(path)) continue;
         NSDictionary *record = HFAFingerprintImage((const struct mach_header_64 *)rawHeader,
                                                     _dyld_get_image_vmaddr_slide(i), path, deadline);
-        if ([record[@"score"] unsignedIntValue] >= 30) [found addObject:record];
+        if ([record[@"score"] unsignedIntValue] >= 30) {
+            [found addObject:record];
+            HFADiagnosticsLog(@"image-candidate", @"matched", record);
+        }
     }
     [found sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
         NSInteger x = [a[@"score"] integerValue], y = [b[@"score"] integerValue];
@@ -121,6 +164,6 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         return [a[@"image"] compare:b[@"image"]];
     }];
     HFAEvent(events, @"image-discovery", found.count ? @"pass" : @"no-candidate",
-             @{ @"candidateCount": @(found.count), @"selected": found.firstObject[@"image"] ?: @"" });
+             @{ @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"" });
     return found;
 }

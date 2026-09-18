@@ -41,10 +41,16 @@ dispatcher 绝不自动等价于静态 patch。
 
 ## 时间与输出
 
-一次手动扫描总预算为 5 秒：镜像发现 2 秒、主线程菜单快照/解析 2 秒、余量用于导出。
+一次手动扫描总预算为 5 秒：镜像发现最多 2 秒、主线程菜单快照最多 350 ms，深度对象解析
+转移到串行工作队列并受总截止时间约束，余量用于导出。
 重复点击在扫描期间返回 `busy`。每个阶段把开始、完成、超时、计数和拒绝原因写入
 `HFAMap_Process.jsonl`；可用补丁写入 `HFAMap_Patches.json`；完整证据和 unresolved 项写入
-`HFAMap_Analysis.json`。
+`HFAMap_Analysis.json`。另外实时追加 `HFAMap_Diagnostics.jsonl` 和便于人工阅读的
+`HFAMap_Diagnostics.log`；每条日志带 session、绝对时间、相对耗时、线程、阶段、候选评分和
+feature 接受/拒绝原因。即使后续阶段异常退出，已完成阶段的诊断记录仍保留。
+
+候选识别除字符串证据外，还记录 Objective-C 类数量以及 160 字节核心描述对象的稳定 selector
+签名。结构证据用于增强评分和诊断，不单独把未知镜像强行判定为某个家族。
 
 ## “通用”的边界
 

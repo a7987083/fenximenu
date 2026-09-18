@@ -147,12 +147,9 @@ all five targets remained at `validated=0`; broader UI traversal is therefore ru
 
 ### Discovery event can mislabel the pre-policy candidate
 
-Status: confirmed; output correctness unaffected.
+Status: fixed in v2.1.0-dev; device confirmation pending.
 
-`HFAMapImageProbe` currently writes `selected=found.firstObject` before `HFASelectCandidate` applies descriptor
-dominance. In the Rise of Berk wrapper/payload case that event named `CustomOffsetPatcheriOSGodsCom.dylib`,
-while feature resolution and `HFAMap_Analysis.json` correctly used `libRiseofBerk.dylib`. Rename the discovery
-field to `topCandidate` and emit the actual selected image from the selection stage in the next build.
+`HFAMapImageProbe` now writes `topCandidate`; the selection stage emits the actual policy-selected image.
 
 ### First device build had discovery/traversal defects
 

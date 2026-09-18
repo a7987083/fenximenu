@@ -5,7 +5,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = HFAMapUniversal
 
-HFAMapUniversal_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapImageProbe.mm src/HFAMapResolver.mm
+HFAMapUniversal_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapDiagnostics.mm src/HFAMapImageProbe.mm src/HFAMapResolver.mm
 HFAMapUniversal_CFLAGS = -O2 -fno-stack-protector -Wno-deprecated-declarations
 HFAMapUniversal_FRAMEWORKS = UIKit Foundation QuartzCore
 

@@ -1,5 +1,16 @@
 # HFAMap Roadmap
 
+## v2.1.0 first-pass analyzer
+
+Implemented on `feature/hfamap-v2-bounded-universal-analyzer`: short main-thread snapshot, worker-side bounded descriptor analysis, Objective-C family structure evidence, and live detailed diagnostics. Local unit tests and the 11-dylib family regression pass.
+
+Next gates:
+
+1. arm64 Theos CI compile/link/sign;
+2. Legacy AP device scan with all diagnostic outputs;
+3. Jailpatch device scan and external `loadConfig:` owner evidence;
+4. only then add a selected-image-only observer for the verified configuration boundary.
+
 ## Current phase — v1.9.37.10 Earn to Die Rogue completion
 
 Branch: `feature/hfamap-v193710-unified-feature-model`

@@ -1,7 +1,7 @@
 {
   "project": "HFAMapUniversal",
-  "version": "2.0.1-dev",
-  "phase": "runtime-boundary-evidence",
+  "version": "2.1.0-dev",
+  "phase": "first-pass-family-analyzer",
   "repository": "a7987083/fenximenu",
   "branch": "feature/hfamap-v2-bounded-universal-analyzer",
   "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
@@ -9,10 +9,10 @@
   "v2_analyzer": {
     "discovery": "loaded-app-local-images-and-bounded-sections",
     "selection": "multi-evidence-with-ambiguity-rejection",
-    "resolution": "same-descriptor-plus-unique-executable-range",
-    "outputs": ["HFAMap_Patches.json", "HFAMap_Analysis.json", "HFAMap_Process.jsonl"],
-    "sample_regression": "10/10 passed",
-    "ios_ci": "success",
+    "resolution": "350ms-main-thread-snapshot-then-bounded-worker-descriptor-analysis",
+    "outputs": ["HFAMap_Patches.json", "HFAMap_Analysis.json", "HFAMap_Process.jsonl", "HFAMap_Diagnostics.jsonl", "HFAMap_Diagnostics.log"],
+    "sample_regression": "11/11 archive7 families passed locally",
+    "ios_ci": "pending for v2.1.0",
     "build_commit": "dec58086d52b6ead209f7b99e88b1dcb6d898ac1",
     "run_id": 35189032554,
     "artifact_id": 10483940522,
@@ -31,9 +31,13 @@
       "image-discovery selected label is pre-policy and can differ from the actual selected candidate"
     ],
     "corrective_changes": [
-      "raise bounded image cap to 2048 and log total versus inspected counts",
+      "cap loaded-image inspection at 512 and retain explicit total/inspected diagnostics",
       "use descriptor-evidence dominance to resolve wrapper versus payload ties",
-      "restrict recursive containers and unresolved records to descriptor-bearing evidence"
+      "restrict recursive containers and unresolved records to descriptor-bearing evidence",
+      "move deep descriptor traversal off the main thread after a 350ms UI snapshot",
+      "add 199-class/160-byte descriptor Objective-C structural evidence",
+      "write session-scoped diagnostics continuously so partial evidence survives later failure",
+      "rename the discovery pre-policy field from selected to topCandidate"
     ]
   },
   "build": {
@@ -99,5 +103,5 @@
     "Posters and Prestige overlap at UnityFramework+0x2E25904",
     "runtime-encrypted or generated descriptors remain unresolved until a bounded boundary observer is evidenced"
   ],
-  "next_task": "Fix the pre-policy candidate log label, then implement a selected-image-only read-only observer for the evidenced loadConfig/runtime-table boundary and re-run the five-device matrix."
+  "next_task": "Run v2.1.0 arm64 CI, then inject on one Legacy AP and one Jailpatch target and return all five JSON/log outputs."
 }

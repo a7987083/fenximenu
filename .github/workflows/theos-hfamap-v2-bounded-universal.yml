@@ -25,11 +25,14 @@ jobs:
       - name: Architecture invariants
         run: |
           set -euo pipefail
-          grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'kHFAMaxImages = 512' hfamap/src/HFAMapImageProbe.mm
           grep -q 'totalLoadedImages' hfamap/src/HFAMapImageProbe.mm
           grep -q 'secondDescriptor >= 80' hfamap/src/HFAMapCore.mm
           grep -q 'HFADescriptorSignal' hfamap/src/HFAMapResolver.mm
-          grep -q 'kHFAMaxViews = 1024' hfamap/src/HFAMapResolver.mm
+          grep -q 'kHFAMaxViews = 768' hfamap/src/HFAMapResolver.mm
+          grep -q 'HFAObjectiveCFingerprint' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'HFAMapCaptureFeatureSeeds' hfamap/src/HFAMapResolver.mm
+          grep -q 'HFAMap_Diagnostics.jsonl' hfamap/src/HFAMapDiagnostics.mm
           grep -q 'same-descriptor' hfamap/src/HFAMapResolver.mm
           grep -q 'executable-range' hfamap/src/HFAMapResolver.mm
           grep -q 'canonicalEligible' hfamap/src/HFAMapResolver.mm
@@ -59,18 +62,20 @@ jobs:
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          cp .theos/obj/HFAMapUniversal.dylib dist/HFAMapUniversal_v2.0.1_BoundedUniversal.dylib
-          file dist/HFAMapUniversal_v2.0.1_BoundedUniversal.dylib
-          shasum -a 256 dist/HFAMapUniversal_v2.0.1_BoundedUniversal.dylib | tee dist/SHA256_v2.0.1.txt
-          strings dist/HFAMapUniversal_v2.0.1_BoundedUniversal.dylib > dist/strings_v2.0.1.txt
-          grep -q 'com.hfa.patch/v2' dist/strings_v2.0.1.txt
-          grep -q 'ambiguous-top-candidates' dist/strings_v2.0.1.txt
-          grep -q 'HFAMap_Process.jsonl' dist/strings_v2.0.1.txt
+          cp .theos/obj/HFAMapUniversal.dylib dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
+          file dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
+          shasum -a 256 dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib | tee dist/SHA256_v2.1.0.txt
+          strings dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib > dist/strings_v2.1.0.txt
+          grep -q 'com.hfa.patch/v2' dist/strings_v2.1.0.txt
+          grep -q 'ambiguous-top-candidates' dist/strings_v2.1.0.txt
+          grep -q 'HFAMap_Process.jsonl' dist/strings_v2.1.0.txt
+          grep -q 'HFAMap_Diagnostics.jsonl' dist/strings_v2.1.0.txt
+          grep -q 'descriptor160Count' dist/strings_v2.1.0.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.0.1-BoundedUniversal
+          name: HFAMapUniversal-v2.1.0-FirstPassAnalyzer
           path: |
-            hfamap/dist/HFAMapUniversal_v2.0.1_BoundedUniversal.dylib
-            hfamap/dist/SHA256_v2.0.1.txt
+            hfamap/dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
+            hfamap/dist/SHA256_v2.1.0.txt
           if-no-files-found: error

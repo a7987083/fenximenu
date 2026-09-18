@@ -1,6 +1,7 @@
 #import "HFAMapCore.h"
 #import "HFAMapImageProbe.h"
 #import "HFAMapResolver.h"
+#import "HFAMapDiagnostics.h"
 
 static BOOL gHFAScanning;
 static dispatch_queue_t HFAWorker(void) {
@@ -56,31 +57,48 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
     dispatch_async(HFAWorker(), ^{
         NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
         NSTimeInterval started = NSDate.date.timeIntervalSince1970;
+        NSString *session = HFADiagnosticsBeginSession();
         [events addObject:@{ @"time": @(started), @"stage": @"scan", @"status": @"start",
-                             @"schema": @"com.hfa.process/v2", @"budgetMs": @5000 }];
+                             @"schema": @"com.hfa.process/v2", @"session": session,
+                             @"budgetMs": @5000 }];
+        HFADiagnosticsLog(@"scan", @"start", @{ @"budgetMs": @5000 });
         NSArray *candidates = HFAMapDiscoverMenuImages(started + 2.0, events);
+        HFADiagnosticsLog(@"image-discovery", @"complete", @{
+            @"candidateCount": @(candidates.count), @"candidates": candidates ?: @[]
+        });
         NSString *reject = nil; NSDictionary *selected = HFASelectCandidate(candidates, &reject);
         if (!selected) {
             NSDictionary *analysis = @{ @"schema": @"com.hfa.analysis/v2", @"status": @"incomplete",
+                                         @"session": session,
                                          @"reason": reject ?: @"selection-failed", @"candidates": candidates,
                                          @"features": @[], @"unresolved": @[] };
             [events addObject:@{ @"time": @(NSDate.date.timeIntervalSince1970), @"stage": @"selection",
                                  @"status": @"reject", @"reason": reject ?: @"?" }];
             HFAWriteJSON(analysis, @"HFAMap_Analysis.json"); HFAWriteEvents(events);
+            HFADiagnosticsFinishSession(@"incomplete", @{
+                @"reason": reject ?: @"selection-failed", @"candidateCount": @(candidates.count)
+            });
             dispatch_async(dispatch_get_main_queue(), ^{ @synchronized(NSObject.class) { gHFAScanning = NO; }
                 if (completion) completion(analysis); });
             return;
         }
+        HFADiagnosticsLog(@"selection", @"selected", selected);
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSDictionary *resolved = HFAMapResolveFeatures(selected, NSDate.date.timeIntervalSince1970 + 2.0, events);
+            NSTimeInterval captureStarted = NSDate.date.timeIntervalSince1970;
+            NSDictionary *snapshot = HFAMapCaptureFeatureSeeds(selected, captureStarted + 0.35, events);
+            HFADiagnosticsLog(@"ui-snapshot", @"complete", snapshot[@"metrics"] ?: @{});
             dispatch_async(HFAWorker(), ^{
+                NSDictionary *resolved = HFAMapResolveFeatureSeeds(selected, snapshot,
+                                                                   started + 4.5, events);
                 NSArray *features = resolved[@"features"] ?: @[];
                 NSDictionary *analysis = @{ @"schema": @"com.hfa.analysis/v2",
-                                             @"status": @"complete", @"candidate": selected,
+                                             @"status": resolved[@"status"] ?: @"complete",
+                                             @"session": session, @"candidate": selected,
                                              @"features": features,
                                              @"unresolved": resolved[@"unresolved"] ?: @[],
                                              @"metrics": resolved[@"metrics"] ?: @{} };
                 NSDictionary *patch = @{ @"schema": @"com.hfa.patch/v2",
+                                          @"session": session,
                                           @"generatedAt": @([[NSDate date] timeIntervalSince1970]),
                                           @"sourceMenuImage": selected[@"image"], @"features": features };
                 [events addObject:@{ @"time": @(NSDate.date.timeIntervalSince1970), @"stage": @"export",
@@ -88,6 +106,11 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
                                      @"analysisFeatures": @([resolved[@"unresolved"] count]) }];
                 HFAWriteJSON(analysis, @"HFAMap_Analysis.json");
                 HFAWriteJSON(patch, @"HFAMap_Patches.json"); HFAWriteEvents(events);
+                HFADiagnosticsFinishSession(analysis[@"status"], @{
+                    @"validated": @(features.count),
+                    @"unresolved": @([resolved[@"unresolved"] count]),
+                    @"metrics": resolved[@"metrics"] ?: @{}
+                });
                 dispatch_async(dispatch_get_main_queue(), ^{ @synchronized(NSObject.class) { gHFAScanning = NO; }
                     if (completion) completion(analysis); });
             });
