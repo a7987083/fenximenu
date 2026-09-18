@@ -135,6 +135,13 @@ Authoritative candidate:
 - cross-family regression: pending
 # v2 open issues
 
+### v2.1.0 image ceiling regression
+
+Status: fixed in v2.1.1-dev; device re-test pending.
+
+The eight-run archive contained 947–987 loaded images. v2.1.0 inspected only the first 512, causing five
+false `no-loaded-menu-image` results. The ceiling is restored to 2048 while retaining the wall-clock deadline.
+
 ### Jailpatch runtime table is not yet decoded
 
 Status: confirmed by both device archives; v2.0.1 re-test reproduced on five targets.

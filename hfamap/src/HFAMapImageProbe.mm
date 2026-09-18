@@ -7,7 +7,7 @@
 #include <string.h>
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
-static const uint32_t kHFAMaxImages = 512;
+static const uint32_t kHFAMaxImages = 2048;
 
 static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned classCount = 0;
@@ -137,6 +137,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
 NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
                                                     NSMutableArray<NSDictionary *> *events) {
     NSMutableArray *found = [NSMutableArray array];
+    NSUInteger appOwnedCount = 0, fingerprintedCount = 0;
     uint32_t totalCount = _dyld_image_count();
     uint32_t count = MIN(totalCount, kHFAMaxImages);
     HFAEvent(events, @"image-discovery", @"start",
@@ -151,8 +152,10 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         if (!raw || !rawHeader) continue;
         NSString *path = [NSString stringWithUTF8String:raw];
         if (!HFAAppOwnedPath(path) || HFAExcludedImage(path)) continue;
+        ++appOwnedCount;
         NSDictionary *record = HFAFingerprintImage((const struct mach_header_64 *)rawHeader,
                                                     _dyld_get_image_vmaddr_slide(i), path, deadline);
+        if (record) ++fingerprintedCount;
         if ([record[@"score"] unsignedIntValue] >= 30) {
             [found addObject:record];
             HFADiagnosticsLog(@"image-candidate", @"matched", record);
@@ -164,6 +167,8 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         return [a[@"image"] compare:b[@"image"]];
     }];
     HFAEvent(events, @"image-discovery", found.count ? @"pass" : @"no-candidate",
-             @{ @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"" });
+             @{ @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"",
+                @"appOwnedImages": @(appOwnedCount), @"fingerprintedImages": @(fingerprintedCount),
+                @"hitImageLimit": @(totalCount > count) });
     return found;
 }

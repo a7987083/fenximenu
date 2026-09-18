@@ -25,7 +25,7 @@ jobs:
       - name: Architecture invariants
         run: |
           set -euo pipefail
-          grep -q 'kHFAMaxImages = 512' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
           grep -q 'totalLoadedImages' hfamap/src/HFAMapImageProbe.mm
           grep -q 'secondDescriptor >= 80' hfamap/src/HFAMapCore.mm
           grep -q 'HFADescriptorSignal' hfamap/src/HFAMapResolver.mm
@@ -62,20 +62,20 @@ jobs:
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          cp .theos/obj/HFAMapUniversal.dylib dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
-          file dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
-          shasum -a 256 dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib | tee dist/SHA256_v2.1.0.txt
-          strings dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib > dist/strings_v2.1.0.txt
-          grep -q 'com.hfa.patch/v2' dist/strings_v2.1.0.txt
-          grep -q 'ambiguous-top-candidates' dist/strings_v2.1.0.txt
-          grep -q 'HFAMap_Process.jsonl' dist/strings_v2.1.0.txt
-          grep -q 'HFAMap_Diagnostics.jsonl' dist/strings_v2.1.0.txt
-          grep -q 'descriptor160Count' dist/strings_v2.1.0.txt
+          cp .theos/obj/HFAMapUniversal.dylib dist/HFAMapUniversal_v2.1.1_FirstPassAnalyzer.dylib
+          file dist/HFAMapUniversal_v2.1.1_FirstPassAnalyzer.dylib
+          shasum -a 256 dist/HFAMapUniversal_v2.1.1_FirstPassAnalyzer.dylib | tee dist/SHA256_v2.1.1.txt
+          strings dist/HFAMapUniversal_v2.1.1_FirstPassAnalyzer.dylib > dist/strings_v2.1.1.txt
+          grep -q 'com.hfa.patch/v2' dist/strings_v2.1.1.txt
+          grep -q 'ambiguous-top-candidates' dist/strings_v2.1.1.txt
+          grep -q 'HFAMap_Process.jsonl' dist/strings_v2.1.1.txt
+          grep -q 'HFAMap_Diagnostics.jsonl' dist/strings_v2.1.1.txt
+          grep -q 'descriptor160Count' dist/strings_v2.1.1.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.1.0-FirstPassAnalyzer
+          name: HFAMapUniversal-v2.1.1-FirstPassAnalyzer
           path: |
-            hfamap/dist/HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib
-            hfamap/dist/SHA256_v2.1.0.txt
+            hfamap/dist/HFAMapUniversal_v2.1.1_FirstPassAnalyzer.dylib
+            hfamap/dist/SHA256_v2.1.1.txt
           if-no-files-found: error

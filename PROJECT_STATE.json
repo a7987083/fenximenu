@@ -1,6 +1,6 @@
 {
   "project": "HFAMapUniversal",
-  "version": "2.1.0-dev",
+  "version": "2.1.1-dev",
   "phase": "first-pass-family-analyzer",
   "repository": "a7987083/fenximenu",
   "branch": "feature/hfamap-v2-bounded-universal-analyzer",
@@ -32,7 +32,7 @@
       "image-discovery selected label is pre-policy and can differ from the actual selected candidate"
     ],
     "corrective_changes": [
-      "cap loaded-image inspection at 512 and retain explicit total/inspected diagnostics",
+      "restore the bounded image ceiling to 2048 after 947-987-image device runs proved 512 causes false negatives",
       "use descriptor-evidence dominance to resolve wrapper versus payload ties",
       "restrict recursive containers and unresolved records to descriptor-bearing evidence",
       "move deep descriptor traversal off the main thread after a 350ms UI snapshot",
