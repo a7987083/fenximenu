@@ -9,7 +9,9 @@
 - Added explicit `preferred-mach-o-vmaddr` semantics and optional declared target-image filtering.
 - Renamed the pre-policy discovery field from `selected` to `topCandidate`.
 - Added the 11-dylib archive manifest; local family regression passed 11/11.
-- Host unit tests passed 4/4. Local Theos build is unavailable because this environment has no `THEOS`; arm64 CI and device verification remain pending.
+- Host unit tests passed 4/4. GitHub Actions run `35403381939` passed compile/link/sign at commit `3ad558978f8bd648fefa737bd80f6c5596507426`.
+- Artifact `10570699914`; arm64 dylib size `91456`; SHA-256 `5903e172814bf9950ceceb55440adeff1747deffb2cbecec8755017517db6246`.
+- Device verification remains pending.
 
 ## v1.9.37.10 — verified Earn to Die Rogue Fuel/Boost profile
 

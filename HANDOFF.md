@@ -6,7 +6,7 @@ Active branch: `feature/hfamap-v2-bounded-universal-analyzer`.
 
 The first-pass implementation now uses a 350 ms main-thread UI/target snapshot and performs descriptor traversal on the serial worker queue. It records Objective-C class-count evidence and the stable 160-byte descriptor signature, and writes live session diagnostics to `HFAMap_Diagnostics.jsonl` plus `HFAMap_Diagnostics.log`.
 
-Local verification: Python unit tests 4/4 passed; the supplied archive classified all 11 dylibs into the expected Legacy AP/Jailpatch families. Local iOS compilation is blocked by the absence of Theos, so CI compile/link/sign and device validation are still required. Do not report this version as compiled or device-verified until those stages complete.
+Local verification: Python unit tests 4/4 passed; the supplied archive classified all 11 dylibs into the expected Legacy AP/Jailpatch families. GitHub Actions run `35403381939` passed compile/link/sign for remote commit `3ad558978f8bd648fefa737bd80f6c5596507426`. Artifact ID `10570699914`; dylib SHA-256 `5903e172814bf9950ceceb55440adeff1747deffb2cbecec8755017517db6246`. Device verification is still required.
 
 ## Active work
 

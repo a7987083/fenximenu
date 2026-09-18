@@ -12,14 +12,15 @@
     "resolution": "350ms-main-thread-snapshot-then-bounded-worker-descriptor-analysis",
     "outputs": ["HFAMap_Patches.json", "HFAMap_Analysis.json", "HFAMap_Process.jsonl", "HFAMap_Diagnostics.jsonl", "HFAMap_Diagnostics.log"],
     "sample_regression": "11/11 archive7 families passed locally",
-    "ios_ci": "pending for v2.1.0",
-    "build_commit": "dec58086d52b6ead209f7b99e88b1dcb6d898ac1",
-    "run_id": 35189032554,
-    "artifact_id": 10483940522,
-    "artifact": "HFAMapUniversal-v2.0.1-BoundedUniversal",
-    "artifact_digest": "sha256:d8de0530930359068fb49541fe556b1c60158c79098e202d663c272ddd40c711",
-    "binary": "HFAMapUniversal_v2.0.1_BoundedUniversal.dylib",
-    "binary_sha256": "33ccf82f70f69a470304db7b280b9c90985f20376bc419f94a053265d66e0f39",
+    "ios_ci": "success",
+    "build_commit": "3ad558978f8bd648fefa737bd80f6c5596507426",
+    "run_id": 35403381939,
+    "artifact_id": 10570699914,
+    "artifact": "HFAMapUniversal-v2.1.0-FirstPassAnalyzer",
+    "artifact_digest": "sha256:a41998c3de28de286d3df0ae82e4a0ff95cfdc26eb34bde903bd0e91c65f3ee3",
+    "binary": "HFAMapUniversal_v2.1.0_FirstPassAnalyzer.dylib",
+    "binary_size_bytes": 91456,
+    "binary_sha256": "5903e172814bf9950ceceb55440adeff1747deffb2cbecec8755017517db6246",
     "device_runtime": "passed for bounded discovery/selection; extraction incomplete",
     "device_archive_sha256": "91fbbfa901d3a75cb35d97dcde58d745a1a75e627532ff4242537f024a661b74",
     "device_findings": [
@@ -103,5 +104,5 @@
     "Posters and Prestige overlap at UnityFramework+0x2E25904",
     "runtime-encrypted or generated descriptors remain unresolved until a bounded boundary observer is evidenced"
   ],
-  "next_task": "Run v2.1.0 arm64 CI, then inject on one Legacy AP and one Jailpatch target and return all five JSON/log outputs."
+  "next_task": "Inject v2.1.0 on one Legacy AP and one Jailpatch target and return all five JSON/log outputs."
 }
