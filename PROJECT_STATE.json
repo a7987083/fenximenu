@@ -10,5 +10,12 @@
     "max_events": 512
   },
   "log_identity_priority": ["CFBundleIdentifier","CFBundleDisplayName","CFBundleName","unknown"],
+  "build": {
+    "head": "b8e3e3b8ce8423220b20450027c4f85117be3845",
+    "actions_run": 35426620989,
+    "artifact_id": 10577949483,
+    "status": "success",
+    "dylib_sha256": "8a25563fb16e873191592aef9c2efe1c909ef52498851242bf7c9d38cc35dce1"
+  },
   "next_validation": "Legacy AP and C4M0 device regression with descriptor events"
 }
