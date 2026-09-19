@@ -1,0 +1,8 @@
+Package: com.hfa.zpatchig
+Name: ZPatchIG Analyzer
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Read-only family/descriptor analyzer for Legacy AP and C4M0 menu runtimes.
+Maintainer: a7987083
+Author: a7987083
+Section: Tweaks

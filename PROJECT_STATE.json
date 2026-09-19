@@ -1,0 +1,10 @@
+{
+  "project": "ZPatchIG",
+  "version": "0.1.0",
+  "branch": "zpatchig",
+  "stage": "implementation",
+  "parser_only": true,
+  "families": ["legacy-ap", "c4m0"],
+  "canonical_patch_export": false,
+  "device_validation": "pending"
+}
