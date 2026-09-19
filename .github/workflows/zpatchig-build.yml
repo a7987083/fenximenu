@@ -24,7 +24,7 @@ jobs:
           grep -q 'ZPLegacyOffsetResolverSchedule' hfamap/src/ZPDescriptorObserver.mm
           grep -q 'decryptFingerprintMatches' hfamap/src/ZPLegacyOffsetResolver.mm
           grep -q 'CFBundleDisplayName' hfamap/src/ZPAppIdentity.mm
-          grep -q 'ZPLogFilename(@"EvidenceGraph.json")' hfamap/src/HFAMapCore.mm
+          grep -q 'ZPWriteJSON(graph,@"EvidenceGraph.json")' hfamap/src/HFAMapCore.mm
           if grep -R -n 'MSHookFunction\|DobbyHook\|mach_vm_write' hfamap/src; then echo 'v0.4 must not contain patch execution'; exit 1; fi
           if grep -R -nE 'getter[[:space:]]*\+[[:space:]]*0xD00|getterAddress[[:space:]]*\+[[:space:]]*0xD00' hfamap/src; then echo 'fixed historical decrypt delta is forbidden'; exit 1; fi
       - name: Evidence graph regression
