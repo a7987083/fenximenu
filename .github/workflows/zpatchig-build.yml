@@ -1,4 +1,4 @@
-name: ZPatchIG v0.1 build
+name: ZPatchIG v0.1.1 build
 on:
   push:
     branches: [zpatchig]
@@ -15,12 +15,50 @@ jobs:
       - name: Static source gates
         run: |
           set -euo pipefail
-          grep -q 'descriptorInstanceSize' hfamap/src/ZPImageProbe.mm
+          grep -q 'legacyABIMatch' hfamap/src/ZPImageProbe.mm
+          grep -q 'c4m0ErasedABIMatch' hfamap/src/ZPImageProbe.mm
+          grep -q 'legacy-descriptor-abi' hfamap/src/ZPImageProbe.mm
+          grep -q 'c4m0-descriptor-abi' hfamap/src/ZPImageProbe.mm
+          grep -q 'conflicting-runtime-strings-no-abi-tiebreak' hfamap/src/ZPImageProbe.mm
+          grep -q 'hasC4M0RuntimeMarkers' hfamap/src/ZPImageProbe.mm
           grep -q 'C4M0Manager' hfamap/src/ZPResolver.mm
-          grep -q 'v0.1-does-not-export-unverified-patches' hfamap/src/ZPResolver.mm
+          grep -q 'v0.1.1-does-not-export-unverified-patches' hfamap/src/ZPResolver.mm
           if grep -R -n 'MSHookFunction\|DobbyHook\|mach_vm_write' hfamap/src; then
-            echo 'v0.1 must stay parser/exporter-only'; exit 1
+            echo 'v0.1.1 must stay parser/exporter-only'; exit 1
           fi
+      - name: Classifier regression model
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          def classify(descriptor, idx, legacy_abi, erased_abi, legacy_marker, c4m0_marker):
+              if descriptor and legacy_abi:
+                  return 'legacy-ap'
+              if descriptor and erased_abi and idx == 173:
+                  return 'c4m0'
+              if descriptor and idx == 15 and legacy_marker:
+                  return 'legacy-ap'
+              if descriptor and idx == 173 and c4m0_marker:
+                  return 'c4m0'
+              if descriptor and legacy_marker and c4m0_marker:
+                  return 'ambiguous'
+              if descriptor and legacy_marker:
+                  return 'legacy-ap'
+              if descriptor and c4m0_marker:
+                  return 'c4m0'
+              return 'descriptor-family' if descriptor else 'unknown'
+
+          fixtures = [
+              ('legacy-conflict', dict(descriptor=True, idx=15, legacy_abi=True, erased_abi=False, legacy_marker=True, c4m0_marker=True), 'legacy-ap'),
+              ('legacy-clean', dict(descriptor=True, idx=15, legacy_abi=True, erased_abi=False, legacy_marker=True, c4m0_marker=False), 'legacy-ap'),
+              ('c4m0', dict(descriptor=True, idx=173, legacy_abi=False, erased_abi=True, legacy_marker=False, c4m0_marker=True), 'c4m0'),
+              ('weak-conflict', dict(descriptor=True, idx=99, legacy_abi=False, erased_abi=False, legacy_marker=True, c4m0_marker=True), 'ambiguous'),
+          ]
+          for name, args, expected in fixtures:
+              actual = classify(**args)
+              if actual != expected:
+                  raise SystemExit(f'{name}: expected {expected}, got {actual}')
+              print(name, '=>', actual)
+          PY
       - name: Install dependencies
         run: brew install ldid
       - name: Install Theos
@@ -34,18 +72,24 @@ jobs:
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          cp .theos/obj/ZPatchIG.dylib dist/ZPatchIG_v0.1.0.dylib
-          file dist/ZPatchIG_v0.1.0.dylib | tee dist/file.txt
-          shasum -a 256 dist/ZPatchIG_v0.1.0.dylib | tee dist/SHA256.txt
-          strings dist/ZPatchIG_v0.1.0.dylib > dist/strings.txt
-          grep -q 'ZPatchIG v0.1 Analyzer' dist/strings.txt
-          grep -q 'v0.1-does-not-export-unverified-patches' dist/strings.txt
+          cp .theos/obj/ZPatchIG.dylib dist/ZPatchIG_v0.1.1.dylib
+          file dist/ZPatchIG_v0.1.1.dylib | tee dist/file.txt
+          shasum -a 256 dist/ZPatchIG_v0.1.1.dylib | tee dist/SHA256.txt
+          strings dist/ZPatchIG_v0.1.1.dylib > dist/strings.txt
+          nm -u dist/ZPatchIG_v0.1.1.dylib > dist/nm_undefined.txt
+          grep -q 'ZPatchIG v0.1.1 Analyzer' dist/strings.txt
+          grep -q 'v0.1.1-does-not-export-unverified-patches' dist/strings.txt
+          grep -q 'legacy-descriptor-abi' dist/strings.txt
+          grep -q 'c4m0-descriptor-abi' dist/strings.txt
+          if grep -Eq '_MSHookFunction|_DobbyHook|_mach_vm_write' dist/nm_undefined.txt; then
+            echo 'mutation symbol leaked into v0.1.1'; exit 1
+          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZPatchIG-v0.1.0
+          name: ZPatchIG-v0.1.1
           path: |
-            hfamap/dist/ZPatchIG_v0.1.0.dylib
+            hfamap/dist/ZPatchIG_v0.1.1.dylib
             hfamap/dist/SHA256.txt
             hfamap/dist/file.txt
           if-no-files-found: error
