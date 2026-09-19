@@ -32,11 +32,11 @@ static BOOL ZPInstall(void) {
     [b setTitle:@"ZP" forState:UIControlStateNormal]; [b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal]; b.titleLabel.font=[UIFont boldSystemFontOfSize:16];
     [b addTarget:[ZPTarget shared] action:@selector(toggle) forControlEvents:UIControlEventTouchUpInside];
     UIView *p=[[UIView alloc] initWithFrame:CGRectMake(86,y,270,190)]; p.backgroundColor=[UIColor colorWithWhite:.06 alpha:.95]; p.layer.cornerRadius=12; p.hidden=YES;
-    UILabel *t=[[UILabel alloc] initWithFrame:CGRectMake(14,10,242,28)]; t.text=@"ZPatchIG v0.1 Analyzer"; t.textColor=UIColor.whiteColor; t.font=[UIFont boldSystemFontOfSize:17]; [p addSubview:t];
+    UILabel *t=[[UILabel alloc] initWithFrame:CGRectMake(14,10,242,28)]; t.text=@"ZPatchIG v0.1.1 Analyzer"; t.textColor=UIColor.whiteColor; t.font=[UIFont boldSystemFontOfSize:17]; [p addSubview:t];
     UIButton *scan=[UIButton buttonWithType:UIButtonTypeSystem]; scan.frame=CGRectMake(14,48,242,42); scan.backgroundColor=[UIColor colorWithRed:.15 green:.34 blue:.70 alpha:1]; scan.layer.cornerRadius=8;
     [scan setTitle:@"Analyze Menu (5s)" forState:UIControlStateNormal]; [scan setTitleColor:UIColor.whiteColor forState:UIControlStateNormal]; [scan addTarget:[ZPTarget shared] action:@selector(scan) forControlEvents:UIControlEventTouchUpInside]; [p addSubview:scan];
-    UILabel *st=[[UILabel alloc] initWithFrame:CGRectMake(14,100,242,72)]; st.text=@"Read-only v0.1.\nLegacy AP / C4M0 family + 0xA0 descriptor evidence."; st.numberOfLines=3; st.textColor=[UIColor colorWithWhite:.88 alpha:1]; st.font=[UIFont systemFontOfSize:13]; [p addSubview:st]; gStatus=st;
+    UILabel *st=[[UILabel alloc] initWithFrame:CGRectMake(14,100,242,72)]; st.text=@"Read-only v0.1.1.\nABI-first Legacy AP / C4M0 classification + 0xA0 descriptor evidence."; st.numberOfLines=3; st.textColor=[UIColor colorWithWhite:.88 alpha:1]; st.font=[UIFont systemFontOfSize:13]; [p addSubview:st]; gStatus=st;
     [w addSubview:p];[w addSubview:b];[w bringSubviewToFront:p];[w bringSubviewToFront:b]; gPanel=p;gButton=b; return YES;
 }
 static void ZPSchedule(NSUInteger attempt){ dispatch_async(dispatch_get_main_queue(),^{ if(ZPInstall())return; if(attempt>=20)return; dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ZPSchedule(attempt+1);});}); }
-__attribute__((constructor)) static void ZPConstructor(void){ @autoreleasepool { NSLog(@"[ZPatchIG] v0.1 loaded"); ZPSchedule(0); } }
+__attribute__((constructor)) static void ZPConstructor(void){ @autoreleasepool { NSLog(@"[ZPatchIG] v0.1.1 loaded"); ZPSchedule(0); } }
