@@ -3,6 +3,8 @@ name: HFAMapUniversal v2.2.4 target and wrapper evidence temporary build
 on:
   push:
     branches: [build/hfamap-v224-temporary]
+  pull_request:
+    branches: [build/hfamap-v224-temporary]
   workflow_dispatch:
 
 jobs:
