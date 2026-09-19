@@ -1,8 +1,8 @@
 {
   "project": "ZPatchIG",
   "branch": "zpatchig",
-  "version": "0.3.0",
-  "mode": "parser-exporter-runtime-observer-feature-offset-evidence",
+  "version": "0.4.0",
+  "mode": "universal-evidence-graph-parser-observer",
   "patch_execution": false,
   "observer": {
     "type": "reversible-objc-setter-observer",
@@ -10,24 +10,33 @@
     "max_events": 512,
     "hot_path_policy": "minimal-no-nested-diagnostics"
   },
-  "feature_resolver": {
+  "evidence_graph": {
+    "schema": "com.hfa.zpatchig.evidence-graph/v1",
     "status": "implemented-ci-verified-device-validation-pending",
-    "mapping": "label -> identifier -> normalized key -> descriptor"
+    "primary_relationship": "feature-container(label+identifier) -> child descriptor -> objc ivars",
+    "ui_target_role": "auxiliary",
+    "address_semantics": ["objc-instance-ivar-only", "mach-o-rva-explicit-only"]
+  },
+  "feature_resolver": {
+    "container_rank": 100,
+    "control_rank": 30,
+    "control_target_rank": 20,
+    "device_validation": "pending"
   },
   "legacy_offset_resolver": {
     "status": "implemented-ci-verified-device-validation-pending",
     "fixed_historical_delta_reuse": false,
     "candidate_policy": "unique-current-image-arm64-fingerprint",
-    "evidence_states": ["validated", "inferred", "unresolved"]
+    "evidence_states": ["validated", "inferred", "unresolved"],
+    "graph_integration": "pending-async-edge-stage"
   },
-  "log_identity_priority": ["CFBundleIdentifier","CFBundleDisplayName","CFBundleName","unknown"],
   "build": {
-    "head": "bcd0697a9f527b7f2ee82d3f848ccc1e6f366bee",
-    "actions_run": 35432021370,
-    "artifact_id": 10581095274,
+    "head": "5abc63729922f3f8df6052a6b289d55747343ad0",
+    "actions_run": 35437806329,
+    "artifact_id": 10582392706,
     "status": "success",
-    "artifact_sha256": "0ac74edb03922f84b74aa8fd7809d52352ecb116593b727c1de004bf1b0b4ed4",
-    "dylib_sha256": "dd9a8fa9fc1b346e26799086afa0a23579f3599e0cb4d4fc81121bdbe48a3397"
+    "artifact_sha256": "862bf5eae43cd70656b8a61f526fd2f7c3b4b3040ce28f0c4fd70fc014a4369e",
+    "dylib_sha256": "66c3d836f817064c47fa97209eb63486fae2aa213963022afa0f583723f4b986"
   },
-  "next_validation": "Legacy AP device regression: uiFeatures + DescriptorEvents + OffsetEvents"
+  "next_validation": "multi-game device regression: containerFeatures + descriptorEvidence + EvidenceGraph + DescriptorEvents + OffsetEvents"
 }
