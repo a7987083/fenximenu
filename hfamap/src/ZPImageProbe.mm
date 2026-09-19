@@ -49,12 +49,36 @@ static unsigned ZPDescriptorSelectorCount(Class cls) {
     return count;
 }
 
+static NSString *ZPIvarTypeAtOffset(Class cls, ptrdiff_t wanted) {
+    if (!cls) return @"";
+    unsigned count = 0;
+    Ivar *ivars = class_copyIvarList(cls, &count);
+    NSString *result = @"";
+    for (unsigned i = 0; ivars && i < count; ++i) {
+        if (ivar_getOffset(ivars[i]) != wanted) continue;
+        const char *type = ivar_getTypeEncoding(ivars[i]);
+        if (type) result = [NSString stringWithUTF8String:type] ?: @"";
+        break;
+    }
+    free(ivars);
+    return result;
+}
+
+static BOOL ZPTypeContains(NSString *type, NSString *needle) {
+    return type.length && needle.length && [type rangeOfString:needle].location != NSNotFound;
+}
+
+static BOOL ZPTypeIsErasedObject(NSString *type) {
+    return [type isEqualToString:@"@\"?\""] || [type isEqualToString:@"@"];
+}
+
 static NSDictionary *ZPObjCFingerprint(NSString *path) {
     unsigned classCount = 0;
     const char **names = objc_copyClassNamesForImage(path.fileSystemRepresentation, &classCount);
     unsigned descriptorIndex = UINT_MAX;
     NSString *descriptorClass = @"";
     unsigned descriptorSelectors = 0;
+    Class descriptorCls = Nil;
     const unsigned bounded = MIN(classCount, 512U);
     for (unsigned i = 0; names && i < bounded; ++i) {
         Class cls = objc_getClass(names[i]);
@@ -64,9 +88,27 @@ static NSDictionary *ZPObjCFingerprint(NSString *path) {
             descriptorSelectors = selectorCount;
             descriptorIndex = i;
             descriptorClass = NSStringFromClass(cls) ?: @"";
+            descriptorCls = cls;
         }
     }
     free(names);
+
+    NSString *t40 = ZPIvarTypeAtOffset(descriptorCls, 0x40);
+    NSString *t48 = ZPIvarTypeAtOffset(descriptorCls, 0x48);
+    NSString *t58 = ZPIvarTypeAtOffset(descriptorCls, 0x58);
+    NSString *t70 = ZPIvarTypeAtOffset(descriptorCls, 0x70);
+    NSString *t98 = ZPIvarTypeAtOffset(descriptorCls, 0x98);
+
+    BOOL legacyABI = ZPTypeContains(t48, @"IGSecretInt") &&
+                     ZPTypeContains(t58, @"IGSecretString") &&
+                     ZPTypeContains(t98, @"APSubpatchManager");
+    BOOL legacyExtendedABI = legacyABI &&
+                             ZPTypeContains(t40, @"IGSecretData") &&
+                             ZPTypeContains(t70, @"APColorModifier");
+    BOOL c4m0ErasedABI = ZPTypeIsErasedObject(t48) &&
+                         ZPTypeIsErasedObject(t58) &&
+                         ZPTypeIsErasedObject(t98);
+
     return @{
         @"objcClassCount": @(classCount),
         @"inspectedClassCount": @(bounded),
@@ -74,7 +116,15 @@ static NSDictionary *ZPObjCFingerprint(NSString *path) {
         @"descriptorClassIndex": descriptorIndex == UINT_MAX ? [NSNull null] : @(descriptorIndex),
         @"descriptorInstanceSize": descriptorIndex == UINT_MAX ? @0 : @0xA0,
         @"descriptorSelectorCount": @(descriptorSelectors),
-        @"descriptorStrongMatch": @(descriptorIndex != UINT_MAX && descriptorSelectors >= 10)
+        @"descriptorStrongMatch": @(descriptorIndex != UINT_MAX && descriptorSelectors >= 10),
+        @"descriptorType40": t40 ?: @"",
+        @"descriptorType48": t48 ?: @"",
+        @"descriptorType58": t58 ?: @"",
+        @"descriptorType70": t70 ?: @"",
+        @"descriptorType98": t98 ?: @"",
+        @"legacyABIMatch": @(legacyABI),
+        @"legacyExtendedABIMatch": @(legacyExtendedABI),
+        @"c4m0ErasedABIMatch": @(c4m0ErasedABI)
     };
 }
 
@@ -122,7 +172,7 @@ static NSDictionary *ZPFingerprintImage(const struct mach_header_64 *mh, intptr_
                 if (!hasC4M0 && (ZPContains(bytes,(size_t)size,"C4M0Manager") ||
                                  ZPContains(bytes,(size_t)size,"Jailpatch runtime patch section is missing") ||
                                  ZPContains(bytes,(size_t)size,"JailpatchConfigValidator"))) {
-                    hasC4M0 = YES; [evidence addObject:@"c4m0-strings"];
+                    hasC4M0 = YES; [evidence addObject:@"c4m0-runtime-strings"];
                 }
                 if (!hasMenu && ZPContains(bytes,(size_t)size,"setIdentifier:") &&
                     ZPContains(bytes,(size_t)size,"setOffset:") &&
@@ -134,21 +184,80 @@ static NSDictionary *ZPFingerprintImage(const struct mach_header_64 *mh, intptr_
         }
         cursor += lc->cmdsize;
     }
+
     NSDictionary *objc = ZPObjCFingerprint(path);
     BOOL descriptor = [objc[@"descriptorStrongMatch"] boolValue];
+    BOOL legacyABI = [objc[@"legacyABIMatch"] boolValue];
+    BOOL legacyExtendedABI = [objc[@"legacyExtendedABIMatch"] boolValue];
+    BOOL erasedABI = [objc[@"c4m0ErasedABIMatch"] boolValue];
+    NSNumber *idxNumber = [objc[@"descriptorClassIndex"] isKindOfClass:[NSNumber class]] ? objc[@"descriptorClassIndex"] : nil;
+    unsigned idx = idxNumber ? idxNumber.unsignedIntValue : UINT_MAX;
+
     NSString *family = @"unknown";
-    if (descriptor && hasC4M0) family = @"c4m0";
-    else if (descriptor && hasLegacy) family = @"legacy-ap";
-    else if (descriptor && hasMenu) family = @"descriptor-family";
+    NSString *familyConfidence = @"low";
+    NSString *classificationBasis = @"insufficient-evidence";
+
+    // Strong ABI evidence wins over runtime strings. Real device logs showed
+    // Legacy images can also contain C4M0/iGameGod runtime markers.
+    if (descriptor && legacyABI) {
+        family = @"legacy-ap";
+        familyConfidence = legacyExtendedABI ? @"high" : @"high";
+        classificationBasis = legacyExtendedABI ? @"legacy-typed-abi-extended" : @"legacy-typed-abi";
+        [evidence addObject:@"legacy-descriptor-abi"];
+    } else if (descriptor && erasedABI && idx == 173U) {
+        family = @"c4m0";
+        familyConfidence = @"high";
+        classificationBasis = @"c4m0-erased-abi-index173";
+        [evidence addObject:@"c4m0-descriptor-abi"];
+    } else if (descriptor && idx == 15U && hasLegacy) {
+        family = @"legacy-ap";
+        familyConfidence = @"medium";
+        classificationBasis = @"legacy-index15-plus-marker";
+    } else if (descriptor && idx == 173U && hasC4M0) {
+        family = @"c4m0";
+        familyConfidence = @"medium";
+        classificationBasis = @"c4m0-index173-plus-marker";
+    } else if (descriptor && hasLegacy && hasC4M0) {
+        family = @"ambiguous";
+        familyConfidence = @"low";
+        classificationBasis = @"conflicting-runtime-strings-no-abi-tiebreak";
+    } else if (descriptor && hasLegacy) {
+        family = @"legacy-ap";
+        familyConfidence = @"low";
+        classificationBasis = @"legacy-marker-only";
+    } else if (descriptor && hasC4M0) {
+        family = @"c4m0";
+        familyConfidence = @"low";
+        classificationBasis = @"c4m0-marker-only";
+    } else if (descriptor && hasMenu) {
+        family = @"descriptor-family";
+        familyConfidence = @"low";
+        classificationBasis = @"descriptor-only";
+    }
+
     unsigned score = 0;
     if (descriptor) score += 60;
-    if (hasLegacy || hasC4M0) score += 30;
+    if (legacyABI || (erasedABI && idx == 173U)) score += 30;
+    else if (hasLegacy || hasC4M0) score += 20;
     if ([objc[@"objcClassCount"] unsignedIntValue] == 199) score += 10;
+
     NSMutableDictionary *record = [@{
-        @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
-        @"score": @(MIN(score, 100U)), @"uuid": uuid, @"cryptid": @(cryptid),
-        @"filetype": @(mh->filetype), @"cpuType": @(mh->cputype), @"slide": @((long long)slide),
-        @"scannedBytes": @(scanned), @"evidence": evidence
+        @"path": path,
+        @"image": path.lastPathComponent ?: @"?",
+        @"family": family,
+        @"familyConfidence": familyConfidence,
+        @"classificationBasis": classificationBasis,
+        @"score": @(MIN(score, 100U)),
+        @"uuid": uuid,
+        @"cryptid": @(cryptid),
+        @"filetype": @(mh->filetype),
+        @"cpuType": @(mh->cputype),
+        @"slide": @((long long)slide),
+        @"scannedBytes": @(scanned),
+        @"hasLegacyMarkers": @(hasLegacy),
+        @"hasC4M0RuntimeMarkers": @(hasC4M0),
+        @"hasDescriptorSelectorStrings": @(hasMenu),
+        @"evidence": evidence
     } mutableCopy];
     [record addEntriesFromDictionary:objc];
     return record;
