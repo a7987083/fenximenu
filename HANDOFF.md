@@ -2,15 +2,23 @@
 
 - Repository: `a7987083/fenximenu`
 - Branch: `zpatchig`
-- Current line: `v0.2.1` Safe Observer
+- Current line: `v0.3.0` Feature/Offset Resolver
 - Product role: evidence-first parser/exporter/runtime observer; patch execution remains excluded from the current line.
 - Log naming: `CFBundleIdentifier -> CFBundleDisplayName -> CFBundleName -> unknown`.
-- Current observer: bounded/reversible descriptor setter observation with strict setter ABI checks.
-- Verified family logic: Legacy typed descriptor ABI overrides incidental C4M0/iGameGod runtime strings; C4M0 erased descriptor ABI remains separately identified.
-- Verified v0.2 crash lesson: avoid heavy Foundation/shared diagnostics work in the setter hot path. v0.2.1 removed this path and multiple previously crashing samples completed repeated `setActive:` events and normal disarm.
-- Verified historical migration path: UI label -> identifier -> feature key -> descriptor -> secret wrapper -> offset/signature/data -> target image/RVA -> original bytes -> canonical export.
-- Historical branches with successful experience: `feature/hfamap-v1927-target-chain-resolver`, `feature/hfamap-v1928-generic-menu-resolver`, `feature/hfamap-v1931-generic-secret-decrypt-resolver`, `feature/hfamap-v19379-complete-feature-export`, `feature/hfamap-v193710-unified-feature-model`, `feature/hfamap-v193711-earntodie-canonical-14`.
-- Important rule: historical fixed RVAs or relations such as `getter + 0xD00` are not reusable truth. Re-locate from the current binary and validate ARM64 control flow/fingerprint before use.
-- Canonical static export requires target image identity/UUID/architecture, stable RVA semantics, original-byte verification, and confirmed patch bytes.
-- Detailed success patterns are documented in `SUCCESS_PATTERNS.md` and should be reviewed before the next reverse-engineering stage.
-- Next migration target: feature label resolver + descriptor correlator + validated Legacy `IGSecretInt` offset resolver.
+- Build commit: `bcd0697a9f527b7f2ee82d3f848ccc1e6f366bee`.
+- GitHub Actions run: `35432021370` — success.
+- Artifact: `ZPatchIG-v0.3.0` / ID `10581095274`.
+- Binary SHA-256: `dd9a8fa9fc1b346e26799086afa0a23579f3599e0cb4d4fc81121bdbe48a3397`.
+- Binary identity: Mach-O 64-bit arm64 dylib, `NOUNDEFS|DYLDLINK|TWOLEVEL|NO_REEXPORTED_DYLIBS`.
+- v0.3 modules added: bounded UI feature resolver, identifier/feature correlator, asynchronous Legacy offset evidence resolver.
+- UI feature resolver records `label -> identifier -> normalized key` using bounded UIControl/target traversal and label sources including `currentTitle`, `text`, `accessibilityLabel`, `titleLabel.text`.
+- Descriptor events use schema `com.hfa.zpatchig.descriptor-event/v3` and may include the matched feature record.
+- Legacy offset analysis runs off the setter hot path on a dedicated serial queue.
+- Historical `getter + 0xD00` is NOT used. The current image's `__text` is scanned for the historical validated ARM64 fingerprint; only a unique candidate proceeds to secret-blob analysis.
+- Offset evidence states are explicit: `validated`, `inferred`, or `unresolved`. A numeric plaintext offset is only `validated` when the current-image fingerprint is unique and decrypt succeeds with numeric plaintext.
+- New app-specific log: `ZPatchIG_<identity>_OffsetEvents.jsonl`.
+- Current observer remains bounded/reversible with strict direct-method, void-return, arity, and argument ABI checks.
+- Verified v0.2 crash lesson remains in force: avoid heavy diagnostics/shared Foundation mutation in the setter hot path.
+- Device validation boundary: v0.3 compiled and passed CI gates, but UI label correlation and Legacy offset resolution are not yet device-validated on the current sample set. Do not record them as device-verified until new logs confirm them.
+- Detailed evidence rules and historical success patterns are in `SUCCESS_PATTERNS.md`.
+- Next validation: run v0.3 on Legacy AP samples (especially EarnToDie/Archery/Backpack), inspect `uiFeatures`, `DescriptorEvents.jsonl`, and `OffsetEvents.jsonl`; then decide whether signature/data resolution can advance.
