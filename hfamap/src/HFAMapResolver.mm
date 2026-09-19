@@ -90,18 +90,6 @@ static BOOL HFACandidateOwnedObject(id value, NSString *candidateImage) {
     return [image isEqualToString:candidateImage];
 }
 
-static NSArray *HFAChildClassSummary(NSDictionary *dictionary) {
-    NSMutableArray *result = [NSMutableArray array];
-    for (id key in dictionary) {
-        if (result.count >= 64) break;
-        id value = dictionary[key];
-        NSString *keyName = [key isKindOfClass:NSString.class] ? key : @"<non-string-key>";
-        NSString *className = value ? NSStringFromClass(object_getClass(value)) : @"nil";
-        [result addObject:@{ @"field": keyName, @"valueClass": className ?: @"?" }];
-    }
-    return result;
-}
-
 static NSDictionary *HFADictionaryFromObject(id object) {
     if (!object) return nil;
     if ([object isKindOfClass:NSDictionary.class]) return object;
@@ -283,18 +271,6 @@ NSDictionary *HFAMapResolveFeatureSeeds(NSDictionary *candidate, NSDictionary *s
         id object = containers[cursor][@"value"]; NSString *label = containers[cursor][@"label"];
         if ([seenContainers containsObject:object]) continue; [seenContainers addObject:object];
         NSDictionary *dictionary = HFADictionaryFromObject(object); if (!dictionary) continue;
-        NSArray *fieldNames = [[dictionary.allKeys filteredArrayUsingPredicate:
-            [NSPredicate predicateWithBlock:^BOOL(id key, __unused NSDictionary *bindings) {
-                return [key isKindOfClass:NSString.class];
-            }]] sortedArrayUsingSelector:@selector(compare:)];
-        HFADiagnosticsLog(@"container", @"inspected", @{
-            @"cursor": @(cursor), @"label": label ?: @"",
-            @"class": NSStringFromClass(object_getClass(object)) ?: @"?",
-            @"instanceSize": @(class_getInstanceSize(object_getClass(object))),
-            @"descriptorSignal": @(HFADescriptorSignal(dictionary)),
-            @"fieldNames": [fieldNames subarrayWithRange:NSMakeRange(0, MIN(fieldNames.count, 64U))],
-            @"children": HFAChildClassSummary(dictionary)
-        });
         NSString *reason = nil; NSDictionary *feature = HFAValidatedFeature(dictionary, label, execImages, &reason);
         if (feature) {
             NSMutableDictionary *enriched = [feature mutableCopy];
@@ -311,6 +287,10 @@ NSDictionary *HFAMapResolveFeatureSeeds(NSDictionary *candidate, NSDictionary *s
             NSString *className = NSStringFromClass(object_getClass(object)) ?: @"?";
             NSString *key = [NSString stringWithFormat:@"%@:%@:%@", label, reason ?: @"no-static-descriptor", className];
             if (![unresolvedKeys containsObject:key]) { [unresolvedKeys addObject:key];
+                NSArray *fieldNames = [[dictionary.allKeys filteredArrayUsingPredicate:
+                    [NSPredicate predicateWithBlock:^BOOL(id key, __unused NSDictionary *bindings) {
+                        return [key isKindOfClass:NSString.class];
+                    }]] sortedArrayUsingSelector:@selector(compare:)];
                 NSDictionary *record = @{ @"name": label, @"reason": reason ?: @"no-static-descriptor",
                                            @"canonicalEligible": @NO, @"class": className,
                                            @"instanceSize": @(class_getInstanceSize(object_getClass(object))),

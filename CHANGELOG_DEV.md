@@ -1,12 +1,5 @@
 # Development Changelog
 
-## v2.1.1-dev — restore full loaded-image coverage
-
-- Restored the bounded image ceiling from 512 to 2048 after the v2.1.0 eight-run archive showed 947–987 loaded images and five false `no-loaded-menu-image` results.
-- Added `appOwnedImages`, `fingerprintedImages`, and `hitImageLimit` discovery metrics.
-- Added bounded per-container diagnostics with class, instance size, descriptor signal, field names and child value classes.
-- Runtime archive SHA-256: `7747010a7d432ad0706673f3b6a83c2aa8ffee0ad26252b2275c16e193296595`.
-
 ## v2.1.0-dev — first-pass family analyzer and live diagnostics
 
 - Split UI capture from descriptor analysis: main-thread work is capped at 350 ms; object graph analysis runs on the serial worker queue.

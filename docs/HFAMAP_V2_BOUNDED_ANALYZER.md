@@ -10,8 +10,7 @@ v2 从零启用四个文件：`HFAMapEntry.mm`、`HFAMapCore.mm`、
 
 ## 有界发现
 
-1. 只遍历 dyld 已加载镜像，最多 2048 个；不递归扫描 app 的 Frameworks 目录。真机样本的
-   dyld image 总量为 947–987，512 会稳定漏掉后半段的菜单 image。
+1. 只遍历 dyld 已加载镜像，最多 512 个；不递归扫描 app 的 Frameworks 目录。
 2. 只考虑主 bundle 内镜像，排除主程序、UnityFramework、HFAMap 本身和注入框架。
 3. 只扫描 `__cstring`、`__objc_methname`、`__const`，每个镜像总计最多 32 MiB。
 4. UI 框架证据必须与 descriptor/Jailpatch 证据组合；孤立字符串不是候选。
