@@ -1,16 +1,14 @@
 {
   "project": "ZPatchIG",
-  "version": "0.1.1",
   "branch": "zpatchig",
-  "stage": "ci_build_passed",
-  "build_commit": "dca76ad61864438cb7722fd2381753fed8f09fde",
-  "actions_run": 35424412975,
-  "artifact_id": 10579007644,
-  "artifact_digest": "sha256:50f7faf917ac87843837b999e08a15d26f1907eee9c82e6d8d13224d5ac7365a",
-  "dylib_sha256": "decb8d22d93f1f2daf7551d47ef9a1c1371f34c8f9b77279a532fe7eb35238e4",
-  "parser_only": true,
-  "families": ["legacy-ap", "c4m0", "ambiguous"],
-  "classifier": "abi-first",
-  "canonical_patch_export": false,
-  "device_validation": "pending_v0.1.1_regression"
+  "version": "0.2.0",
+  "mode": "parser-exporter-runtime-observer",
+  "patch_execution": false,
+  "observer": {
+    "type": "reversible-objc-setter-observer",
+    "window_seconds": 10,
+    "max_events": 512
+  },
+  "log_identity_priority": ["CFBundleIdentifier","CFBundleDisplayName","CFBundleName","unknown"],
+  "next_validation": "Legacy AP and C4M0 device regression with descriptor events"
 }
