@@ -1,4 +1,4 @@
-name: ZPatchIG v0.3 build
+name: ZPatchIG v0.4 build
 on:
   push:
     branches: [zpatchig]
@@ -14,42 +14,50 @@ jobs:
           set -euo pipefail
           grep -q 'legacy-descriptor-abi' hfamap/src/ZPImageProbe.mm
           grep -q 'ZPDescriptorObserverArm' hfamap/src/ZPDescriptorObserver.mm
-          grep -q 'ZPFeatureResolverCollect' hfamap/src/ZPFeatureResolver.mm
-          grep -q 'ZPFeatureForIdentifier' hfamap/src/ZPDescriptorObserver.mm
+          grep -q 'ZPContainerResolve' hfamap/src/ZPContainerResolver.mm
+          grep -q 'same-container-label-identifier' hfamap/src/ZPContainerResolver.mm
+          grep -q 'objc-instance-ivar-only' hfamap/src/ZPContainerResolver.mm
+          grep -q 'ZPEvidenceGraphSnapshot' hfamap/src/ZPEvidenceGraph.mm
+          grep -q 'com.hfa.zpatchig.evidence-graph/v1' hfamap/src/ZPEvidenceGraph.mm
+          grep -q 'evidenceRank' hfamap/src/ZPFeatureResolver.mm
+          grep -q 'ZPFeatureResolverMergeContainerFeatures' hfamap/src/ZPContainerResolver.mm
           grep -q 'ZPLegacyOffsetResolverSchedule' hfamap/src/ZPDescriptorObserver.mm
           grep -q 'decryptFingerprintMatches' hfamap/src/ZPLegacyOffsetResolver.mm
-          grep -q 'unique-current-image-fingerprint-plus-numeric-plaintext' hfamap/src/ZPLegacyOffsetResolver.mm
           grep -q 'CFBundleDisplayName' hfamap/src/ZPAppIdentity.mm
-          grep -q 'CFBundleName' hfamap/src/ZPAppIdentity.mm
-          grep -q 'ZPLogFilename(@"OffsetEvents.jsonl")' hfamap/src/ZPLegacyOffsetResolver.mm
-          if grep -R -n 'MSHookFunction\|DobbyHook\|mach_vm_write' hfamap/src; then echo 'v0.3 must not contain patch execution'; exit 1; fi
+          grep -q 'ZPLogFilename(@"EvidenceGraph.json")' hfamap/src/HFAMapCore.mm
+          if grep -R -n 'MSHookFunction\|DobbyHook\|mach_vm_write' hfamap/src; then echo 'v0.4 must not contain patch execution'; exit 1; fi
           if grep -R -nE 'getter[[:space:]]*\+[[:space:]]*0xD00|getterAddress[[:space:]]*\+[[:space:]]*0xD00' hfamap/src; then echo 'fixed historical decrypt delta is forbidden'; exit 1; fi
-      - name: Feature correlation regression
+      - name: Evidence graph regression
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          c=Path('hfamap/src/ZPContainerResolver.mm').read_text()
           f=Path('hfamap/src/ZPFeatureResolver.mm').read_text()
-          o=Path('hfamap/src/ZPDescriptorObserver.mm').read_text()
-          assert 'currentTitle' in f and 'accessibilityLabel' in f and 'titleLabel' in f
-          assert 'control-target' in f
-          assert 'ZPFeatureForIdentifier' in o
-          assert 'descriptor-event/v3' in o
-          print('feature correlation gates passed')
+          g=Path('hfamap/src/ZPEvidenceGraph.mm').read_text()
+          core=Path('hfamap/src/HFAMapCore.mm').read_text()
+          assert 'feature-container' in c
+          assert 'same-container-label-identifier' in c
+          assert 'objc-instance-ivar-only' in c
+          assert '@100' in c
+          assert 'control-target' in f and ',20)' in f
+          assert 'control' in f and ',30)' in f
+          assert 'evidence-graph/v1' in g
+          assert 'EvidenceGraph.json' in core
+          print('evidence graph gates passed')
           PY
-      - name: Offset evidence regression
+      - name: Address semantics regression
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('hfamap/src/ZPLegacyOffsetResolver.mm').read_text()
-          assert 'ZPTextRangeForBase' in s
-          assert 'ZPFindDecryptCandidates' in s
-          assert '0xD105C3FFu' in s
-          assert '0xB9400408u' in s
-          assert '0x53187D00u' in s
-          assert 'candidates.count!=1' in s
-          assert 'decrypt-succeeded-non-numeric-plaintext' in s
-          assert 'getter+0xD00' not in s.replace(' ','')
-          print('offset evidence gates passed')
+          c=Path('hfamap/src/ZPContainerResolver.mm').read_text()
+          o=Path('hfamap/src/ZPLegacyOffsetResolver.mm').read_text()
+          assert 'ivarOffset' in c
+          assert 'offsetSemantics' in c
+          assert 'objc-instance-ivar-only' in c
+          assert 'getterRVA' in o and 'decryptRVA' in o
+          assert 'candidates.count!=1' in o
+          assert 'getter+0xD00' not in o.replace(' ','')
+          print('address semantics gates passed')
           PY
       - name: Observer safety regression
         run: |
@@ -75,21 +83,23 @@ jobs:
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          cp .theos/obj/ZPatchIG.dylib dist/ZPatchIG_v0.3.0.dylib
-          file dist/ZPatchIG_v0.3.0.dylib | tee dist/file.txt
-          shasum -a 256 dist/ZPatchIG_v0.3.0.dylib | tee dist/SHA256.txt
-          strings dist/ZPatchIG_v0.3.0.dylib > dist/strings.txt
-          grep -q 'ZPatchIG v0.3 Analyzer' dist/strings.txt
-          grep -q 'OffsetEvents.jsonl' dist/strings.txt
+          cp .theos/obj/ZPatchIG.dylib dist/ZPatchIG_v0.4.0.dylib
+          file dist/ZPatchIG_v0.4.0.dylib | tee dist/file.txt
+          shasum -a 256 dist/ZPatchIG_v0.4.0.dylib | tee dist/SHA256.txt
+          strings dist/ZPatchIG_v0.4.0.dylib > dist/strings.txt
+          grep -q 'ZPatchIG v0.4 Evidence Graph' dist/strings.txt
+          grep -q 'EvidenceGraph.json' dist/strings.txt
+          grep -q 'feature-container' dist/strings.txt
+          grep -q 'objc-instance-ivar-only' dist/strings.txt
           grep -q 'descriptor-event/v3' dist/strings.txt
-          grep -q 'unique-current-image-fingerprint-plus-numeric-plaintext' dist/strings.txt
+          grep -q 'OffsetEvents.jsonl' dist/strings.txt
           grep -q 'CFBundleIdentifier' dist/strings.txt
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZPatchIG-v0.3.0
+          name: ZPatchIG-v0.4.0
           path: |
-            hfamap/dist/ZPatchIG_v0.3.0.dylib
+            hfamap/dist/ZPatchIG_v0.4.0.dylib
             hfamap/dist/SHA256.txt
             hfamap/dist/file.txt
           if-no-files-found: error
