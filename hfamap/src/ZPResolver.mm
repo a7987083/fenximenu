@@ -105,6 +105,9 @@ NSDictionary *ZPResolveCandidate(NSDictionary *candidate, NSTimeInterval deadlin
                                    @"confidence": @"high" }];
         HFADiagnosticsLog(@"descriptor", @"located", descriptor);
     }
+    // Family-specific observation is deliberately gated by the ABI-first classifier.
+    // Presence of iGameGod/C4M0Manager elsewhere in the process is environment evidence,
+    // not proof that the selected menu image belongs to C4M0.
     if ([family isEqualToString:@"c4m0"]) {
         NSDictionary *owner = ZPC4M0OwnerEvidence(candidate);
         [observations addObject:@{ @"kind": @"c4m0-owner", @"evidence": owner,
@@ -123,5 +126,5 @@ NSDictionary *ZPResolveCandidate(NSDictionary *candidate, NSTimeInterval deadlin
               @"family": family, @"descriptor": descriptor, @"observations": observations,
               @"validatedFeatures": @[],
               @"canonicalEligible": @NO,
-              @"canonicalReason": @"v0.1-does-not-export-unverified-patches" };
+              @"canonicalReason": @"v0.1.1-does-not-export-unverified-patches" };
 }
