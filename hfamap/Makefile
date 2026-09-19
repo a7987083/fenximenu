@@ -5,7 +5,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = ZPatchIG
 
-ZPatchIG_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapDiagnostics.mm src/ZPAppIdentity.mm src/ZPImageProbe.mm src/ZPResolver.mm src/ZPDescriptorObserver.mm src/ZPFeatureResolver.mm src/ZPLegacyOffsetResolver.mm
+ZPatchIG_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapDiagnostics.mm src/ZPAppIdentity.mm src/ZPImageProbe.mm src/ZPResolver.mm src/ZPDescriptorObserver.mm src/ZPFeatureResolver.mm src/ZPContainerResolver.mm src/ZPEvidenceGraph.mm src/ZPLegacyOffsetResolver.mm
 ZPatchIG_CFLAGS = -O2 -fno-stack-protector -Wno-deprecated-declarations -Wno-unused-function
 ZPatchIG_FRAMEWORKS = UIKit Foundation QuartzCore
 
