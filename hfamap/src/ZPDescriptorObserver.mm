@@ -1,5 +1,7 @@
 #import "ZPDescriptorObserver.h"
 #import "ZPAppIdentity.h"
+#import "ZPFeatureResolver.h"
+#import "ZPLegacyOffsetResolver.h"
 #import "HFAMapDiagnostics.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
@@ -23,6 +25,7 @@ static NSDictionary *ZPObjectEvidence(id value) {
     else if ([value isKindOfClass:[NSNumber class]]) d[@"number"] = value;
     return d;
 }
+static NSString *ZPIdentifierString(id value){ if([value isKindOfClass:[NSString class]])return value; if([value isKindOfClass:[NSNumber class]])return [(NSNumber*)value stringValue]; return nil; }
 
 static id ZPObjectGetter(id object, const char *name) {
     if (!object || !name) return nil;
@@ -60,10 +63,8 @@ static BOOL ZPObserverTakeEventSlot(void) {
     return allowed;
 }
 
-// Hot-path rule (v0.2.1): once an observed setter fires, do not re-enter the
-// diagnostic subsystem and do not mutate a shared Foundation collection.
-// Device logs from v0.2.0 proved DescriptorEvents.jsonl was written before the
-// crash, while the subsequent descriptor-observer/event diagnostic was absent.
+// Hot path remains bounded. Offset decryption is never performed here: the
+// wrapper is retained and handed to the dedicated serial resolver queue.
 static void ZPAppendEvent(id object, SEL selector, NSDictionary *input) {
     if (!object || !selector) return;
     pthread_mutex_lock(&gZPObserverLock);
@@ -72,8 +73,12 @@ static void ZPAppendEvent(id object, SEL selector, NSDictionary *input) {
     pthread_mutex_unlock(&gZPObserverLock);
     if (!classOK || !ZPObserverTakeEventSlot()) return;
 
-    NSDictionary *event=@{
-        @"schema":@"com.hfa.zpatchig.descriptor-event/v2",
+    id identifierObject=ZPObjectGetter(object,"identifier");
+    NSString *identifier=ZPIdentifierString(identifierObject);
+    NSDictionary *feature=identifier.length?ZPFeatureForIdentifier(identifier):nil;
+    NSDictionary *snapshot=ZPSnapshot(object)?:@{};
+    NSMutableDictionary *event=[@{
+        @"schema":@"com.hfa.zpatchig.descriptor-event/v3",
         @"time":@(NSDate.date.timeIntervalSince1970),
         @"appIdentity":ZPAppIdentity(),
         @"image":image?:@"?",
@@ -81,16 +86,13 @@ static void ZPAppendEvent(id object, SEL selector, NSDictionary *input) {
         @"descriptor":ZPPtr((__bridge const void *)object),
         @"selector":NSStringFromSelector(selector),
         @"input":input?:@{},
-        @"snapshot":ZPSnapshot(object)?:@{}
-    };
+        @"snapshot":snapshot
+    } mutableCopy];
+    if(feature)event[@"feature"]=feature;
     NSData *line=[NSJSONSerialization dataWithJSONObject:event options:0 error:nil];
-    if(!line) return;
-    NSMutableData *out=[line mutableCopy]; [out appendBytes:"\n" length:1];
-    NSString *path=[ZPDocs() stringByAppendingPathComponent:ZPLogFilename(@"DescriptorEvents.jsonl")];
-    NSFileManager *fm=NSFileManager.defaultManager;
-    if(![fm fileExistsAtPath:path])[fm createFileAtPath:path contents:nil attributes:nil];
-    NSFileHandle *h=[NSFileHandle fileHandleForWritingAtPath:path];
-    @try { [h seekToEndOfFile]; [h writeData:out]; [h closeFile]; } @catch(__unused id e) {}
+    if(line){ NSMutableData *out=[line mutableCopy]; [out appendBytes:"\n" length:1]; NSString *path=[ZPDocs() stringByAppendingPathComponent:ZPLogFilename(@"DescriptorEvents.jsonl")]; NSFileManager *fm=NSFileManager.defaultManager; if(![fm fileExistsAtPath:path])[fm createFileAtPath:path contents:nil attributes:nil]; NSFileHandle *h=[NSFileHandle fileHandleForWritingAtPath:path]; @try { [h seekToEndOfFile]; [h writeData:out]; [h closeFile]; } @catch(__unused id e) {} }
+
+    if(sel_isEqual(selector,sel_registerName("setActive:")) && identifier.length){ id offset=ZPObjectGetter(object,"offset"); if(offset)ZPLegacyOffsetResolverSchedule(offset,identifier,feature,image?:@""); }
 }
 
 static IMP ZPOriginalForSelector(SEL sel) {
@@ -154,7 +156,7 @@ NSDictionary *ZPDescriptorObserverArm(NSDictionary *candidate, NSDictionary *des
     if(ZPHookSetter(cls,"setActive:",(IMP)ZPHookBool,&gOrigActive,&why,&enc))[hooked addObject:@"setActive:"]; else if(why)skipped[@"setActive:"]=why; if(enc)encodings[@"setActive:"]=enc;
     if(!hooked.count)return @{ @"status":@"not-armed",@"reason":@"no-supported-direct-setters",@"skipped":skipped,@"methodEncodings":encodings };
     pthread_mutex_lock(&gZPObserverLock); gZPObservedClass=cls; gZPObservedImage=[candidate[@"image"] copy]; gZPObserverDeadline=NSDate.date.timeIntervalSince1970+duration; gZPObservedEventCount=0; pthread_mutex_unlock(&gZPObserverLock);
-    NSDictionary *result=@{ @"status":@"armed",@"class":className,@"image":candidate[@"image"]?:@"?",@"durationMs":@((NSUInteger)(duration*1000.0)),@"hookedSetters":hooked,@"skippedSetters":skipped,@"methodEncodings":encodings,@"logFile":ZPLogFilename(@"DescriptorEvents.jsonl") };
+    NSDictionary *result=@{ @"status":@"armed",@"class":className,@"image":candidate[@"image"]?:@"?",@"durationMs":@((NSUInteger)(duration*1000.0)),@"hookedSetters":hooked,@"skippedSetters":skipped,@"methodEncodings":encodings,@"logFile":ZPLogFilename(@"DescriptorEvents.jsonl"),@"offsetLogFile":ZPLogFilename(@"OffsetEvents.jsonl") };
     HFADiagnosticsLog(@"descriptor-observer",@"armed",result);
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(duration*NSEC_PER_SEC)),dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{ ZPDescriptorObserverDisarm(@"window-expired"); });
     return result;
