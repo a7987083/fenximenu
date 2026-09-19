@@ -1,21 +1,33 @@
 {
   "project": "ZPatchIG",
   "branch": "zpatchig",
-  "version": "0.2.0",
-  "mode": "parser-exporter-runtime-observer",
+  "version": "0.3.0",
+  "mode": "parser-exporter-runtime-observer-feature-offset-evidence",
   "patch_execution": false,
   "observer": {
     "type": "reversible-objc-setter-observer",
     "window_seconds": 10,
-    "max_events": 512
+    "max_events": 512,
+    "hot_path_policy": "minimal-no-nested-diagnostics"
+  },
+  "feature_resolver": {
+    "status": "implemented-ci-verified-device-validation-pending",
+    "mapping": "label -> identifier -> normalized key -> descriptor"
+  },
+  "legacy_offset_resolver": {
+    "status": "implemented-ci-verified-device-validation-pending",
+    "fixed_historical_delta_reuse": false,
+    "candidate_policy": "unique-current-image-arm64-fingerprint",
+    "evidence_states": ["validated", "inferred", "unresolved"]
   },
   "log_identity_priority": ["CFBundleIdentifier","CFBundleDisplayName","CFBundleName","unknown"],
   "build": {
-    "head": "b8e3e3b8ce8423220b20450027c4f85117be3845",
-    "actions_run": 35426620989,
-    "artifact_id": 10577949483,
+    "head": "bcd0697a9f527b7f2ee82d3f848ccc1e6f366bee",
+    "actions_run": 35432021370,
+    "artifact_id": 10581095274,
     "status": "success",
-    "dylib_sha256": "8a25563fb16e873191592aef9c2efe1c909ef52498851242bf7c9d38cc35dce1"
+    "artifact_sha256": "0ac74edb03922f84b74aa8fd7809d52352ecb116593b727c1de004bf1b0b4ed4",
+    "dylib_sha256": "dd9a8fa9fc1b346e26799086afa0a23579f3599e0cb4d4fc81121bdbe48a3397"
   },
-  "next_validation": "Legacy AP and C4M0 device regression with descriptor events"
+  "next_validation": "Legacy AP device regression: uiFeatures + DescriptorEvents + OffsetEvents"
 }
