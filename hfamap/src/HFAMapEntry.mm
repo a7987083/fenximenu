@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import "HFAMapCore.h"
+#import "HFAMapOutputName.h"
 
 static UIView *gHFAMapPanel = nil;
 static UIButton *gHFAMapButton = nil;
@@ -55,13 +56,15 @@ static void HFAMapTogglePanel(void)
     HFAMapRunBoundedScan(^(NSDictionary *summary) {
         NSString *status = summary[@"status"] ?: @"?";
         NSArray *features = summary[@"features"] ?: @[];
+        NSArray *registry = summary[@"registry"] ?: @[];
         NSArray *unresolved = summary[@"unresolved"] ?: @[];
         NSString *reason = summary[@"reason"];
         if (reason.length)
-            gHFAMapStatus.text = [NSString stringWithFormat:@"Stopped: %@\nSee HFAMap_Analysis.json", reason];
+            gHFAMapStatus.text = [NSString stringWithFormat:@"Stopped: %@\nSee %@", reason, HFAOutputFileName(@"Analysis.json")];
         else
-            gHFAMapStatus.text = [NSString stringWithFormat:@"%@ — %lu validated, %lu unresolved\nJSON and process log exported",
-                                  status, (unsigned long)features.count, (unsigned long)unresolved.count];
+            gHFAMapStatus.text = [NSString stringWithFormat:@"%@ — %lu registry, %lu validated, %lu unresolved\nRead-only JSON and logs exported",
+                                  status, (unsigned long)registry.count, (unsigned long)features.count,
+                                  (unsigned long)unresolved.count];
     });
 }
 @end
@@ -89,7 +92,7 @@ static BOOL HFAMapInstallFloatingUI(void)
                action:@selector(toggle)
      forControlEvents:UIControlEventTouchUpInside];
 
-    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 250.0, 190.0)];
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 250.0, 188.0)];
     panel.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.94];
     panel.layer.cornerRadius = 12.0;
     panel.layer.borderWidth = 1.0;
@@ -97,7 +100,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.1.0 Analyzer";
+    title.text = @"HFAMap v2.2.3 Read Only";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
@@ -112,9 +115,9 @@ static BOOL HFAMapInstallFloatingUI(void)
       forControlEvents:UIControlEventTouchUpInside];
     [panel addSubview:scan];
 
-    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 98.0, 222.0, 76.0)];
-    status.text = @"Ready. Open the target menu, then scan.\nDetailed diagnostics are written live.";
-    status.numberOfLines = 3;
+    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 96.0, 222.0, 78.0)];
+    status.text = @"Open original menu, then scan.\nExports registry, analysis and process logs.\nNo menu button toggles required.";
+    status.numberOfLines = 4;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];
     [panel addSubview:status];

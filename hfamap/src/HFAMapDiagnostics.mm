@@ -1,4 +1,5 @@
 #import "HFAMapDiagnostics.h"
+#import "HFAMapOutputName.h"
 #import <UIKit/UIKit.h>
 #include <pthread.h>
 
@@ -35,7 +36,8 @@ NSString *HFADiagnosticsBeginSession(void) {
     NSString *session = gHFASessionID;
     pthread_mutex_unlock(&gHFADiagnosticsLock);
     HFADiagnosticsLog(@"session", @"start", @{
-        @"version": @"2.1.0-first-pass",
+        @"version": @"2.2.4-target-and-wrapper-evidence",
+        @"hostAppName": HFAHostAppName(),
         @"process": NSProcessInfo.processInfo.processName ?: @"?",
         @"os": UIDevice.currentDevice.systemVersion ?: @"?"
     });
@@ -70,9 +72,9 @@ void HFADiagnosticsLog(NSString *stage, NSString *status, NSDictionary *details)
                        session, elapsed, stage ?: @"?", status ?: @"?",
                        HFAJSONString(details ?: @{})];
     NSString *documents = HFADocumentsPath();
-    HFAAppend([documents stringByAppendingPathComponent:@"HFAMap_Diagnostics.jsonl"],
+    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.jsonl")],
               [json dataUsingEncoding:NSUTF8StringEncoding]);
-    HFAAppend([documents stringByAppendingPathComponent:@"HFAMap_Diagnostics.log"],
+    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")],
               [plain dataUsingEncoding:NSUTF8StringEncoding]);
     pthread_mutex_unlock(&gHFADiagnosticsLock);
 }

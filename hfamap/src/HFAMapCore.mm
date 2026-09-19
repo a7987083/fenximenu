@@ -1,7 +1,9 @@
 #import "HFAMapCore.h"
+#import <dispatch/dispatch.h>
 #import "HFAMapImageProbe.h"
 #import "HFAMapResolver.h"
 #import "HFAMapDiagnostics.h"
+#import "HFAMapOutputName.h"
 
 static BOOL gHFAScanning;
 static dispatch_queue_t HFAWorker(void) {
@@ -27,7 +29,7 @@ static void HFAWriteEvents(NSArray<NSDictionary *> *events) {
         NSData *line = [NSJSONSerialization dataWithJSONObject:event options:0 error:nil];
         if (!line) continue; [data appendData:line]; [data appendBytes:"\n" length:1];
     }
-    [data writeToFile:[HFADocuments() stringByAppendingPathComponent:@"HFAMap_Process.jsonl"]
+    [data writeToFile:[HFADocuments() stringByAppendingPathComponent:HFAOutputFileName(@"Process.jsonl")]
               options:NSDataWritingAtomic error:nil];
 }
 
@@ -74,7 +76,12 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
                                          @"features": @[], @"unresolved": @[] };
             [events addObject:@{ @"time": @(NSDate.date.timeIntervalSince1970), @"stage": @"selection",
                                  @"status": @"reject", @"reason": reject ?: @"?" }];
-            HFAWriteJSON(analysis, @"HFAMap_Analysis.json"); HFAWriteEvents(events);
+            HFAWriteJSON(analysis, HFAOutputFileName(@"Analysis.json")); HFAWriteEvents(events);
+            HFAWriteJSON(@{ @"schema": @"com.hfa.patch/v2", @"session": session,
+                            @"status": @"incomplete", @"features": @[] }, HFAOutputFileName(@"Patches.json"));
+            HFAWriteJSON(@{ @"schema": @"com.hfa.registry/v1", @"session": session,
+                            @"status": @"incomplete", @"records": @[] },
+                         HFAOutputFileName(@"FeatureRegistry.json"));
             HFADiagnosticsFinishSession(@"incomplete", @{
                 @"reason": reject ?: @"selection-failed", @"candidateCount": @(candidates.count)
             });
@@ -95,6 +102,7 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
                                              @"status": resolved[@"status"] ?: @"complete",
                                              @"session": session, @"candidate": selected,
                                              @"features": features,
+                                             @"registry": resolved[@"registry"] ?: @[],
                                              @"unresolved": resolved[@"unresolved"] ?: @[],
                                              @"metrics": resolved[@"metrics"] ?: @{} };
                 NSDictionary *patch = @{ @"schema": @"com.hfa.patch/v2",
@@ -104,8 +112,12 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
                 [events addObject:@{ @"time": @(NSDate.date.timeIntervalSince1970), @"stage": @"export",
                                      @"status": @"complete", @"canonicalFeatures": @(features.count),
                                      @"analysisFeatures": @([resolved[@"unresolved"] count]) }];
-                HFAWriteJSON(analysis, @"HFAMap_Analysis.json");
-                HFAWriteJSON(patch, @"HFAMap_Patches.json"); HFAWriteEvents(events);
+                HFAWriteJSON(analysis, HFAOutputFileName(@"Analysis.json"));
+                HFAWriteJSON(patch, HFAOutputFileName(@"Patches.json")); HFAWriteEvents(events);
+                HFAWriteJSON(@{ @"schema": @"com.hfa.registry/v1", @"session": session,
+                                @"candidate": selected, @"records": resolved[@"registry"] ?: @[],
+                                @"status": resolved[@"status"] ?: @"complete" },
+                             HFAOutputFileName(@"FeatureRegistry.json"));
                 HFADiagnosticsFinishSession(analysis[@"status"], @{
                     @"validated": @(features.count),
                     @"unresolved": @([resolved[@"unresolved"] count]),

@@ -1,0 +1,64 @@
+name: HFAMapUniversal v2.2.4 target and wrapper evidence temporary build
+
+on:
+  push:
+    branches: [build/hfamap-v224-temporary]
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host verification
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v tests/test_macho_triage_v2.py tests/test_read_only_registry_source.py tests/test_build_artifact_name.py
+          python3 -m py_compile tools/hfamap_macho_triage.py tools/build_artifact_name.py
+          git diff --check
+      - name: Install build dependencies
+        run: brew install ldid
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Compile arm64 dylib
+        run: |
+          set -euo pipefail
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p build-output
+          # For a target App build, supply target-app/Info.plist in the temporary input.
+          # The project's own executable name is the only honest fallback without it.
+          if [ -f target-app/Info.plist ]; then
+            info_plist=target-app/Info.plist
+          else
+            info_plist=hfamap/BuildInfo.plist
+            python3 - <<'PY'
+          import plistlib
+          with open('hfamap/BuildInfo.plist', 'wb') as f:
+              plistlib.dump({'CFBundleExecutable': 'HFAMapUniversal'}, f)
+          PY
+          fi
+          app_name=$(python3 tools/build_artifact_name.py "$info_plist")
+          output="build-output/${app_name}_HFAMapUniversal_v2.2.4_TargetWrapperEvidence.dylib"
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib "$output"
+          file "$output"
+          shasum -a 256 "$output" | tee build-output/SHA256_v2.2.4.txt
+          printf 'name_source=%s\nresolved_name=%s\n' "$info_plist" "$app_name" > build-output/BuildNameSource.txt
+          strings "$output" | grep -q '2.2.4-target-and-wrapper-evidence'
+          strings "$output" | grep -q 'implementationOffsetFromLoadBase'
+          strings "$output" | grep -q 'target-images'
+          strings "$output" | grep -q 'FeatureRegistry.json'
+          strings "$output" | grep -q 'objc-instance-ivar-only'
+          if strings "$output" | grep -Eq 'HFADescriptorObserverArm|method_setImplementation'; then
+            echo 'Unexpected unsafe observer included' >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.2.4-TargetWrapperEvidence
+          path: |
+            build-output/*.dylib
+            build-output/SHA256_v2.2.4.txt
+            build-output/BuildNameSource.txt
+          if-no-files-found: error
