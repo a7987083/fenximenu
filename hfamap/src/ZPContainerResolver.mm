@@ -36,7 +36,7 @@ static NSDictionary *ZPFieldEvidence(id object){
             NSMutableDictionary *e=[@{@"field":[NSString stringWithUTF8String:name],@"encoding":[NSString stringWithUTF8String:enc],@"ivarOffset":[NSString stringWithFormat:@"0x%tx",ivar_getOffset(iv[i])],@"offsetSemantics":@"objc-instance-ivar-only"} mutableCopy];
             if(enc[0]=='@'){
                 id v=nil;@try{v=object_getIvar(object,iv[i]);}@catch(__unused id ex){v=nil;}
-                if(v){e[@"valueClass"]=NSStringFromClass(object_getClass(v))?:@"?";e[@"pointer"]=ZPPtr(v);if([v isKindOfClass:NSString.class])e[@"value"]=[(NSString*)v length]>160?[(NSString*)v substringToIndex:160]:v;else if([v isKindOfClass:NSNumber.class])e[@"value"]=v;else if([v isKindOfClass:NSData.class]){NSData *data=v;NSUInteger n=MIN((NSUInteger)32,data.length);const uint8_t *b=data.bytes;NSMutableString *h=[NSMutableString string];for(NSUInteger j=0;j<n;j++)[h appendFormat:@"%02X",b[j]];e[@"hexPrefix"]=h;e[@"byteLength"]=@(data.length);}}
+                if(v){e[@"valueClass"]=NSStringFromClass(object_getClass(v))?:@"?";e[@"pointer"]=ZPPtr(v);if([v isKindOfClass:NSString.class])e[@"value"]=[(NSString*)v length]>160?[(NSString*)v substringToIndex:160]:v;else if([v isKindOfClass:NSNumber.class])e[@"value"]=v;else if([v isKindOfClass:NSData.class]){NSData *data=v;NSUInteger n=MIN((NSUInteger)32,data.length);const uint8_t *b=static_cast<const uint8_t *>(data.bytes);NSMutableString *h=[NSMutableString string];for(NSUInteger j=0;j<n;j++)[h appendFormat:@"%02X",b[j]];e[@"hexPrefix"]=h;e[@"byteLength"]=@(data.length);}}
             }
             [fields addObject:e];
         }
