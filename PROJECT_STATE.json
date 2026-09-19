@@ -1,14 +1,16 @@
 {
   "project": "ZPatchIG",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "branch": "zpatchig",
   "stage": "ci_build_passed",
-  "build_commit": "dd03afca4a2b3da9a9f7ed7176bb0f0fc5c778b5",
-  "actions_run": 35411138276,
-  "artifact_id": 10574746453,
-  "dylib_sha256": "2d00b04f4b155c8722d713a70ed3c8f2fd1c152289a4f1c89674d041a04ca037",
+  "build_commit": "dca76ad61864438cb7722fd2381753fed8f09fde",
+  "actions_run": 35424412975,
+  "artifact_id": 10579007644,
+  "artifact_digest": "sha256:50f7faf917ac87843837b999e08a15d26f1907eee9c82e6d8d13224d5ac7365a",
+  "dylib_sha256": "decb8d22d93f1f2daf7551d47ef9a1c1371f34c8f9b77279a532fe7eb35238e4",
   "parser_only": true,
-  "families": ["legacy-ap", "c4m0"],
+  "families": ["legacy-ap", "c4m0", "ambiguous"],
+  "classifier": "abi-first",
   "canonical_patch_export": false,
-  "device_validation": "pending"
+  "device_validation": "pending_v0.1.1_regression"
 }
