@@ -35,17 +35,17 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
         NSTimeInterval started=NSDate.date.timeIntervalSince1970;
         NSString *session=HFADiagnosticsBeginSession();
         NSMutableArray *events=[NSMutableArray array];
-        [events addObject:@{@"time":@(started),@"stage":@"scan",@"status":@"start",@"version":@"zpatchig-v0.1",@"budgetMs":@5000}];
+        [events addObject:@{@"time":@(started),@"stage":@"scan",@"status":@"start",@"version":@"zpatchig-v0.1.1",@"budgetMs":@5000}];
         NSArray *candidates=ZPDiscoverMenuImages(started+2.0,events);
         NSString *reason=nil; NSDictionary *selected=ZPSelect(candidates,&reason);
         NSDictionary *analysis=nil;
         if (!selected) {
-            analysis=@{@"schema":@"com.hfa.zpatchig.analysis/v1",@"version":@"0.1.0",@"status":@"incomplete",
+            analysis=@{@"schema":@"com.hfa.zpatchig.analysis/v1",@"version":@"0.1.1",@"status":@"incomplete",
                        @"session":session,@"reason":reason?:@"selection-failed",@"candidates":candidates,
                        @"observations":@[],@"validatedFeatures":@[]};
         } else {
             NSDictionary *resolved=ZPResolveCandidate(selected,started+4.5,events);
-            analysis=@{@"schema":@"com.hfa.zpatchig.analysis/v1",@"version":@"0.1.0",
+            analysis=@{@"schema":@"com.hfa.zpatchig.analysis/v1",@"version":@"0.1.1",
                        @"status":resolved[@"status"]?:@"analysis-only",@"session":session,
                        @"candidate":selected,@"family":resolved[@"family"]?:@"unknown",
                        @"descriptor":resolved[@"descriptor"]?:@{},@"observations":resolved[@"observations"]?:@[],
