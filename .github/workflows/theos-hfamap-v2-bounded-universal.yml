@@ -1,9 +1,9 @@
-name: HFAMap v2.3.8 Dual Runtime Probe
+name: HFAMap v2.4.0 Menu Binary Evidence
 
 on:
   push:
     branches:
-      - feature/hfamap-v2-bounded-universal-analyzer
+      - feature/hfamap-v2.4.0-menu-binary-evidence
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -28,9 +28,18 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'com.hfa.menu-binary-evidence/v1' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'MemoryPatch' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'createWithHex' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'createWithBytes' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'createWithAsm' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'memorypatch-menu' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'patchPrimitiveEvidenceOnly' hfamap/src/HFAMapImageProbe.mm
           grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
           grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'il2cpp_class_from_name' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'il2cpp_runtime_invoke' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'original ? original(method, object, arguments, exception)' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -50,22 +59,24 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.3.8-dev
+          mkdir -p hfamap/dist/v2.4.0-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          file hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_class_from_name'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_runtime_invoke'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q '2.3.8-dev-dual-runtime-probe'
-          shasum -a 256 hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib \
-            | tee hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
+          out=hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
+          file "$out" | grep -q arm64
+          strings "$out" | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
+          strings "$out" | grep -q 'com.hfa.menu-binary-evidence/v1'
+          strings "$out" | grep -q 'MemoryPatch'
+          strings "$out" | grep -q 'memorypatch-menu'
+          strings "$out" | grep -q 'HFAMap v2.4.0-dev Menu Binary Evidence'
+          ! strings "$out" | grep -q 'direct-method-entry'
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.0-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.3.8-DualRuntimeProbe
+          name: HFAMapUniversal-v2.4.0-MenuBinaryEvidence
           path: |
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-            hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
+            hfamap/dist/v2.4.0-dev/SHA256SUMS.txt
           if-no-files-found: error
