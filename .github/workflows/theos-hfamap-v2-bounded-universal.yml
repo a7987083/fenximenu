@@ -30,7 +30,11 @@ jobs:
           grep -q 'src/HFAIL2CPPMethodIndex.mm' hfamap/Makefile
           grep -q 'com.hfa.il2cpp-method-index/v1' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'kHFAMaxMethods = 32768' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'methodinfo-first-word-readonly-fallback' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'MethodInfo\[%lu\]' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'HFAExecutableUnityAddress' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'VM_PROT_EXECUTE' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'unityExecutableSegmentValidation' hfamap/src/HFAIL2CPPMethodIndex.mm
+          ! grep -q 'mach/mach_vm.h' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'com.hfa.stripped-action/v2' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'BLR Xn' hfamap/src/HFAMapStrippedActionAnalyzer.mm
