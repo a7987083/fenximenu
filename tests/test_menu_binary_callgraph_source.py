@@ -60,7 +60,7 @@ class MenuBinaryCallGraphSourceTests(unittest.TestCase):
         self.assertIn('@"analysisOnly": @YES', ANALYZER)
 
     def test_menu_family_is_separate_from_patch_backend(self):
-        self.assertIn('com.hfa.menu-binary-evidence/v2', IMAGE)
+        self.assertIn('com.hfa.menu-binary-evidence/v3', IMAGE)
         self.assertIn('@"menuFamily"', IMAGE)
         self.assertIn('@"patchBackends"', IMAGE)
         self.assertIn('@"legacy-ap"', IMAGE)
