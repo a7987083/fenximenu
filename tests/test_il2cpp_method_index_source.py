@@ -59,7 +59,7 @@ class IL2CPPMethodIndexSourceTests(unittest.TestCase):
         self.assertIn('assembly-csharp-containing-method-range', ACTION)
         self.assertIn('@"il2cppMethodIndex"', ACTION)
         self.assertIn('@"il2cppCorrelationCount"', ACTION)
-        self.assertIn('com.hfa.stripped-action/v5', ACTION)
+        self.assertIn('com.hfa.stripped-action/v6', ACTION)
 
     def test_modules_are_compiled(self):
         self.assertIn('src/HFAIL2CPPMethodIndex.mm', MAKEFILE)
