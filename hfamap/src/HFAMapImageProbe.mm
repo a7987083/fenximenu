@@ -8,6 +8,7 @@
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
 static const uint32_t kHFAMaxImages = 2048;
+static const char *kHFAMenuBinaryEvidenceSchema = "com.hfa.menu-binary-evidence/v1";
 
 static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned classCount = 0;
@@ -16,7 +17,7 @@ static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned descriptorCount = 0, bestSelectorCount = 0;
     NSArray<NSString *> *selectors = @[@"identifier", @"setIdentifier:", @"active", @"setActive:",
                                        @"offset", @"setOffset:", @"signature", @"setSignature:",
-                                       @"range", @"setRange:"];
+                                       @"range", @"setRange:", @"offset:patch:", @"machoPath"];
     NSMutableArray *descriptorClasses = [NSMutableArray array];
     for (unsigned i = 0; names && i < boundedCount; ++i) {
         Class cls = objc_getClass(names[i]);
@@ -76,7 +77,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         header->sizeofcmds > 4U * 1024U * 1024U) return nil;
     const uint8_t *cursor = (const uint8_t *)(header + 1);
     const uint8_t *commandEnd = cursor + header->sizeofcmds;
-    unsigned ui = 0, legacy = 0, jail = 0;
+    unsigned ui = 0, legacy = 0, jail = 0, patchPrimitive = 0;
     NSString *imageUUID = nil;
     uint64_t scanned = 0;
     NSMutableArray *hits = [NSMutableArray array];
@@ -88,6 +89,9 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         {"IGSecretData",16,1},{"IGCodePatch",18,1},
         {"JailpatchConfigValidator",32,2},{"Jailpatch runtime table",28,2},
         {"OffsetInstruction",18,2},{"OffsetType",14,2},{".app-key-metadata-",24,2},
+        {"MemoryPatch",24,3},{"createWithHex",18,3},{"createWithBytes",18,3},
+        {"createWithAsm",18,3},{"CodePatch",16,3},{"ActiveCodePatch offset:",22,3},
+        {"machoPath",8,3},{"Toggle ASM offset:",14,3},{"Revert offset:",12,3},
     };
     BOOL found[sizeof(rules) / sizeof(rules[0])] = {};
     for (uint32_t commandIndex = 0; commandIndex < header->ncmds; ++commandIndex) {
@@ -120,7 +124,8 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
                     found[r] = YES;
                     if (rules[r].group == 0) ui += rules[r].weight;
                     else if (rules[r].group == 1) legacy += rules[r].weight;
-                    else jail += rules[r].weight;
+                    else if (rules[r].group == 2) jail += rules[r].weight;
+                    else patchPrimitive += rules[r].weight;
                     [hits addObject:[NSString stringWithUTF8String:rules[r].token]];
                 }
             }
@@ -130,14 +135,18 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
     NSDictionary *objc = HFAObjectiveCFingerprint(path);
     unsigned structure = [objc[@"structureScore"] unsignedIntValue];
     NSString *family = @"unknown";
-    if (ui >= 30 && legacy >= 30 && legacy > jail) family = @"legacy-ap";
+    if (patchPrimitive >= 40 && (ui >= 12 || structure >= 50)) family = @"memorypatch-menu";
+    else if (ui >= 30 && legacy >= 30 && legacy > jail) family = @"legacy-ap";
     else if (ui >= 30 && jail >= 28) family = @"jailpatch";
     else if (ui >= 30 || (ui >= 20 && structure >= 50)) family = @"runtime-menu";
     unsigned score = [family isEqualToString:@"unknown"] ? 0U
-        : MIN(100U, ui + MIN(MAX(legacy, jail), 35U) + MIN(structure, 25U));
-    NSMutableDictionary *record = [@{ @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
+        : MIN(100U, ui + MIN(MAX(MAX(legacy, jail), patchPrimitive), 45U) + MIN(structure, 25U));
+    NSMutableDictionary *record = [@{ @"schema": [NSString stringWithUTF8String:kHFAMenuBinaryEvidenceSchema],
+              @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
               @"score": @(score), @"menuScore": @(ui), @"legacyScore": @(legacy),
-              @"jailpatchScore": @(jail), @"evidence": hits, @"scannedBytes": @(scanned) } mutableCopy];
+              @"jailpatchScore": @(jail), @"patchPrimitiveScore": @(patchPrimitive),
+              @"patchPrimitiveEvidenceOnly": @YES, @"canonicalEligible": @NO,
+              @"evidence": hits, @"scannedBytes": @(scanned) } mutableCopy];
     if (imageUUID.length) record[@"menuUUID"] = imageUUID;
     record[@"hostBundleID"] = NSBundle.mainBundle.bundleIdentifier ?: @"?";
     record[@"hostVersion"] = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?";
