@@ -33,8 +33,8 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_is_v246(self):
-        self.assertIn('HFAMap v2.4.6-dev Decoupled', ENTRY)
+    def test_ui_is_v247(self):
+        self.assertIn('HFAMap v2.4.7-dev ObjC Dispatch', ENTRY)
         self.assertIn('1. Search Menu', ENTRY)
         self.assertIn('2. Deep Analyze Menu', ENTRY)
 
