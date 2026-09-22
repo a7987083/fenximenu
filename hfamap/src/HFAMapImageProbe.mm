@@ -7,7 +7,7 @@
 #include <string.h>
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
-static const uint32_t kHFAMaxImages = 512;
+static const uint32_t kHFAMaxImages = 2048;
 
 static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned classCount = 0;
@@ -77,6 +77,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
     const uint8_t *cursor = (const uint8_t *)(header + 1);
     const uint8_t *commandEnd = cursor + header->sizeofcmds;
     unsigned ui = 0, legacy = 0, jail = 0;
+    NSString *imageUUID = nil;
     uint64_t scanned = 0;
     NSMutableArray *hits = [NSMutableArray array];
     struct Hit { const char *token; unsigned weight; unsigned group; };
@@ -94,6 +95,13 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         if (cursor + sizeof(struct load_command) > commandEnd) return nil;
         const struct load_command *lc = (const struct load_command *)cursor;
         if (lc->cmdsize < sizeof(*lc) || cursor + lc->cmdsize > commandEnd) return nil;
+        if (lc->cmd == LC_UUID && lc->cmdsize >= sizeof(struct uuid_command)) {
+            const struct uuid_command *uuid = (const struct uuid_command *)cursor;
+            const uint8_t *u = uuid->uuid;
+            imageUUID = [NSString stringWithFormat:
+                @"%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                u[0],u[1],u[2],u[3],u[4],u[5],u[6],u[7],u[8],u[9],u[10],u[11],u[12],u[13],u[14],u[15]];
+        }
         if (lc->cmd == LC_SEGMENT_64 && lc->cmdsize >= sizeof(struct segment_command_64)) {
             const struct segment_command_64 *seg = (const struct segment_command_64 *)cursor;
             if (sizeof(*seg) + (uint64_t)seg->nsects * sizeof(struct section_64) > lc->cmdsize) return nil;
@@ -130,6 +138,10 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
     NSMutableDictionary *record = [@{ @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
               @"score": @(score), @"menuScore": @(ui), @"legacyScore": @(legacy),
               @"jailpatchScore": @(jail), @"evidence": hits, @"scannedBytes": @(scanned) } mutableCopy];
+    if (imageUUID.length) record[@"menuUUID"] = imageUUID;
+    record[@"hostBundleID"] = NSBundle.mainBundle.bundleIdentifier ?: @"?";
+    record[@"hostVersion"] = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?";
+    record[@"hostBuild"] = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"?";
     [record addEntriesFromDictionary:objc];
     return record;
 }
@@ -137,6 +149,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
 NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
                                                     NSMutableArray<NSDictionary *> *events) {
     NSMutableArray *found = [NSMutableArray array];
+    NSUInteger appOwnedCount = 0, fingerprintedCount = 0;
     uint32_t totalCount = _dyld_image_count();
     uint32_t count = MIN(totalCount, kHFAMaxImages);
     HFAEvent(events, @"image-discovery", @"start",
@@ -151,8 +164,10 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         if (!raw || !rawHeader) continue;
         NSString *path = [NSString stringWithUTF8String:raw];
         if (!HFAAppOwnedPath(path) || HFAExcludedImage(path)) continue;
+        ++appOwnedCount;
         NSDictionary *record = HFAFingerprintImage((const struct mach_header_64 *)rawHeader,
                                                     _dyld_get_image_vmaddr_slide(i), path, deadline);
+        if (record) ++fingerprintedCount;
         if ([record[@"score"] unsignedIntValue] >= 30) {
             [found addObject:record];
             HFADiagnosticsLog(@"image-candidate", @"matched", record);
@@ -164,6 +179,8 @@ NSArray<NSDictionary *> *HFAMapDiscoverMenuImages(NSTimeInterval deadline,
         return [a[@"image"] compare:b[@"image"]];
     }];
     HFAEvent(events, @"image-discovery", found.count ? @"pass" : @"no-candidate",
-             @{ @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"" });
+             @{ @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"",
+                @"appOwnedImages": @(appOwnedCount), @"fingerprintedImages": @(fingerprintedCount),
+                @"hitImageLimit": @(totalCount > count) });
     return found;
 }

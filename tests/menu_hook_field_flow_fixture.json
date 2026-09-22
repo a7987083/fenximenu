@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "name": "field-b8-single-candidate",
+      "field": "0xB8",
+      "words": ["BD40BA60", "1E213800", "BD00BA60"],
+      "expectedOriginalLE": "0038211E",
+      "expectedEnabled": "1F2003D5",
+      "accepted": true
+    },
+    {
+      "name": "field-bc-single-candidate",
+      "field": "0xBC",
+      "words": ["BD40BE60", "1E283800", "BD00BE60"],
+      "expectedOriginalLE": "0038281E",
+      "expectedEnabled": "1F2003D5",
+      "accepted": true
+    },
+    {
+      "name": "wrong-store-field",
+      "field": "0xB8",
+      "words": ["BD40BA60", "1E213800", "BD00BE60"],
+      "accepted": false
+    },
+    {
+      "name": "wrong-arithmetic",
+      "field": "0xB8",
+      "words": ["BD40BA60", "1E202800", "BD00BA60"],
+      "accepted": false
+    }
+  ]
+}
