@@ -53,8 +53,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.4.7-dev-objc-runtime-dispatch-resolver', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.4.7-dev ObjC Dispatch', ENTRY)
+        self.assertIn('2.4.8-dev-call-return-method-range', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.4.8-dev Method Range', ENTRY)
 
 
 if __name__ == "__main__":
