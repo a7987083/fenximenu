@@ -63,13 +63,15 @@ jobs:
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
             hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
           out=hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.0.strings"
           file "$out" | grep -q arm64
-          strings "$out" | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
-          strings "$out" | grep -q 'com.hfa.menu-binary-evidence/v1'
-          strings "$out" | grep -q 'MemoryPatch'
-          strings "$out" | grep -q 'memorypatch-menu'
-          strings "$out" | grep -q 'HFAMap v2.4.0-dev Menu Binary Evidence'
-          ! strings "$out" | grep -q 'direct-method-entry'
+          strings "$out" > "$strings_file"
+          grep -q 'com.hfa.il2cpp-runtime-probe/v1' "$strings_file"
+          grep -q 'com.hfa.menu-binary-evidence/v1' "$strings_file"
+          grep -q 'MemoryPatch' "$strings_file"
+          grep -q 'memorypatch-menu' "$strings_file"
+          grep -q 'HFAMap v2.4.0-dev Menu Binary Evidence' "$strings_file"
+          ! grep -q 'direct-method-entry' "$strings_file"
           shasum -a 256 "$out" | tee hfamap/dist/v2.4.0-dev/SHA256SUMS.txt
 
       - name: Upload dylib
