@@ -1,6 +1,7 @@
 #import "HFAMapImageProbe.h"
 #import "HFAMapDiagnostics.h"
 #import "HFAMapMenuBinaryAnalyzer.h"
+#import "HFAMapObjCActionInventory.h"
 
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
@@ -9,7 +10,7 @@
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
 static const uint32_t kHFAMaxImages = 2048;
-static const char *kHFAMenuBinaryEvidenceSchema = "com.hfa.menu-binary-evidence/v2";
+static const char *kHFAMenuBinaryEvidenceSchema = "com.hfa.menu-binary-evidence/v3";
 
 static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned classCount = 0;
@@ -93,6 +94,9 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         {"MemoryPatch",24,3},{"createWithHex",18,3},{"createWithBytes",18,3},
         {"createWithAsm",18,3},{"CodePatch",16,3},{"ActiveCodePatch offset:",22,3},
         {"machoPath",8,3},{"Toggle ASM offset:",14,3},{"Revert offset:",12,3},
+        {"get_OrigBytes",10,3},{"get_PatchBytes",10,3},{"get_CurrBytes",10,3},
+        {"findHexFirst",8,3},{"findIdaPatternFirst",8,3},{"findSymbol",8,3},
+        {"asm_arch",8,3},{"asm_code",8,3}
     };
     BOOL found[sizeof(rules) / sizeof(rules[0])] = {};
     for (uint32_t commandIndex = 0; commandIndex < header->ncmds; ++commandIndex) {
@@ -136,6 +140,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
 
     NSDictionary *objc = HFAObjectiveCFingerprint(path);
     NSDictionary *menuCallGraph = HFAMapAnalyzeMenuBinary(header, slide, deadline);
+    NSDictionary *strippedInventory = HFAMapInventoryStrippedObjCActions(path, deadline);
     NSUInteger directPatchEdges = [menuCallGraph[@"directPatchCallEdges"] count];
     NSArray *primitiveSymbols = menuCallGraph[@"primitiveSymbols"] ?: @[];
     unsigned structure = [objc[@"structureScore"] unsignedIntValue];
@@ -147,14 +152,20 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
 
     NSMutableOrderedSet *patchBackends = [NSMutableOrderedSet orderedSet];
     if (patchPrimitive >= 24 || primitiveSymbols.count) [patchBackends addObject:@"memorypatch"];
-    if (HFAContains((const uint8_t *)"CodePatch", 9, "CodePatch")) {
-        for (NSString *hit in hits)
-            if ([hit containsString:@"CodePatch"]) { [patchBackends addObject:@"codepatch"]; break; }
-    }
-    for (NSDictionary *primitive in primitiveSymbols) {
-        NSString *kind = primitive[@"kind"];
-        if ([kind isEqualToString:@"CodePatch"]) [patchBackends addObject:@"codepatch"];
-    }
+    for (NSString *hit in hits)
+        if ([hit containsString:@"CodePatch"]) { [patchBackends addObject:@"codepatch"]; break; }
+
+    NSMutableOrderedSet *analysisCapabilities = [NSMutableOrderedSet orderedSet];
+    if ([hits containsObject:@"createWithHex"]) [analysisCapabilities addObject:@"hex-patch"];
+    if ([hits containsObject:@"createWithBytes"]) [analysisCapabilities addObject:@"byte-patch"];
+    if ([hits containsObject:@"createWithAsm"] || [hits containsObject:@"asm_code"])
+        [analysisCapabilities addObject:@"asm-patch"];
+    if ([hits containsObject:@"findHexFirst"] || [hits containsObject:@"findIdaPatternFirst"])
+        [analysisCapabilities addObject:@"pattern-scan"];
+    if ([hits containsObject:@"get_OrigBytes"] || [hits containsObject:@"get_PatchBytes"] ||
+        [hits containsObject:@"get_CurrBytes"])
+        [analysisCapabilities addObject:@"patch-state-bytes"];
+    if ([strippedInventory[@"records"] count]) [analysisCapabilities addObject:@"stripped-objc-local-dataflow"];
 
     BOOL patchBackendOnlyCandidate = [menuFamily isEqualToString:@"unknown"] &&
         patchBackends.count && (ui >= 12 || structure >= 50 || directPatchEdges > 0);
@@ -170,6 +181,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         @"family": compatFamily,
         @"menuFamily": menuFamily,
         @"patchBackends": patchBackends.array,
+        @"analysisCapabilities": analysisCapabilities.array,
         @"patchBackendOnlyCandidate": @(patchBackendOnlyCandidate),
         @"score": @(score),
         @"menuScore": @(ui),
@@ -181,6 +193,7 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         @"evidence": hits,
         @"scannedBytes": @(scanned),
         @"menuCallGraph": menuCallGraph ?: @{},
+        @"strippedObjCInventory": strippedInventory ?: @{},
         @"directPatchCallEdgeCount": @(directPatchEdges)
     } mutableCopy];
     if (imageUUID.length) record[@"menuUUID"] = imageUUID;
