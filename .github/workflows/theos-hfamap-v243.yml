@@ -45,27 +45,24 @@ jobs:
           out="dist/v2.4.3-dev/HFAMapUniversal-v2.4.3-dev.dylib"
           test -s "$out"
 
-          # The artifact is a standalone injectable dylib. Explicitly ad-hoc sign
-          # the copied output instead of assuming an intermediate .theos product
-          # already carries a signature.
           ldid -S "$out"
 
           file "$out" | grep -q 'Mach-O 64-bit dynamically linked shared library arm64'
-          otool -l "$out" | grep -q 'LC_CODE_SIGNATURE'
+          otool -l "$out" > "$out.otool.txt"
+          grep -q 'LC_CODE_SIGNATURE' "$out.otool.txt"
 
-          # Release identity must match the artifact name. Do not allow a v2.4.3
-          # artifact that still presents the old v2.4.2 UI/version marker.
-          strings "$out" | grep -Fq 'HFAMap v2.4.3-dev Generic Secret Native Hook'
-          if strings "$out" | grep -Fq 'HFAMap v2.4.2-dev Stripped Static Suite'; then
+          strings "$out" > "$out.strings.txt"
+          grep -Fq 'HFAMap v2.4.3-dev Generic Secret Native Hook' "$out.strings.txt"
+          if grep -Fq 'HFAMap v2.4.2-dev Stripped Static Suite' "$out.strings.txt"; then
             echo 'stale v2.4.2 visible version marker found in v2.4.3 artifact' >&2
             exit 1
           fi
-          strings "$out" | grep -Fq '[SECRET-OBSERVER] version=2.4.3'
+          grep -Fq '[SECRET-OBSERVER] version=2.4.3' "$out.strings.txt"
 
           echo '=== CODE SIGNATURE LOAD COMMAND ==='
-          otool -l "$out" | grep -A4 'LC_CODE_SIGNATURE'
+          grep -A4 'LC_CODE_SIGNATURE' "$out.otool.txt"
           echo '=== VERSION MARKERS ==='
-          strings "$out" | grep -E 'HFAMap v2\.4\.[0-9]|SECRET-OBSERVER' | head -20
+          grep -E 'HFAMap v2\.4\.[0-9]|SECRET-OBSERVER' "$out.strings.txt" | head -20 || true
           echo '=== SHA256 ==='
           shasum -a 256 "$out"
           echo '=== FILE ==='
