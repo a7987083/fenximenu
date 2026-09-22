@@ -6,9 +6,12 @@
 #import <dlfcn.h>
 #include <string.h>
 
-static const NSUInteger kHFAActionMaxInstructions = 512;
-static const NSUInteger kHFAActionMaxCalls = 64;
-static const NSUInteger kHFAActionMaxBranches = 128;
+static const NSUInteger kHFAActionMaxInstructions = 2048;
+static const NSUInteger kHFAActionMaxInstructionsPerBlock = 96;
+static const NSUInteger kHFAActionMaxBlocks = 96;
+static const NSUInteger kHFAActionMaxDepth = 12;
+static const NSUInteger kHFAActionMaxCalls = 128;
+static const NSUInteger kHFAActionMaxBranches = 256;
 static const NSUInteger kHFAActionMaxString = 192;
 
 typedef NS_ENUM(uint8_t, HFARegKind) {
@@ -65,7 +68,7 @@ static NSDictionary *HFARegEvidence(HFARegState reg) {
         @"value": @(reg.value),
         @"valueHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)reg.value],
         @"sourceRVA": @(reg.sourceRVA),
-        @"binding": @"local-dataflow-candidate"
+        @"binding": @"cfg-dataflow-candidate"
     } mutableCopy];
     NSString *string = HFAReadCStringBounded(reg.value);
     if (string.length) record[@"ascii"] = string;
@@ -74,9 +77,25 @@ static NSDictionary *HFARegEvidence(HFARegState reg) {
     return [record autorelease];
 }
 
-static uint64_t HFABranchTarget(uint64_t pc, uint32_t instruction) {
+static uint64_t HFABranchTarget26(uint64_t pc, uint32_t instruction) {
     int64_t imm26 = HFASignExtend(instruction & 0x03ffffffU, 26) << 2;
     return (uint64_t)((int64_t)pc + imm26);
+}
+
+static uint64_t HFABranchTarget19(uint64_t pc, uint32_t instruction) {
+    int64_t imm19 = HFASignExtend((instruction >> 5) & 0x7ffffU, 19) << 2;
+    return (uint64_t)((int64_t)pc + imm19);
+}
+
+static uint64_t HFABranchTarget14(uint64_t pc, uint32_t instruction) {
+    int64_t imm14 = HFASignExtend((instruction >> 5) & 0x3fffU, 14) << 2;
+    return (uint64_t)((int64_t)pc + imm14);
+}
+
+static BOOL HFASameImage(uint64_t address, const void *imageBase) {
+    if (!address || !imageBase) return NO;
+    Dl_info info = {};
+    return dladdr((const void *)(uintptr_t)address, &info) && info.dli_fbase == imageBase;
 }
 
 static NSMutableDictionary *HFACallRecord(uint64_t base, uint64_t rva,
@@ -108,148 +127,286 @@ static NSMutableDictionary *HFACallRecord(uint64_t base, uint64_t rva,
     return [call autorelease];
 }
 
+static NSData *HFARegSnapshot(HFARegState regs[31]) {
+    return [NSData dataWithBytes:regs length:sizeof(HFARegState) * 31U];
+}
+
+static void HFARegRestore(NSData *data, HFARegState regs[31]) {
+    memset(regs, 0, sizeof(HFARegState) * 31U);
+    if (data.length >= sizeof(HFARegState) * 31U)
+        memcpy(regs, data.bytes, sizeof(HFARegState) * 31U);
+}
+
+static void HFAEnqueueBlock(NSMutableArray *queue, NSMutableSet *scheduled,
+                            uint64_t pc, NSUInteger depth, HFARegState regs[31],
+                            const void *imageBase) {
+    if (!pc || depth > kHFAActionMaxDepth || queue.count >= kHFAActionMaxBlocks) return;
+    if (!HFASameImage(pc, imageBase)) return;
+    NSNumber *key = @(pc);
+    if ([scheduled containsObject:key]) return;
+    [scheduled addObject:key];
+    [queue addObject:@{ @"pc": key, @"depth": @(depth), @"regs": HFARegSnapshot(regs) }];
+}
+
 NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                                               NSString *implementationPath) {
     if (!implementation || !implementationPath.length)
-        return @{ @"schema": @"com.hfa.stripped-action/v2", @"status": @"missing-input",
+        return @{ @"schema": @"com.hfa.stripped-action/v3", @"status": @"missing-input",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO };
 
-    // Build once per process. The bounded deadline keeps Scan Menu responsive;
-    // enumeration is metadata-only and never invokes a game method.
     NSTimeInterval indexDeadline = NSDate.date.timeIntervalSince1970 + 0.75;
     NSDictionary *methodIndex = HFAIL2CPPBuildMethodIndex(indexDeadline);
 
     Dl_info info = {};
     if (!dladdr(implementation, &info) || !info.dli_fbase)
-        return @{ @"schema": @"com.hfa.stripped-action/v2", @"status": @"dladdr-failed",
+        return @{ @"schema": @"com.hfa.stripped-action/v3", @"status": @"dladdr-failed",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO,
                   @"il2cppMethodIndex": methodIndex ?: @{} };
 
     uint64_t base = (uint64_t)(uintptr_t)info.dli_fbase;
     uint64_t start = (uint64_t)(uintptr_t)implementation;
     uint64_t startRVA = start - base;
-    HFARegState regs[31] = {};
     NSMutableArray *calls = [NSMutableArray array];
     NSMutableArray *branches = [NSMutableArray array];
-    NSUInteger decoded = 0;
-    NSUInteger il2cppCorrelations = 0;
+    NSMutableArray *indirectBranches = [NSMutableArray array];
+    NSMutableArray *blocks = [NSMutableArray array];
+    NSMutableArray *queue = [NSMutableArray array];
+    NSMutableSet *scheduled = [NSMutableSet set];
+    NSMutableSet *visited = [NSMutableSet set];
+    NSUInteger decoded = 0, blockCount = 0, il2cppCorrelations = 0;
+    NSUInteger unresolvedIndirectBranches = 0;
 
-    for (NSUInteger index = 0; index < kHFAActionMaxInstructions; ++index) {
-        uint32_t insn = 0;
-        vm_size_t copied = 0;
-        uint64_t pc = start + index * 4ULL;
-        if (vm_read_overwrite(mach_task_self(), (vm_address_t)pc, sizeof(insn),
-                              (vm_address_t)&insn, &copied) != KERN_SUCCESS || copied != sizeof(insn)) break;
-        ++decoded;
-        uint64_t rva = pc - base;
+    HFARegState initialRegs[31] = {};
+    HFAEnqueueBlock(queue, scheduled, start, 0, initialRegs, info.dli_fbase);
 
-        // ADRP Xd, imm
-        if ((insn & 0x9f000000U) == 0x90000000U) {
-            unsigned rd = insn & 31U;
-            int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
-                                        ((insn >> 29) & 0x3U), 21) << 12;
-            regs[rd] = { HFARegAddress, (pc & ~0xfffULL) + imm, rva };
-            continue;
-        }
-        // ADR Xd, imm
-        if ((insn & 0x9f000000U) == 0x10000000U) {
-            unsigned rd = insn & 31U;
-            int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
-                                        ((insn >> 29) & 0x3U), 21);
-            regs[rd] = { HFARegAddress, pc + imm, rva };
-            continue;
-        }
-        // ADD (immediate), 64-bit
-        if ((insn & 0xffc00000U) == 0x91000000U) {
-            unsigned rd = insn & 31U, rn = (insn >> 5) & 31U;
-            uint64_t imm12 = (insn >> 10) & 0xfffU;
-            if (insn & (1U << 22)) imm12 <<= 12;
-            if (rn < 31 && regs[rn].kind != HFARegUnknown)
-                regs[rd] = { regs[rn].kind, regs[rn].value + imm12, rva };
-            continue;
-        }
-        // MOVZ 64-bit
-        if ((insn & 0xff800000U) == 0xd2800000U) {
-            unsigned rd = insn & 31U;
-            uint64_t imm16 = (insn >> 5) & 0xffffU;
-            unsigned shift = ((insn >> 21) & 3U) * 16U;
-            regs[rd] = { HFARegImmediate, imm16 << shift, rva };
-            continue;
-        }
-        // MOVK 64-bit
-        if ((insn & 0xff800000U) == 0xf2800000U) {
-            unsigned rd = insn & 31U;
-            uint64_t imm16 = (insn >> 5) & 0xffffU;
-            unsigned shift = ((insn >> 21) & 3U) * 16U;
-            uint64_t mask = ~(0xffffULL << shift);
-            uint64_t prior = regs[rd].kind == HFARegImmediate ? regs[rd].value : 0;
-            regs[rd] = { HFARegImmediate, (prior & mask) | (imm16 << shift), rva };
-            continue;
-        }
-        // LDR Xt, [Xn,#imm] unsigned immediate
-        if ((insn & 0xffc00000U) == 0xf9400000U) {
-            unsigned rt = insn & 31U, rn = (insn >> 5) & 31U;
-            uint64_t imm = ((insn >> 10) & 0xfffU) << 3;
-            if (rn < 31 && regs[rn].kind != HFARegUnknown) {
-                uint64_t slot = regs[rn].value + imm, loaded = 0;
-                if (HFAReadPointer(slot, &loaded)) regs[rt] = { HFARegLoadedPointer, loaded, rva };
-            }
-            continue;
-        }
-        // BL imm26
-        if ((insn & 0xfc000000U) == 0x94000000U) {
-            if (calls.count < kHFAActionMaxCalls) {
-                uint64_t target = HFABranchTarget(pc, insn);
-                NSMutableDictionary *call = HFACallRecord(base, rva, target, @"bl-direct", regs);
-                if (call[@"il2cppMethod"]) ++il2cppCorrelations;
-                [calls addObject:call];
-            }
-            continue;
-        }
-        // BLR Xn -- critical for cached IL2CPP method pointers / callbacks.
-        if ((insn & 0xfffffc1fU) == 0xd63f0000U) {
-            unsigned rn = (insn >> 5) & 31U;
-            if (rn < 31 && regs[rn].kind != HFARegUnknown && calls.count < kHFAActionMaxCalls) {
-                NSMutableDictionary *call = HFACallRecord(base, rva, regs[rn].value, @"blr-register", regs);
-                call[@"targetRegister"] = [NSString stringWithFormat:@"x%u", rn];
-                call[@"targetRegisterEvidence"] = HFARegEvidence(regs[rn]);
-                if (call[@"il2cppMethod"]) ++il2cppCorrelations;
-                [calls addObject:call];
-            }
-            continue;
-        }
-        // B imm26
-        if ((insn & 0xfc000000U) == 0x14000000U) {
-            if (branches.count < kHFAActionMaxBranches)
-                [branches addObject:@{ @"kind": @"b", @"fromRVA": @(rva),
-                                        @"targetRVAIfSameImage": @(HFABranchTarget(pc, insn) - base) }];
-            continue;
-        }
-        if ((insn & 0x7e000000U) == 0x34000000U && branches.count < kHFAActionMaxBranches)
-            [branches addObject:@{ @"kind": @"cbz-cbnz", @"fromRVA": @(rva) }];
-        else if ((insn & 0x7e000000U) == 0x36000000U && branches.count < kHFAActionMaxBranches)
-            [branches addObject:@{ @"kind": @"tbz-tbnz", @"fromRVA": @(rva) }];
+    while (queue.count && blockCount < kHFAActionMaxBlocks && decoded < kHFAActionMaxInstructions) {
+        NSDictionary *item = [[queue objectAtIndex:0] retain];
+        [queue removeObjectAtIndex:0];
+        uint64_t blockStart = [item[@"pc"] unsignedLongLongValue];
+        NSUInteger depth = [item[@"depth"] unsignedIntegerValue];
+        NSNumber *blockKey = @(blockStart);
+        if ([visited containsObject:blockKey]) { [item release]; continue; }
+        [visited addObject:blockKey];
+        ++blockCount;
 
-        if ((insn & 0xfffffc1fU) == 0xd65f0000U) break;
+        HFARegState regs[31] = {};
+        HFARegRestore(item[@"regs"], regs);
+        [blocks addObject:@{ @"startRVA": @(blockStart - base), @"depth": @(depth) }];
+        [item release];
+
+        for (NSUInteger index = 0; index < kHFAActionMaxInstructionsPerBlock &&
+                                  decoded < kHFAActionMaxInstructions; ++index) {
+            uint64_t pc = blockStart + index * 4ULL;
+            if (!HFASameImage(pc, info.dli_fbase)) break;
+            uint32_t insn = 0;
+            vm_size_t copied = 0;
+            if (vm_read_overwrite(mach_task_self(), (vm_address_t)pc, sizeof(insn),
+                                  (vm_address_t)&insn, &copied) != KERN_SUCCESS || copied != sizeof(insn)) break;
+            ++decoded;
+            uint64_t rva = pc - base;
+
+            // ADRP Xd, imm21
+            if ((insn & 0x9f000000U) == 0x90000000U) {
+                unsigned rd = insn & 31U;
+                int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
+                                            ((insn >> 29) & 0x3U), 21) << 12;
+                if (rd < 31) regs[rd] = { HFARegAddress, (pc & ~0xfffULL) + imm, rva };
+                continue;
+            }
+            // ADR Xd, imm21
+            if ((insn & 0x9f000000U) == 0x10000000U) {
+                unsigned rd = insn & 31U;
+                int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
+                                            ((insn >> 29) & 0x3U), 21);
+                if (rd < 31) regs[rd] = { HFARegAddress, pc + imm, rva };
+                continue;
+            }
+            // MOV Xd, Xm alias of ORR Xd, XZR, Xm.
+            if ((insn & 0xffe0ffe0U) == 0xaa0003e0U) {
+                unsigned rd = insn & 31U, rm = (insn >> 16) & 31U;
+                if (rd < 31 && rm < 31) { regs[rd] = regs[rm]; regs[rd].sourceRVA = rva; }
+                continue;
+            }
+            // ADD (immediate), 64-bit
+            if ((insn & 0xffc00000U) == 0x91000000U) {
+                unsigned rd = insn & 31U, rn = (insn >> 5) & 31U;
+                uint64_t imm12 = (insn >> 10) & 0xfffU;
+                if (insn & (1U << 22)) imm12 <<= 12;
+                if (rd < 31 && rn < 31 && regs[rn].kind != HFARegUnknown)
+                    regs[rd] = { regs[rn].kind, regs[rn].value + imm12, rva };
+                continue;
+            }
+            // MOVZ 64-bit
+            if ((insn & 0xff800000U) == 0xd2800000U) {
+                unsigned rd = insn & 31U;
+                uint64_t imm16 = (insn >> 5) & 0xffffU;
+                unsigned shift = ((insn >> 21) & 3U) * 16U;
+                if (rd < 31) regs[rd] = { HFARegImmediate, imm16 << shift, rva };
+                continue;
+            }
+            // MOVK 64-bit
+            if ((insn & 0xff800000U) == 0xf2800000U) {
+                unsigned rd = insn & 31U;
+                uint64_t imm16 = (insn >> 5) & 0xffffU;
+                unsigned shift = ((insn >> 21) & 3U) * 16U;
+                uint64_t mask = ~(0xffffULL << shift);
+                uint64_t prior = (rd < 31 && regs[rd].kind == HFARegImmediate) ? regs[rd].value : 0;
+                if (rd < 31) regs[rd] = { HFARegImmediate, (prior & mask) | (imm16 << shift), rva };
+                continue;
+            }
+            // LDR Xt, literal (PC-relative imm19).
+            if ((insn & 0xff000000U) == 0x58000000U) {
+                unsigned rt = insn & 31U;
+                uint64_t slot = HFABranchTarget19(pc, insn), loaded = 0;
+                if (rt < 31 && HFAReadPointer(slot, &loaded))
+                    regs[rt] = { HFARegLoadedPointer, loaded, rva };
+                continue;
+            }
+            // LDR Xt, [Xn,#imm] unsigned immediate.
+            if ((insn & 0xffc00000U) == 0xf9400000U) {
+                unsigned rt = insn & 31U, rn = (insn >> 5) & 31U;
+                uint64_t imm = ((insn >> 10) & 0xfffU) << 3;
+                if (rt < 31 && rn < 31 && regs[rn].kind != HFARegUnknown) {
+                    uint64_t slot = regs[rn].value + imm, loaded = 0;
+                    if (HFAReadPointer(slot, &loaded)) regs[rt] = { HFARegLoadedPointer, loaded, rva };
+                }
+                continue;
+            }
+            // LDUR Xt, [Xn,#simm9].
+            if ((insn & 0xffe00c00U) == 0xf8400000U) {
+                unsigned rt = insn & 31U, rn = (insn >> 5) & 31U;
+                int64_t imm9 = HFASignExtend((insn >> 12) & 0x1ffU, 9);
+                if (rt < 31 && rn < 31 && regs[rn].kind != HFARegUnknown) {
+                    uint64_t slot = (uint64_t)((int64_t)regs[rn].value + imm9), loaded = 0;
+                    if (HFAReadPointer(slot, &loaded)) regs[rt] = { HFARegLoadedPointer, loaded, rva };
+                }
+                continue;
+            }
+            // BL imm26: record call and follow same-image helper with bounded depth.
+            if ((insn & 0xfc000000U) == 0x94000000U) {
+                uint64_t target = HFABranchTarget26(pc, insn);
+                if (calls.count < kHFAActionMaxCalls) {
+                    NSMutableDictionary *call = HFACallRecord(base, rva, target, @"bl-direct", regs);
+                    if (call[@"il2cppMethod"]) ++il2cppCorrelations;
+                    [calls addObject:call];
+                }
+                HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                continue;
+            }
+            // BLR Xn: cached IL2CPP pointers/callbacks.
+            if ((insn & 0xfffffc1fU) == 0xd63f0000U) {
+                unsigned rn = (insn >> 5) & 31U;
+                if (rn < 31 && regs[rn].kind != HFARegUnknown) {
+                    uint64_t target = regs[rn].value;
+                    if (calls.count < kHFAActionMaxCalls) {
+                        NSMutableDictionary *call = HFACallRecord(base, rva, target, @"blr-register", regs);
+                        call[@"targetRegister"] = [NSString stringWithFormat:@"x%u", rn];
+                        call[@"targetRegisterEvidence"] = HFARegEvidence(regs[rn]);
+                        if (call[@"il2cppMethod"]) ++il2cppCorrelations;
+                        [calls addObject:call];
+                    }
+                    HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                } else {
+                    ++unresolvedIndirectBranches;
+                }
+                continue;
+            }
+            // BR Xn: dispatcher/jump-table tail branch.
+            if ((insn & 0xfffffc1fU) == 0xd61f0000U) {
+                unsigned rn = (insn >> 5) & 31U;
+                NSMutableDictionary *branch = [@{
+                    @"kind": @"br-register", @"fromRVA": @(rva),
+                    @"targetRegister": [NSString stringWithFormat:@"x%u", rn],
+                    @"analysisOnly": @YES, @"canonicalEligible": @NO
+                } mutableCopy];
+                if (rn < 31 && regs[rn].kind != HFARegUnknown) {
+                    uint64_t target = regs[rn].value;
+                    branch[@"targetRuntime"] = @(target);
+                    branch[@"targetRegisterEvidence"] = HFARegEvidence(regs[rn]);
+                    NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)target);
+                    if (method) {
+                        branch[@"il2cppMethod"] = method;
+                        branch[@"correlation"] = @"exact-method-pointer-address";
+                        ++il2cppCorrelations;
+                    }
+                    HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                } else {
+                    branch[@"resolutionStatus"] = @"register-target-unresolved";
+                    ++unresolvedIndirectBranches;
+                }
+                if (indirectBranches.count < kHFAActionMaxBranches) [indirectBranches addObject:branch];
+                [branch release];
+                break;
+            }
+            // B imm26: terminate block and enqueue target.
+            if ((insn & 0xfc000000U) == 0x14000000U) {
+                uint64_t target = HFABranchTarget26(pc, insn);
+                if (branches.count < kHFAActionMaxBranches)
+                    [branches addObject:@{ @"kind": @"b", @"fromRVA": @(rva),
+                                            @"targetRVAIfSameImage": target >= base ? @(target - base) : @0 }];
+                HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                break;
+            }
+            // CBZ/CBNZ: enqueue taken target and fall-through, then terminate block.
+            if ((insn & 0x7e000000U) == 0x34000000U) {
+                uint64_t target = HFABranchTarget19(pc, insn);
+                if (branches.count < kHFAActionMaxBranches)
+                    [branches addObject:@{ @"kind": @"cbz-cbnz", @"fromRVA": @(rva),
+                                            @"targetRVAIfSameImage": target >= base ? @(target - base) : @0 }];
+                HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
+                break;
+            }
+            // TBZ/TBNZ.
+            if ((insn & 0x7e000000U) == 0x36000000U) {
+                uint64_t target = HFABranchTarget14(pc, insn);
+                if (branches.count < kHFAActionMaxBranches)
+                    [branches addObject:@{ @"kind": @"tbz-tbnz", @"fromRVA": @(rva),
+                                            @"targetRVAIfSameImage": target >= base ? @(target - base) : @0 }];
+                HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
+                break;
+            }
+            // B.cond imm19.
+            if ((insn & 0xff000010U) == 0x54000000U) {
+                uint64_t target = HFABranchTarget19(pc, insn);
+                if (branches.count < kHFAActionMaxBranches)
+                    [branches addObject:@{ @"kind": @"b-cond", @"fromRVA": @(rva),
+                                            @"targetRVAIfSameImage": target >= base ? @(target - base) : @0 }];
+                HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
+                HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
+                break;
+            }
+            if ((insn & 0xfffffc1fU) == 0xd65f0000U) break; // RET
+        }
     }
 
     return @{
-        @"schema": @"com.hfa.stripped-action/v2",
-        @"status": decoded ? @"decoded" : @"no-readable-code",
+        @"schema": @"com.hfa.stripped-action/v3",
+        @"status": decoded ? @"cfg-decoded" : @"no-readable-code",
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO,
         @"implementationPath": implementationPath,
         @"implementationRVA": @(startRVA),
         @"decodedInstructionCount": @(decoded),
         @"instructionBudget": @(kHFAActionMaxInstructions),
+        @"blockCount": @(blockCount),
+        @"blockBudget": @(kHFAActionMaxBlocks),
+        @"maxDepth": @(kHFAActionMaxDepth),
+        @"blocks": blocks,
         @"calls": calls,
         @"branches": branches,
+        @"indirectBranches": indirectBranches,
+        @"unresolvedIndirectBranchCount": @(unresolvedIndirectBranches),
         @"il2cppMethodIndex": methodIndex ?: @{},
         @"il2cppCorrelationCount": @(il2cppCorrelations),
-        @"capabilities": @[ @"adr", @"adrp", @"add-immediate", @"ldr-uimm",
-                             @"movz", @"movk", @"bl", @"blr", @"b",
-                             @"cbz-cbnz", @"tbz-tbnz", @"x0-x7-local-provenance",
+        @"capabilities": @[ @"bounded-cfg-worklist", @"adr", @"adrp", @"add-immediate",
+                             @"mov-register", @"ldr-literal", @"ldr-uimm", @"ldur",
+                             @"movz", @"movk", @"bl", @"blr", @"br", @"b",
+                             @"b-cond", @"cbz-cbnz", @"tbz-tbnz",
+                             @"same-image-helper-traversal", @"x0-x7-cfg-provenance",
                              @"bounded-cstring-probe", @"assembly-csharp-method-pointer-correlation" ],
-        @"policy": @"read-only-local-dataflow-no-hook-no-callback-invocation-no-memory-write"
+        @"referenceModel": @"verify.dylib-arm64-relocation-and-register-context-coverage",
+        @"policy": @"read-only-bounded-cfg-no-hook-no-callback-invocation-no-memory-write"
     };
 }
