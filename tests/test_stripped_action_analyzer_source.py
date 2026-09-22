@@ -10,9 +10,9 @@ MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 class StrippedActionAnalyzerSourceTests(unittest.TestCase):
     def test_arm64_reference_and_call_instructions_are_supported(self):
         for token in (
-            "ADRP Xd", "ADR Xd", "ADD (immediate)", "LDR Xt",
-            "MOVZ 64-bit", "MOVK 64-bit", "BL imm26", "BLR Xn",
-            "BR Xn", "MOV Xd, Xm", "LDR Xt, literal", "LDUR Xt",
+            "0x90000000U", "0x10000000U", "0x91000000U", "0xf9400000U",
+            "0xd2800000U", "0xf2800000U", "0x94000000U", "0xd63f0000U",
+            "0xd61f0000U", "0xaa0003e0U", "0x58000000U", "0xf8400000U",
             'cbz-cbnz', 'tbz-tbnz', 'b-cond',
         ):
             self.assertIn(token, ACTION)
