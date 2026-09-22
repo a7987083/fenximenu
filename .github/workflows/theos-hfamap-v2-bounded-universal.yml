@@ -1,9 +1,9 @@
-name: HFAMap v2.4.0 Menu Binary Evidence
+name: HFAMap v2.4.1 Dispatcher Patch Args
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.0-menu-binary-evidence
+      - feature/hfamap-v2.4.1-dispatcher-patch-args
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -28,21 +28,19 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'com.hfa.menu-binary-evidence/v1' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'MemoryPatch' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'createWithHex' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'createWithBytes' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'createWithAsm' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'memorypatch-menu' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'patchPrimitiveEvidenceOnly' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'com.hfa.menu-binary-evidence/v2' hfamap/src/HFAMapImageProbe.mm
+          grep -q '@"menuFamily"' hfamap/src/HFAMapImageProbe.mm
+          grep -q '@"patchBackends"' hfamap/src/HFAMapImageProbe.mm
+          ! grep -q 'family = @"memorypatch-menu"' hfamap/src/HFAMapImageProbe.mm
           grep -q 'src/HFAMapMenuBinaryAnalyzer.mm' hfamap/Makefile
-          grep -q 'com.hfa.menu-callgraph/v1' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'com.hfa.menu-callgraph/v2' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
           grep -q 'LC_SYMTAB' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
           grep -q 'SEG_LINKEDIT' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'MemoryPatch13createWithHex' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'arm64-direct-bl' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'objc_msgSend\$' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'dispatcherSymbols' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'movz-immediate-candidate' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'candidate-only-no-abi-binding' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
           grep -q 'directPatchCallEdges' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'menuCallGraph' hfamap/src/HFAMapImageProbe.mm
           grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
           grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -67,29 +65,27 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.0-dev
+          mkdir -p hfamap/dist/v2.4.1-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
-          out=hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.0.strings"
+            hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
+          out=hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.1.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.il2cpp-runtime-probe/v1' "$strings_file"
-          grep -q 'com.hfa.menu-binary-evidence/v1' "$strings_file"
-          grep -q 'com.hfa.menu-callgraph/v1' "$strings_file"
-          grep -q 'directPatchCallEdges' "$strings_file"
+          grep -q 'com.hfa.menu-binary-evidence/v2' "$strings_file"
+          grep -q 'com.hfa.menu-callgraph/v2' "$strings_file"
+          grep -q 'dispatcherSymbols' "$strings_file"
+          grep -q 'argumentEvidence' "$strings_file"
           grep -q 'arm64-direct-bl' "$strings_file"
-          grep -q 'MemoryPatch' "$strings_file"
-          grep -q 'memorypatch-menu' "$strings_file"
-          grep -q 'HFAMap v2.4.0-dev Menu Binary Evidence' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.0-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.1-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.0-MenuBinaryEvidence
+          name: HFAMapUniversal-v2.4.1-DispatcherPatchArgs
           path: |
-            hfamap/dist/v2.4.0-dev/HFAMapUniversal-v2.4.0-dev.dylib
-            hfamap/dist/v2.4.0-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
+            hfamap/dist/v2.4.1-dev/SHA256SUMS.txt
           if-no-files-found: error
