@@ -33,8 +33,8 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_is_v243(self):
-        self.assertIn('HFAMap v2.4.3-dev Runtime Action Correlator', ENTRY)
+    def test_ui_is_v244(self):
+        self.assertIn('HFAMap v2.4.4-dev Feature Runtime Method', ENTRY)
 
 
 if __name__ == "__main__":
