@@ -78,3 +78,7 @@ void HFADiagnosticsLog(NSString *stage, NSString *status, NSDictionary *details)
               [plain dataUsingEncoding:NSUTF8StringEncoding]);
     pthread_mutex_unlock(&gHFADiagnosticsLock);
 }
+
+void HFADiagnosticsFinishSession(NSString *status, NSDictionary *details) {
+    HFADiagnosticsLog(@"session", status ?: @"complete", details);
+}
