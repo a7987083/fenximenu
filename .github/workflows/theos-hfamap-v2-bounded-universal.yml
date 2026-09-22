@@ -1,9 +1,9 @@
-name: HFAMap v2.4.2 Stripped Menu Static Suite
+name: HFAMap v2.4.3 Runtime Action Correlator
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.2-stripped-menu-static-suite
+      - feature/hfamap-v2.4.3-runtime-action-correlator
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -27,21 +27,18 @@ jobs:
       - name: Check source invariants
         run: |
           set -euo pipefail
-          grep -q 'com.hfa.menu-binary-evidence/v3' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'strippedObjCInventory' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'analysisCapabilities' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'get_OrigBytes' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'findIdaPatternFirst' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'src/HFAMapStrippedActionAnalyzer.mm' hfamap/Makefile
-          grep -q 'src/HFAMapObjCActionInventory.mm' hfamap/Makefile
-          grep -q 'com.hfa.stripped-action/v1' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'kHFAActionMaxInstructions = 512' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'arm64-x0-x7-candidate' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'read-only-local-dataflow-no-hook-no-callback-invocation-no-memory-write' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'objc_copyClassNamesForImage' hfamap/src/HFAMapObjCActionInventory.mm
-          grep -q 'class_copyMethodList' hfamap/src/HFAMapObjCActionInventory.mm
-          grep -q '2.4.2-dev-stripped-menu-static-suite' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.4.2-dev Stripped Static Suite' hfamap/src/HFAMapEntry.mm
+          grep -q 'src/HFAIL2CPPMethodIndex.mm' hfamap/Makefile
+          grep -q 'com.hfa.il2cpp-method-index/v1' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'kHFAMaxMethods = 32768' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'methodinfo-first-word-readonly-fallback' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'com.hfa.stripped-action/v2' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'BLR Xn' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q '0xd63f0000U' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'exact-method-pointer-address' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'assembly-csharp-method-pointer-correlation' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q '2.4.3-dev-runtime-action-correlator' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.3-dev Runtime Action Correlator' hfamap/src/HFAMapEntry.mm
           grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -60,27 +57,26 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.2-dev
+          mkdir -p hfamap/dist/v2.4.3-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
-          out=hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.2.strings"
+            hfamap/dist/v2.4.3-dev/HFAMapUniversal-v2.4.3-dev.dylib
+          out=hfamap/dist/v2.4.3-dev/HFAMapUniversal-v2.4.3-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.3.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
-          grep -q 'com.hfa.menu-binary-evidence/v3' "$strings_file"
-          grep -q 'com.hfa.stripped-action/v1' "$strings_file"
-          grep -q 'com.hfa.stripped-objc-inventory/v1' "$strings_file"
-          grep -q 'arm64-x0-x7-candidate' "$strings_file"
-          grep -q 'strippedObjCInventory' "$strings_file"
-          grep -q 'HFAMap v2.4.2-dev Stripped Static Suite' "$strings_file"
+          grep -q 'com.hfa.il2cpp-method-index/v1' "$strings_file"
+          grep -q 'com.hfa.stripped-action/v2' "$strings_file"
+          grep -q 'assembly-csharp-method-pointer-correlation' "$strings_file"
+          grep -q 'exact-method-pointer-address' "$strings_file"
+          grep -q 'HFAMap v2.4.3-dev Runtime Action Correlator' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.2-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.3-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.2-StrippedMenuStaticSuite
+          name: HFAMapUniversal-v2.4.3-RuntimeActionCorrelator
           path: |
-            hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
-            hfamap/dist/v2.4.2-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.3-dev/HFAMapUniversal-v2.4.3-dev.dylib
+            hfamap/dist/v2.4.3-dev/SHA256SUMS.txt
           if-no-files-found: error
