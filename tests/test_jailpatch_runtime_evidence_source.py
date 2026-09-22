@@ -54,8 +54,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.4.3-dev-runtime-action-correlator', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.4.3-dev Runtime Action Correlator', ENTRY)
+        self.assertIn('2.4.4-dev-feature-directed-runtime-method', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.4.4-dev Feature Runtime Method', ENTRY)
 
 
 if __name__ == "__main__":
