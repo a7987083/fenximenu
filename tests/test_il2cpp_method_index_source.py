@@ -19,12 +19,17 @@ class IL2CPPMethodIndexSourceTests(unittest.TestCase):
         self.assertNotIn('il2cpp_runtime_invoke(', INDEX)
         self.assertNotIn('DobbyHook', INDEX)
         self.assertNotIn('vm_write', INDEX)
+        self.assertNotIn('mach/mach_vm.h', INDEX)
 
-    def test_method_pointer_resolution_prefers_export_and_validates_fallback(self):
+    def test_method_pointer_resolution_matches_m44_resolver_strategy(self):
         self.assertIn('il2cpp_method_get_pointer', INDEX)
-        self.assertIn('methodinfo-first-word-readonly-fallback', INDEX)
-        self.assertIn('HFAExecutablePointer', INDEX)
+        self.assertIn('MethodInfo[%lu]', INDEX)
+        self.assertIn('uintptr_t words[2]', INDEX)
+        self.assertIn('HFAExecutableUnityAddress', INDEX)
+        self.assertIn('VM_PROT_EXECUTE', INDEX)
         self.assertIn('implementationOffsetFromLoadBase', INDEX)
+        self.assertIn('@"methodPointerFallback": @YES', INDEX)
+        self.assertIn('@"unityExecutableSegmentValidation": @YES', INDEX)
 
     def test_action_analyzer_correlates_bl_and_blr(self):
         self.assertIn('BLR Xn', ACTION)
