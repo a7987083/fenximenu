@@ -30,7 +30,7 @@ class RuntimeProbeSourceTests(unittest.TestCase):
         for token in (
             "kHFAProbeMaxViews = 768", "kHFAProbeMaxControls = 128",
             "kHFAProbeMaxEvents = 32", "MAX(2.0, MIN(duration, 15.0))",
-            "Arm Runtime Probe (8s)", "targetListModifiedTemporarily",
+            "Arm Targeted Runtime Probe (8s)", "targetListModifiedTemporarily",
             "targetListRestored", "removeTarget:target",
             "RuntimeProbe.json", "runtime-probe-event",
         ):
