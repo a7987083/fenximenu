@@ -1,4 +1,5 @@
 #import "HFAMapStrippedActionAnalyzer.h"
+#import "HFAIL2CPPMethodIndex.h"
 
 #import <mach-o/loader.h>
 #import <mach/mach.h>
@@ -68,6 +69,8 @@ static NSDictionary *HFARegEvidence(HFARegState reg) {
     } mutableCopy];
     NSString *string = HFAReadCStringBounded(reg.value);
     if (string.length) record[@"ascii"] = string;
+    NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)reg.value);
+    if (method) record[@"il2cppMethod"] = method;
     return [record autorelease];
 }
 
@@ -76,16 +79,51 @@ static uint64_t HFABranchTarget(uint64_t pc, uint32_t instruction) {
     return (uint64_t)((int64_t)pc + imm26);
 }
 
+static NSMutableDictionary *HFACallRecord(uint64_t base, uint64_t rva,
+                                           uint64_t target, NSString *kind,
+                                           HFARegState regs[31]) {
+    NSMutableDictionary *args = [NSMutableDictionary dictionary];
+    for (unsigned r = 0; r <= 7; ++r) {
+        NSDictionary *e = HFARegEvidence(regs[r]);
+        if (e.count) args[[NSString stringWithFormat:@"x%u", r]] = e;
+    }
+    NSMutableDictionary *call = [@{
+        @"kind": kind ?: @"call",
+        @"callsiteRVA": @(rva),
+        @"targetRuntime": @(target),
+        @"targetRVAIfSameImage": target >= base ? @(target - base) : @0,
+        @"arguments": args,
+        @"abi": @"arm64-x0-x7-candidate",
+        @"analysisOnly": @YES,
+        @"canonicalEligible": @NO
+    } mutableCopy];
+    Dl_info targetInfo = {};
+    if (dladdr((const void *)(uintptr_t)target, &targetInfo) && targetInfo.dli_sname)
+        call[@"targetSymbol"] = [NSString stringWithUTF8String:targetInfo.dli_sname];
+    NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)target);
+    if (method) {
+        call[@"il2cppMethod"] = method;
+        call[@"correlation"] = @"exact-method-pointer-address";
+    }
+    return [call autorelease];
+}
+
 NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                                               NSString *implementationPath) {
     if (!implementation || !implementationPath.length)
-        return @{ @"schema": @"com.hfa.stripped-action/v1", @"status": @"missing-input",
+        return @{ @"schema": @"com.hfa.stripped-action/v2", @"status": @"missing-input",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO };
+
+    // Build once per process. The bounded deadline keeps Scan Menu responsive;
+    // enumeration is metadata-only and never invokes a game method.
+    NSTimeInterval indexDeadline = NSDate.date.timeIntervalSince1970 + 0.75;
+    NSDictionary *methodIndex = HFAIL2CPPBuildMethodIndex(indexDeadline);
 
     Dl_info info = {};
     if (!dladdr(implementation, &info) || !info.dli_fbase)
-        return @{ @"schema": @"com.hfa.stripped-action/v1", @"status": @"dladdr-failed",
-                  @"analysisOnly": @YES, @"canonicalEligible": @NO };
+        return @{ @"schema": @"com.hfa.stripped-action/v2", @"status": @"dladdr-failed",
+                  @"analysisOnly": @YES, @"canonicalEligible": @NO,
+                  @"il2cppMethodIndex": methodIndex ?: @{} };
 
     uint64_t base = (uint64_t)(uintptr_t)info.dli_fbase;
     uint64_t start = (uint64_t)(uintptr_t)implementation;
@@ -94,6 +132,7 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
     NSMutableArray *calls = [NSMutableArray array];
     NSMutableArray *branches = [NSMutableArray array];
     NSUInteger decoded = 0;
+    NSUInteger il2cppCorrelations = 0;
 
     for (NSUInteger index = 0; index < kHFAActionMaxInstructions; ++index) {
         uint32_t insn = 0;
@@ -161,23 +200,21 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
         if ((insn & 0xfc000000U) == 0x94000000U) {
             if (calls.count < kHFAActionMaxCalls) {
                 uint64_t target = HFABranchTarget(pc, insn);
-                NSMutableDictionary *args = [NSMutableDictionary dictionary];
-                for (unsigned r = 0; r <= 7; ++r) {
-                    NSDictionary *e = HFARegEvidence(regs[r]);
-                    if (e.count) args[[NSString stringWithFormat:@"x%u", r]] = e;
-                }
-                Dl_info targetInfo = {};
-                NSMutableDictionary *call = [@{
-                    @"callsiteRVA": @(rva),
-                    @"targetRuntime": @(target),
-                    @"targetRVAIfSameImage": target >= base ? @(target - base) : @0,
-                    @"arguments": args,
-                    @"abi": @"arm64-x0-x7-candidate",
-                    @"analysisOnly": @YES
-                } mutableCopy];
-                if (dladdr((const void *)(uintptr_t)target, &targetInfo) && targetInfo.dli_sname)
-                    call[@"targetSymbol"] = [NSString stringWithUTF8String:targetInfo.dli_sname];
-                [calls addObject:[call autorelease]];
+                NSMutableDictionary *call = HFACallRecord(base, rva, target, @"bl-direct", regs);
+                if (call[@"il2cppMethod"]) ++il2cppCorrelations;
+                [calls addObject:call];
+            }
+            continue;
+        }
+        // BLR Xn -- critical for cached IL2CPP method pointers / callbacks.
+        if ((insn & 0xfffffc1fU) == 0xd63f0000U) {
+            unsigned rn = (insn >> 5) & 31U;
+            if (rn < 31 && regs[rn].kind != HFARegUnknown && calls.count < kHFAActionMaxCalls) {
+                NSMutableDictionary *call = HFACallRecord(base, rva, regs[rn].value, @"blr-register", regs);
+                call[@"targetRegister"] = [NSString stringWithFormat:@"x%u", rn];
+                call[@"targetRegisterEvidence"] = HFARegEvidence(regs[rn]);
+                if (call[@"il2cppMethod"]) ++il2cppCorrelations;
+                [calls addObject:call];
             }
             continue;
         }
@@ -188,18 +225,16 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                                         @"targetRVAIfSameImage": @(HFABranchTarget(pc, insn) - base) }];
             continue;
         }
-        // CBZ/CBNZ and TBZ/TBNZ inventories; no recursive execution.
         if ((insn & 0x7e000000U) == 0x34000000U && branches.count < kHFAActionMaxBranches)
             [branches addObject:@{ @"kind": @"cbz-cbnz", @"fromRVA": @(rva) }];
         else if ((insn & 0x7e000000U) == 0x36000000U && branches.count < kHFAActionMaxBranches)
             [branches addObject:@{ @"kind": @"tbz-tbnz", @"fromRVA": @(rva) }];
 
-        // RET terminates this local linear window.
         if ((insn & 0xfffffc1fU) == 0xd65f0000U) break;
     }
 
     return @{
-        @"schema": @"com.hfa.stripped-action/v1",
+        @"schema": @"com.hfa.stripped-action/v2",
         @"status": decoded ? @"decoded" : @"no-readable-code",
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO,
@@ -209,9 +244,12 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
         @"instructionBudget": @(kHFAActionMaxInstructions),
         @"calls": calls,
         @"branches": branches,
+        @"il2cppMethodIndex": methodIndex ?: @{},
+        @"il2cppCorrelationCount": @(il2cppCorrelations),
         @"capabilities": @[ @"adr", @"adrp", @"add-immediate", @"ldr-uimm",
-                             @"movz", @"movk", @"bl", @"b", @"cbz-cbnz", @"tbz-tbnz",
-                             @"x0-x7-local-provenance", @"bounded-cstring-probe" ],
+                             @"movz", @"movk", @"bl", @"blr", @"b",
+                             @"cbz-cbnz", @"tbz-tbnz", @"x0-x7-local-provenance",
+                             @"bounded-cstring-probe", @"assembly-csharp-method-pointer-correlation" ],
         @"policy": @"read-only-local-dataflow-no-hook-no-callback-invocation-no-memory-write"
     };
 }
