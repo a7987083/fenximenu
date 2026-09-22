@@ -11,7 +11,8 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
     def test_arm64_reference_and_call_instructions_are_supported(self):
         for token in (
             "ADRP Xd", "ADR Xd", "ADD (immediate)", "LDR Xt",
-            "MOVZ 64-bit", "MOVK 64-bit", "BL imm26", "CBZ/CBNZ", "TBZ/TBNZ",
+            "MOVZ 64-bit", "MOVK 64-bit", "BL imm26", "BLR Xn",
+            'cbz-cbnz', 'tbz-tbnz',
         ):
             self.assertIn(token, ACTION)
 
@@ -35,6 +36,7 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
     def test_modules_are_compiled(self):
         self.assertIn("src/HFAMapStrippedActionAnalyzer.mm", MAKEFILE)
         self.assertIn("src/HFAMapObjCActionInventory.mm", MAKEFILE)
+        self.assertIn("src/HFAIL2CPPMethodIndex.mm", MAKEFILE)
 
 
 if __name__ == "__main__":
