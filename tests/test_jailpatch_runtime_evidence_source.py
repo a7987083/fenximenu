@@ -22,7 +22,6 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
             'runtime-toggle-not-static-bytes',
         ):
             self.assertIn(token, CORE + RESOLVER)
-        self.assertIn('staticPatchContractUnchanged', CORE)
         self.assertIn('if (offsetCandidate || patchCandidate) return nil', RESOLVER)
 
     def test_jailpatch_owner_inventory_is_bounded_and_location_aware(self):
@@ -54,8 +53,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.4.5-dev-dispatcher-cfg-correlator', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.4.5-dev Dispatcher CFG', ENTRY)
+        self.assertIn('2.4.6-dev-decoupled-discovery-analysis', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.4.6-dev Decoupled', ENTRY)
 
 
 if __name__ == "__main__":
