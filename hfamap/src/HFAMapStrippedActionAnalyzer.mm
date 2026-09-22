@@ -77,6 +77,100 @@ static NSDictionary *HFARegEvidence(HFARegState reg) {
     return [record autorelease];
 }
 
+static BOOL HFAKnownObjCRuntimeSymbol(NSString *symbol) {
+    if (!symbol.length) return NO;
+    static NSArray<NSString *> *tokens;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        tokens = [[NSArray alloc] initWithObjects:
+            @"objc_msgSend", @"objc_msgSendSuper", @"objc_msgSendSuper2",
+            @"objc_opt_class", @"objc_opt_isKindOfClass", @"objc_opt_respondsToSelector",
+            @"objc_getClass", @"object_getClass", @"class_getMethodImplementation", nil];
+    });
+    for (NSString *token in tokens)
+        if ([symbol containsString:token]) return YES;
+    return NO;
+}
+
+static NSString *HFAExactKnownRuntimeSymbol(uint64_t target) {
+    if (!target) return nil;
+    static NSArray<NSString *> *names;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        names = [[NSArray alloc] initWithObjects:
+            @"objc_msgSend", @"objc_msgSendSuper", @"objc_msgSendSuper2",
+            @"objc_opt_class", @"objc_opt_isKindOfClass", @"objc_opt_respondsToSelector",
+            @"objc_getClass", @"object_getClass", @"class_getMethodImplementation", nil];
+    });
+    for (NSString *name in names) {
+        void *resolved = dlsym(RTLD_DEFAULT, name.UTF8String);
+        if (resolved && (uint64_t)(uintptr_t)resolved == target) return name;
+    }
+    return nil;
+}
+
+static NSDictionary *HFARuntimeTargetClassification(uint64_t target, HFARegState regs[31]) {
+    if (!target) return @{};
+    NSMutableDictionary *record = [@{
+        @"targetRuntime": @(target),
+        @"targetHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)target],
+        @"classification": @"external-or-unclassified-runtime-target",
+        @"analysisOnly": @YES
+    } mutableCopy];
+
+    Dl_info info = {};
+    if (dladdr((const void *)(uintptr_t)target, &info)) {
+        if (info.dli_fname) {
+            NSString *path = [NSString stringWithUTF8String:info.dli_fname] ?: @"";
+            record[@"targetPath"] = path;
+            record[@"targetImage"] = path.lastPathComponent ?: @"?";
+            if (info.dli_fbase) {
+                record[@"targetOffsetFromLoadBase"] = [NSString stringWithFormat:@"0x%llX",
+                    (unsigned long long)(target - (uint64_t)(uintptr_t)info.dli_fbase)];
+            }
+        }
+        if (info.dli_sname) {
+            NSString *symbol = [NSString stringWithUTF8String:info.dli_sname] ?: @"";
+            if (symbol.length) record[@"targetSymbol"] = symbol;
+        }
+    }
+
+    NSString *symbol = record[@"targetSymbol"];
+    NSString *exact = HFAExactKnownRuntimeSymbol(target);
+    if (exact.length) {
+        symbol = exact;
+        record[@"targetSymbol"] = exact;
+        record[@"symbolResolution"] = @"exact-dlsym-runtime-address";
+    } else if (symbol.length) {
+        record[@"symbolResolution"] = @"dladdr-nearest-symbol";
+    }
+
+    BOOL objcRuntime = HFAKnownObjCRuntimeSymbol(symbol);
+    if (objcRuntime) {
+        record[@"classification"] = @"objc-runtime-dispatch";
+        record[@"objcRuntimeDispatch"] = @YES;
+        record[@"objcRuntimeFamily"] = [symbol containsString:@"objc_msgSend"] ? @"message-send" : @"objc-runtime-helper";
+        if (regs[0].kind != HFARegUnknown) record[@"receiverEvidence"] = HFARegEvidence(regs[0]);
+        if (regs[1].kind != HFARegUnknown) {
+            record[@"selectorRegisterEvidence"] = HFARegEvidence(regs[1]);
+            NSString *selector = HFAReadCStringBounded(regs[1].value);
+            if (selector.length) {
+                record[@"selectorCandidate"] = selector;
+                record[@"selectorResolution"] = @"bounded-x1-cstring-read";
+            }
+        }
+    } else {
+        record[@"objcRuntimeDispatch"] = @NO;
+    }
+
+    NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)target);
+    if (method) {
+        record[@"classification"] = @"assembly-csharp-method-pointer";
+        record[@"il2cppMethod"] = method;
+    }
+    return [record autorelease];
+}
+
 static uint64_t HFABranchTarget26(uint64_t pc, uint32_t instruction) {
     int64_t imm26 = HFASignExtend(instruction & 0x03ffffffU, 26) << 2;
     return (uint64_t)((int64_t)pc + imm26);
@@ -113,6 +207,7 @@ static NSMutableDictionary *HFACallRecord(uint64_t base, uint64_t rva,
         @"targetRVAIfSameImage": target >= base ? @(target - base) : @0,
         @"arguments": args,
         @"abi": @"arm64-x0-x7-candidate",
+        @"runtimeTarget": HFARuntimeTargetClassification(target, regs),
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO
     } mutableCopy];
@@ -151,7 +246,7 @@ static void HFAEnqueueBlock(NSMutableArray *queue, NSMutableSet *scheduled,
 NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                                               NSString *implementationPath) {
     if (!implementation || !implementationPath.length)
-        return @{ @"schema": @"com.hfa.stripped-action/v3", @"status": @"missing-input",
+        return @{ @"schema": @"com.hfa.stripped-action/v4", @"status": @"missing-input",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO };
 
     NSTimeInterval indexDeadline = NSDate.date.timeIntervalSince1970 + 0.75;
@@ -159,7 +254,7 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
 
     Dl_info info = {};
     if (!dladdr(implementation, &info) || !info.dli_fbase)
-        return @{ @"schema": @"com.hfa.stripped-action/v3", @"status": @"dladdr-failed",
+        return @{ @"schema": @"com.hfa.stripped-action/v4", @"status": @"dladdr-failed",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO,
                   @"il2cppMethodIndex": methodIndex ?: @{} };
 
@@ -205,7 +300,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
             ++decoded;
             uint64_t rva = pc - base;
 
-            // ADRP Xd, imm21
             if ((insn & 0x9f000000U) == 0x90000000U) {
                 unsigned rd = insn & 31U;
                 int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
@@ -213,7 +307,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 if (rd < 31) regs[rd] = { HFARegAddress, (pc & ~0xfffULL) + imm, rva };
                 continue;
             }
-            // ADR Xd, imm21
             if ((insn & 0x9f000000U) == 0x10000000U) {
                 unsigned rd = insn & 31U;
                 int64_t imm = HFASignExtend((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
@@ -221,13 +314,11 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 if (rd < 31) regs[rd] = { HFARegAddress, pc + imm, rva };
                 continue;
             }
-            // MOV Xd, Xm alias of ORR Xd, XZR, Xm.
             if ((insn & 0xffe0ffe0U) == 0xaa0003e0U) {
                 unsigned rd = insn & 31U, rm = (insn >> 16) & 31U;
                 if (rd < 31 && rm < 31) { regs[rd] = regs[rm]; regs[rd].sourceRVA = rva; }
                 continue;
             }
-            // ADD (immediate), 64-bit
             if ((insn & 0xffc00000U) == 0x91000000U) {
                 unsigned rd = insn & 31U, rn = (insn >> 5) & 31U;
                 uint64_t imm12 = (insn >> 10) & 0xfffU;
@@ -236,7 +327,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                     regs[rd] = { regs[rn].kind, regs[rn].value + imm12, rva };
                 continue;
             }
-            // MOVZ 64-bit
             if ((insn & 0xff800000U) == 0xd2800000U) {
                 unsigned rd = insn & 31U;
                 uint64_t imm16 = (insn >> 5) & 0xffffU;
@@ -244,7 +334,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 if (rd < 31) regs[rd] = { HFARegImmediate, imm16 << shift, rva };
                 continue;
             }
-            // MOVK 64-bit
             if ((insn & 0xff800000U) == 0xf2800000U) {
                 unsigned rd = insn & 31U;
                 uint64_t imm16 = (insn >> 5) & 0xffffU;
@@ -254,7 +343,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 if (rd < 31) regs[rd] = { HFARegImmediate, (prior & mask) | (imm16 << shift), rva };
                 continue;
             }
-            // LDR Xt, literal (PC-relative imm19).
             if ((insn & 0xff000000U) == 0x58000000U) {
                 unsigned rt = insn & 31U;
                 uint64_t slot = HFABranchTarget19(pc, insn), loaded = 0;
@@ -262,7 +350,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                     regs[rt] = { HFARegLoadedPointer, loaded, rva };
                 continue;
             }
-            // LDR Xt, [Xn,#imm] unsigned immediate.
             if ((insn & 0xffc00000U) == 0xf9400000U) {
                 unsigned rt = insn & 31U, rn = (insn >> 5) & 31U;
                 uint64_t imm = ((insn >> 10) & 0xfffU) << 3;
@@ -272,7 +359,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 }
                 continue;
             }
-            // LDUR Xt, [Xn,#simm9].
             if ((insn & 0xffe00c00U) == 0xf8400000U) {
                 unsigned rt = insn & 31U, rn = (insn >> 5) & 31U;
                 int64_t imm9 = HFASignExtend((insn >> 12) & 0x1ffU, 9);
@@ -282,7 +368,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 }
                 continue;
             }
-            // BL imm26: record call and follow same-image helper with bounded depth.
             if ((insn & 0xfc000000U) == 0x94000000U) {
                 uint64_t target = HFABranchTarget26(pc, insn);
                 if (calls.count < kHFAActionMaxCalls) {
@@ -293,7 +378,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
                 continue;
             }
-            // BLR Xn: cached IL2CPP pointers/callbacks.
             if ((insn & 0xfffffc1fU) == 0xd63f0000U) {
                 unsigned rn = (insn >> 5) & 31U;
                 if (rn < 31 && regs[rn].kind != HFARegUnknown) {
@@ -311,7 +395,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 }
                 continue;
             }
-            // BR Xn: dispatcher/jump-table tail branch.
             if ((insn & 0xfffffc1fU) == 0xd61f0000U) {
                 unsigned rn = (insn >> 5) & 31U;
                 NSMutableDictionary *branch = [@{
@@ -323,6 +406,7 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                     uint64_t target = regs[rn].value;
                     branch[@"targetRuntime"] = @(target);
                     branch[@"targetRegisterEvidence"] = HFARegEvidence(regs[rn]);
+                    branch[@"runtimeTarget"] = HFARuntimeTargetClassification(target, regs);
                     NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)target);
                     if (method) {
                         branch[@"il2cppMethod"] = method;
@@ -338,7 +422,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 [branch release];
                 break;
             }
-            // B imm26: terminate block and enqueue target.
             if ((insn & 0xfc000000U) == 0x14000000U) {
                 uint64_t target = HFABranchTarget26(pc, insn);
                 if (branches.count < kHFAActionMaxBranches)
@@ -347,7 +430,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 HFAEnqueueBlock(queue, scheduled, target, depth + 1, regs, info.dli_fbase);
                 break;
             }
-            // CBZ/CBNZ: enqueue taken target and fall-through, then terminate block.
             if ((insn & 0x7e000000U) == 0x34000000U) {
                 uint64_t target = HFABranchTarget19(pc, insn);
                 if (branches.count < kHFAActionMaxBranches)
@@ -357,7 +439,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
                 break;
             }
-            // TBZ/TBNZ.
             if ((insn & 0x7e000000U) == 0x36000000U) {
                 uint64_t target = HFABranchTarget14(pc, insn);
                 if (branches.count < kHFAActionMaxBranches)
@@ -367,7 +448,6 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
                 break;
             }
-            // B.cond imm19.
             if ((insn & 0xff000010U) == 0x54000000U) {
                 uint64_t target = HFABranchTarget19(pc, insn);
                 if (branches.count < kHFAActionMaxBranches)
@@ -377,12 +457,35 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                 HFAEnqueueBlock(queue, scheduled, pc + 4ULL, depth + 1, regs, info.dli_fbase);
                 break;
             }
-            if ((insn & 0xfffffc1fU) == 0xd65f0000U) break; // RET
+            if ((insn & 0xfffffc1fU) == 0xd65f0000U) break;
+        }
+    }
+
+    NSUInteger objcRuntimeDispatchCount = 0;
+    NSMutableArray *objcRuntimeDispatches = [NSMutableArray array];
+    for (NSDictionary *call in calls) {
+        NSDictionary *target = call[@"runtimeTarget"];
+        if ([target[@"objcRuntimeDispatch"] boolValue]) {
+            ++objcRuntimeDispatchCount;
+            if (objcRuntimeDispatches.count < 64) [objcRuntimeDispatches addObject:@{
+                @"source": @"call", @"callsiteRVA": call[@"callsiteRVA"] ?: @0,
+                @"kind": call[@"kind"] ?: @"call", @"runtimeTarget": target
+            }];
+        }
+    }
+    for (NSDictionary *branch in indirectBranches) {
+        NSDictionary *target = branch[@"runtimeTarget"];
+        if ([target[@"objcRuntimeDispatch"] boolValue]) {
+            ++objcRuntimeDispatchCount;
+            if (objcRuntimeDispatches.count < 64) [objcRuntimeDispatches addObject:@{
+                @"source": @"indirect-branch", @"fromRVA": branch[@"fromRVA"] ?: @0,
+                @"kind": branch[@"kind"] ?: @"branch", @"runtimeTarget": target
+            }];
         }
     }
 
     return @{
-        @"schema": @"com.hfa.stripped-action/v3",
+        @"schema": @"com.hfa.stripped-action/v4",
         @"status": decoded ? @"cfg-decoded" : @"no-readable-code",
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO,
@@ -398,6 +501,8 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
         @"branches": branches,
         @"indirectBranches": indirectBranches,
         @"unresolvedIndirectBranchCount": @(unresolvedIndirectBranches),
+        @"objcRuntimeDispatchCount": @(objcRuntimeDispatchCount),
+        @"objcRuntimeDispatches": objcRuntimeDispatches,
         @"il2cppMethodIndex": methodIndex ?: @{},
         @"il2cppCorrelationCount": @(il2cppCorrelations),
         @"capabilities": @[ @"bounded-cfg-worklist", @"adr", @"adrp", @"add-immediate",
@@ -405,8 +510,11 @@ NSDictionary *HFAMapAnalyzeStrippedActionIMP(const void *implementation,
                              @"movz", @"movk", @"bl", @"blr", @"br", @"b",
                              @"b-cond", @"cbz-cbnz", @"tbz-tbnz",
                              @"same-image-helper-traversal", @"x0-x7-cfg-provenance",
-                             @"bounded-cstring-probe", @"assembly-csharp-method-pointer-correlation" ],
-        @"referenceModel": @"verify.dylib-arm64-relocation-and-register-context-coverage",
-        @"policy": @"read-only-bounded-cfg-no-hook-no-callback-invocation-no-memory-write"
+                             @"bounded-cstring-probe", @"assembly-csharp-method-pointer-correlation",
+                             @"dladdr-runtime-target-classification", @"dlsym-known-objc-runtime-match",
+                             @"objc-msgsend-family-classification", @"x1-selector-candidate",
+                             @"x0-receiver-provenance" ],
+        @"referenceModel": @"verify.dylib-arm64-relocation-register-context-and-runtime-dispatch-coverage",
+        @"policy": @"read-only-bounded-cfg-no-hook-no-selector-invocation-no-memory-write"
     };
 }
