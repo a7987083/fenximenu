@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import "HFAMapCore.h"
 #import "HFAMapOutputName.h"
+#import "HFAMapTargetedSecretProbe.h"
 
 static UIView *gHFAMapPanel = nil;
 static UIButton *gHFAMapButton = nil;
@@ -70,17 +71,25 @@ static void HFAMapTogglePanel(void)
 }
 - (void)probe
 {
-    if (HFAMapRuntimeProbeIsActive()) {
-        gHFAMapStatus.text = @"Stopping runtime probe…";
+    if (HFAMapRuntimeProbeIsActive() || HFAMapTargetedSecretProbeIsActive()) {
+        gHFAMapStatus.text = @"Stopping runtime probes…";
+        HFAMapStopTargetedSecretProbe(@"manual-stop");
         HFAMapStopActiveRuntimeProbe(@"manual-stop");
         return;
     }
-    gHFAMapStatus.text = @"Runtime probe armed for 8s.\nTap one original menu control.";
+
+    NSDictionary *targeted = HFAMapArmTargetedSecretProbe(nil, 8.0);
+    NSNumber *installed = targeted[@"installed"] ?: @0;
+    NSString *targetImage = targeted[@"image"] ?: @"no unique menu image";
+    gHFAMapStatus.text = [NSString stringWithFormat:
+        @"Runtime probes armed for 8s.\nTarget: %@ — %@ secret hook(s).\nTap one original menu control.",
+        targetImage, installed];
+
     HFAMapArmLastSelectedRuntimeProbe(^(NSDictionary *summary) {
         NSString *status = summary[@"status"] ?: @"?";
         if ([status isEqualToString:@"complete"])
             gHFAMapStatus.text = [NSString stringWithFormat:
-                @"Probe complete — %@ events.\nSee %@",
+                @"Probe complete — %@ events.\nSee %@ + HFAMap_Learn.log",
                 summary[@"eventCount"] ?: @0, HFAOutputFileName(@"RuntimeProbe.json")];
         else
             gHFAMapStatus.text = [NSString stringWithFormat:@"Probe stopped: %@", status];
@@ -111,7 +120,7 @@ static BOOL HFAMapInstallFloatingUI(void)
                action:@selector(toggle)
      forControlEvents:UIControlEventTouchUpInside];
 
-    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 250.0, 244.0)];
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 250.0, 264.0)];
     panel.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.94];
     panel.layer.cornerRadius = 12.0;
     panel.layer.borderWidth = 1.0;
@@ -119,7 +128,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.4.2-dev Stripped Static Suite";
+    title.text = @"HFAMap v2.4.3-dev Verify Architecture";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
@@ -138,15 +147,15 @@ static BOOL HFAMapInstallFloatingUI(void)
     probe.frame = CGRectMake(14.0, 96.0, 222.0, 42.0);
     probe.backgroundColor = [UIColor colorWithRed:0.46 green:0.24 blue:0.66 alpha:1.0];
     probe.layer.cornerRadius = 8.0;
-    [probe setTitle:@"Arm Runtime Probe (8s)" forState:UIControlStateNormal];
+    [probe setTitle:@"Arm Targeted Runtime Probe (8s)" forState:UIControlStateNormal];
     [probe setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [probe addTarget:[HFAMapFloatingTarget shared] action:@selector(probe)
       forControlEvents:UIControlEventTouchUpInside];
     [panel addSubview:probe];
 
-    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 146.0, 222.0, 84.0)];
-    status.text = @"Open original menu, then scan.\nProbe is optional and observes only\nyour next original-menu control event.";
-    status.numberOfLines = 4;
+    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 146.0, 222.0, 104.0)];
+    status.text = @"Open original menu, then scan.\nRuntime probe is explicit and temporary.\nIt only inspects the selected menu image;\nno process-wide Objective-C class scan.";
+    status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];
     [panel addSubview:status];
@@ -181,7 +190,7 @@ static void HFAMapScheduleInstall(NSUInteger attempt)
 
 static void HFAMapInitialize(void)
 {
-    NSLog(@"[HFAMap] Theos build entry loaded");
+    NSLog(@"[HFAMap] v2.4.3 Verify Architecture entry loaded");
     HFAMapScheduleInstall(0);
 }
 
