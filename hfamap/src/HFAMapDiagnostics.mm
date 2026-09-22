@@ -36,7 +36,7 @@ NSString *HFADiagnosticsBeginSession(void) {
     NSString *session = gHFASessionID;
     pthread_mutex_unlock(&gHFADiagnosticsLock);
     HFADiagnosticsLog(@"session", @"start", @{
-        @"version": @"2.4.5-dev-dispatcher-cfg-correlator",
+        @"version": @"2.4.6-dev-decoupled-discovery-analysis",
         @"hostAppName": HFAHostAppName(),
         @"process": NSProcessInfo.processInfo.processName ?: @"?",
         @"os": UIDevice.currentDevice.systemVersion ?: @"?"
