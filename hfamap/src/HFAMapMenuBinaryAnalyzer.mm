@@ -7,8 +7,11 @@ static const uint32_t kHFAMenuMaxSymbols = 200000;
 static const NSUInteger kHFAMenuMaxFunctions = 4096;
 static const NSUInteger kHFAMenuMaxPrimitiveSymbols = 64;
 static const NSUInteger kHFAMenuMaxEntrySymbols = 128;
+static const NSUInteger kHFAMenuMaxDispatcherSymbols = 256;
 static const NSUInteger kHFAMenuMaxCallEdges = 256;
+static const NSUInteger kHFAMenuMaxArgumentEvidence = 8;
 static const uint64_t kHFAMenuMaxFunctionBytes = 4096;
+static const uint64_t kHFAMenuArgumentWindowBytes = 32;
 
 static BOOL HFAExpired(NSTimeInterval deadline) {
     return [[NSDate date] timeIntervalSince1970] > deadline;
@@ -45,10 +48,32 @@ static BOOL HFAMenuEntryLike(NSString *name) {
            [name containsString:@"ModMenu"];
 }
 
+static NSString *HFADispatcherSelector(NSString *name) {
+    if (!name.length) return nil;
+    NSRange r = [name rangeOfString:@"objc_msgSend$"];
+    if (r.location == NSNotFound) return nil;
+    NSUInteger start = NSMaxRange(r);
+    if (start >= name.length) return nil;
+    return [name substringFromIndex:start];
+}
+
 static int64_t HFASignExtend26(uint32_t value) {
     int64_t signedValue = value & 0x03ffffffU;
     if (signedValue & 0x02000000LL) signedValue |= ~0x03ffffffLL;
     return signedValue;
+}
+
+static NSDictionary *HFAMovWideImmediateEvidence(uint32_t instruction, uint64_t rva) {
+    // ARM64 MOVZ (32/64-bit). This is candidate evidence only; no ABI ownership is claimed.
+    if ((instruction & 0x7f800000U) != 0x52800000U) return nil;
+    unsigned reg = instruction & 0x1fU;
+    unsigned hw = (instruction >> 21) & 0x3U;
+    uint64_t imm16 = (instruction >> 5) & 0xffffU;
+    uint64_t value = imm16 << (hw * 16U);
+    return @{ @"kind": @"movz-immediate-candidate",
+              @"instructionRVA": @(rva), @"register": @(reg),
+              @"value": @(value), @"valueHex": [NSString stringWithFormat:@"0x%llX", value],
+              @"argumentBinding": @"unproven" };
 }
 
 NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
@@ -92,7 +117,7 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
 
     if (!symtab || !linkedit || !textVMAddr || !textSize || !textSectionIndex ||
         !symtab->nsyms || symtab->nsyms > kHFAMenuMaxSymbols) {
-        return @{ @"schema": @"com.hfa.menu-callgraph/v1",
+        return @{ @"schema": @"com.hfa.menu-callgraph/v2",
                   @"status": @"symbol-table-unavailable",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO };
     }
@@ -105,7 +130,7 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
         stringsEnd < symtab->stroff || symtab->symoff < linkedit->fileoff ||
         symtab->stroff < linkedit->fileoff || symbolsEnd > linkeditEnd ||
         stringsEnd > linkeditEnd) {
-        return @{ @"schema": @"com.hfa.menu-callgraph/v1",
+        return @{ @"schema": @"com.hfa.menu-callgraph/v2",
                   @"status": @"invalid-linkedit-bounds",
                   @"analysisOnly": @YES, @"canonicalEligible": @NO };
     }
@@ -118,20 +143,30 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
     NSMutableArray *functions = [NSMutableArray array];
     NSMutableArray *primitiveSymbols = [NSMutableArray array];
     NSMutableArray *entrySymbols = [NSMutableArray array];
+    NSMutableArray *dispatcherSymbols = [NSMutableArray array];
     NSMutableDictionary *primitiveByAddress = [NSMutableDictionary dictionary];
     uint64_t textEnd = textVMAddr + textSize;
-    BOOL truncatedFunctions = NO;
+    BOOL truncatedFunctions = NO, dispatcherTruncated = NO;
 
     for (uint32_t i = 0; i < symtab->nsyms; ++i) {
         if (HFAExpired(deadline)) break;
         const struct nlist_64 *item = &symbols[i];
-        if ((item->n_type & N_STAB) || (item->n_type & N_TYPE) != N_SECT ||
-            item->n_sect != textSectionIndex || !item->n_value ||
-            item->n_value < textVMAddr || item->n_value >= textEnd ||
-            item->n_un.n_strx >= symtab->strsize) continue;
+        if ((item->n_type & N_STAB) || item->n_un.n_strx >= symtab->strsize) continue;
         NSString *name = HFASymbolString(strings + item->n_un.n_strx,
                                          symtab->strsize - item->n_un.n_strx);
         if (!name.length) continue;
+
+        NSString *selector = HFADispatcherSelector(name);
+        if (selector.length) {
+            if (dispatcherSymbols.count < kHFAMenuMaxDispatcherSymbols)
+                [dispatcherSymbols addObject:@{ @"symbol": name, @"selector": selector }];
+            else
+                dispatcherTruncated = YES;
+        }
+
+        if ((item->n_type & N_TYPE) != N_SECT || item->n_sect != textSectionIndex ||
+            !item->n_value || item->n_value < textVMAddr || item->n_value >= textEnd) continue;
+
         uint64_t rva = item->n_value;
         uint64_t runtimeAddress = item->n_value + slide;
         NSDictionary *symbolRecord = @{ @"name": name, @"rva": @(rva),
@@ -177,8 +212,7 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
         if (!span) continue;
         ++scannedFunctions;
         scannedTextBytes += span;
-        const uint32_t *instructions =
-            (const uint32_t *)(uintptr_t)(startRVA + slide);
+        const uint32_t *instructions = (const uint32_t *)(uintptr_t)(startRVA + slide);
         for (uint64_t offset = 0; offset < span; offset += 4) {
             uint32_t instruction = instructions[offset / 4];
             if ((instruction & 0xfc000000U) != 0x94000000U) continue;
@@ -187,6 +221,18 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
             uint64_t targetRuntime = (uint64_t)((int64_t)callsiteRuntime + displacement);
             NSDictionary *primitive = primitiveByAddress[@(targetRuntime)];
             if (!primitive) continue;
+
+            NSMutableArray *argumentEvidence = [NSMutableArray array];
+            uint64_t windowStart = offset > kHFAMenuArgumentWindowBytes ?
+                offset - kHFAMenuArgumentWindowBytes : 0;
+            for (uint64_t evidenceOffset = windowStart;
+                 evidenceOffset < offset && argumentEvidence.count < kHFAMenuMaxArgumentEvidence;
+                 evidenceOffset += 4) {
+                NSDictionary *ev = HFAMovWideImmediateEvidence(instructions[evidenceOffset / 4],
+                                                               startRVA + evidenceOffset);
+                if (ev) [argumentEvidence addObject:ev];
+            }
+
             [edges addObject:@{
                 @"callerSymbol": caller[@"name"] ?: @"?",
                 @"callerRVA": @(startRVA),
@@ -194,7 +240,9 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
                 @"primitive": primitive[@"kind"] ?: @"?",
                 @"primitiveSymbol": primitive[@"name"] ?: @"?",
                 @"primitiveRVA": primitive[@"rva"] ?: @0,
-                @"edgeType": @"arm64-direct-bl"
+                @"edgeType": @"arm64-direct-bl",
+                @"argumentEvidence": argumentEvidence,
+                @"argumentEvidencePolicy": @"candidate-only-no-abi-binding"
             }];
             if (edges.count >= kHFAMenuMaxCallEdges) break;
         }
@@ -204,7 +252,7 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
         (edges.count ? @"direct-call-edges-found" : @"primitives-found-no-direct-call-edges") :
         @"no-known-patch-primitives";
     return @{
-        @"schema": @"com.hfa.menu-callgraph/v1",
+        @"schema": @"com.hfa.menu-callgraph/v2",
         @"status": status,
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO,
@@ -215,8 +263,11 @@ NSDictionary *HFAMapAnalyzeMenuBinary(const struct mach_header_64 *header,
         @"scannedTextBytes": @(scannedTextBytes),
         @"primitiveSymbols": primitiveSymbols,
         @"menuEntrySymbols": entrySymbols,
+        @"dispatcherSymbols": dispatcherSymbols,
+        @"dispatcherInventoryTruncated": @(dispatcherTruncated),
         @"directPatchCallEdges": edges,
         @"directPatchCallerCount": @([[NSSet setWithArray:[edges valueForKey:@"callerSymbol"]] count]),
-        @"addressSemantics": @"unslid-mach-o-vmaddr-rva"
+        @"addressSemantics": @"unslid-mach-o-vmaddr-rva",
+        @"argumentSemantics": @"near-callsite-immediate-candidates-not-proven-arguments"
     };
 }
