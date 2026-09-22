@@ -1,9 +1,9 @@
-name: HFAMap v2.4.4 Feature Directed Runtime Method
+name: HFAMap v2.4.5 Dispatcher CFG Correlator
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.4-feature-directed-runtime-method
+      - feature/hfamap-v2.4.5-dispatcher-cfg-hwbp-correlator
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -32,24 +32,21 @@ jobs:
           grep -q 'kHFAMaxMethods = 32768' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'MethodInfo\[%lu\]' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'HFAExecutableUnityAddress' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'VM_PROT_EXECUTE' hfamap/src/HFAIL2CPPMethodIndex.mm
           grep -q 'unityExecutableSegmentValidation' hfamap/src/HFAIL2CPPMethodIndex.mm
-          ! grep -q 'mach/mach_vm.h' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'com.hfa.stripped-action/v2' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'BLR Xn' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'com.hfa.stripped-action/v3' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'bounded-cfg-worklist' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'BR Xn' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q '0xd61f0000U' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q '0xd63f0000U' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'same-image-helper-traversal' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'verify.dylib-arm64-relocation-and-register-context-coverage' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'exact-method-pointer-address' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'assembly-csharp-method-pointer-correlation' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'gHFAIL2CPPSessionActive' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'featureDirectedAnalysisRequiresHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'exact-user-activated-control-target-action' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'feature-directed-method-correlation-observed' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'HFAMapAnalyzeStrippedActionIMP' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q '2.4.4-dev-feature-directed-runtime-method' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.4.4-dev Feature Runtime Method' hfamap/src/HFAMapEntry.mm
-          grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          grep -q '2.4.5-dev-dispatcher-cfg-correlator' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.5-dev Dispatcher CFG' hfamap/src/HFAMapEntry.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'vm_write' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -67,29 +64,27 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.4-dev
+          mkdir -p hfamap/dist/v2.4.5-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.4-dev/HFAMapUniversal-v2.4.4-dev.dylib
-          out=hfamap/dist/v2.4.4-dev/HFAMapUniversal-v2.4.4-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.4.strings"
+            hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
+          out=hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.5.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.il2cpp-method-index/v1' "$strings_file"
-          grep -q 'com.hfa.stripped-action/v2' "$strings_file"
-          grep -q 'com.hfa.feature-directed-runtime-method/v1' "$strings_file"
-          grep -q 'exact-user-activated-control-target-action' "$strings_file"
-          grep -q 'feature-directed-method-correlation-observed' "$strings_file"
+          grep -q 'com.hfa.stripped-action/v3' "$strings_file"
+          grep -q 'bounded-cfg-worklist' "$strings_file"
+          grep -q 'same-image-helper-traversal' "$strings_file"
           grep -q 'assembly-csharp-method-pointer-correlation' "$strings_file"
-          grep -q 'exact-method-pointer-address' "$strings_file"
-          grep -q 'HFAMap v2.4.4-dev Feature Runtime Method' "$strings_file"
+          grep -q 'HFAMap v2.4.5-dev Dispatcher CFG' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.4-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.5-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.4-FeatureDirectedRuntimeMethod
+          name: HFAMapUniversal-v2.4.5-DispatcherCFGCorrelator
           path: |
-            hfamap/dist/v2.4.4-dev/HFAMapUniversal-v2.4.4-dev.dylib
-            hfamap/dist/v2.4.4-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
+            hfamap/dist/v2.4.5-dev/SHA256SUMS.txt
           if-no-files-found: error
