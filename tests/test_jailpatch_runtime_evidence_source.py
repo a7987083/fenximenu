@@ -55,7 +55,7 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
 
     def test_version_and_ui_are_advanced(self):
         self.assertIn('2.3.8-dev-dual-runtime-probe', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.3.8-dev Dual Runtime Probe', ENTRY)
+        self.assertIn('HFAMap v2.4.0-dev Menu Binary Evidence', ENTRY)
 
 
 if __name__ == "__main__":
