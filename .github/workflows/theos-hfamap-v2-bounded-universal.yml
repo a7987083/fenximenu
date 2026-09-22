@@ -51,6 +51,7 @@ jobs:
           cmake -S "$RUNNER_TEMP/Dobby" -B "$RUNNER_TEMP/Dobby/build-hfa-arm64" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
             -DCMAKE_OSX_SYSROOT="$DOBBY_SDK" \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
@@ -91,6 +92,8 @@ jobs:
           nm -gU "$out" | grep -q '_DobbyDestroy'
           ! otool -L "$out" | grep -qi dobby
           otool -L "$out"
+          stat -f 'size=%z' "$out"
+          dwarfdump --uuid "$out"
           shasum -a 256 "$out" | tee hfamap/dist/v2.3.9-dev/SHA256SUMS.txt
 
       - name: Upload dylib
