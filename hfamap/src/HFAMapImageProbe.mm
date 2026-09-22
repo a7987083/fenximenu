@@ -9,7 +9,7 @@
 
 static const uint64_t kHFAMaxStringSection = 32ULL * 1024ULL * 1024ULL;
 static const uint32_t kHFAMaxImages = 2048;
-static const char *kHFAMenuBinaryEvidenceSchema = "com.hfa.menu-binary-evidence/v1";
+static const char *kHFAMenuBinaryEvidenceSchema = "com.hfa.menu-binary-evidence/v2";
 
 static NSDictionary *HFAObjectiveCFingerprint(NSString *path) {
     unsigned classCount = 0;
@@ -133,28 +133,56 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         }
         cursor += lc->cmdsize;
     }
+
     NSDictionary *objc = HFAObjectiveCFingerprint(path);
     NSDictionary *menuCallGraph = HFAMapAnalyzeMenuBinary(header, slide, deadline);
     NSUInteger directPatchEdges = [menuCallGraph[@"directPatchCallEdges"] count];
-    NSUInteger primitiveSymbolCount = [menuCallGraph[@"primitiveSymbols"] count];
+    NSArray *primitiveSymbols = menuCallGraph[@"primitiveSymbols"] ?: @[];
     unsigned structure = [objc[@"structureScore"] unsignedIntValue];
-    NSString *family = @"unknown";
-    if ((patchPrimitive >= 40 || (primitiveSymbolCount >= 2 && directPatchEdges > 0)) &&
-        (ui >= 12 || structure >= 50 || directPatchEdges > 0)) family = @"memorypatch-menu";
-    else if (ui >= 30 && legacy >= 30 && legacy > jail) family = @"legacy-ap";
-    else if (ui >= 30 && jail >= 28) family = @"jailpatch";
-    else if (ui >= 30 || (ui >= 20 && structure >= 50)) family = @"runtime-menu";
-    unsigned score = [family isEqualToString:@"unknown"] ? 0U
+
+    NSString *menuFamily = @"unknown";
+    if (ui >= 30 && legacy >= 30 && legacy > jail) menuFamily = @"legacy-ap";
+    else if (ui >= 30 && jail >= 28) menuFamily = @"jailpatch";
+    else if (ui >= 30 || (ui >= 20 && structure >= 50)) menuFamily = @"runtime-menu";
+
+    NSMutableOrderedSet *patchBackends = [NSMutableOrderedSet orderedSet];
+    if (patchPrimitive >= 24 || primitiveSymbols.count) [patchBackends addObject:@"memorypatch"];
+    if (HFAContains((const uint8_t *)"CodePatch", 9, "CodePatch")) {
+        for (NSString *hit in hits)
+            if ([hit containsString:@"CodePatch"]) { [patchBackends addObject:@"codepatch"]; break; }
+    }
+    for (NSDictionary *primitive in primitiveSymbols) {
+        NSString *kind = primitive[@"kind"];
+        if ([kind isEqualToString:@"CodePatch"]) [patchBackends addObject:@"codepatch"];
+    }
+
+    BOOL patchBackendOnlyCandidate = [menuFamily isEqualToString:@"unknown"] &&
+        patchBackends.count && (ui >= 12 || structure >= 50 || directPatchEdges > 0);
+    NSString *compatFamily = patchBackendOnlyCandidate ? @"runtime-menu" : menuFamily;
+    unsigned score = [compatFamily isEqualToString:@"unknown"] ? 0U
         : MIN(100U, ui + MIN(MAX(MAX(legacy, jail), patchPrimitive), 45U) + MIN(structure, 25U) +
                     (unsigned)MIN(directPatchEdges * 5U, 20U));
-    NSMutableDictionary *record = [@{ @"schema": [NSString stringWithUTF8String:kHFAMenuBinaryEvidenceSchema],
-              @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
-              @"score": @(score), @"menuScore": @(ui), @"legacyScore": @(legacy),
-              @"jailpatchScore": @(jail), @"patchPrimitiveScore": @(patchPrimitive),
-              @"patchPrimitiveEvidenceOnly": @YES, @"canonicalEligible": @NO,
-              @"evidence": hits, @"scannedBytes": @(scanned),
-              @"menuCallGraph": menuCallGraph ?: @{},
-              @"directPatchCallEdgeCount": @(directPatchEdges) } mutableCopy];
+
+    NSMutableDictionary *record = [@{
+        @"schema": [NSString stringWithUTF8String:kHFAMenuBinaryEvidenceSchema],
+        @"path": path,
+        @"image": path.lastPathComponent ?: @"?",
+        @"family": compatFamily,
+        @"menuFamily": menuFamily,
+        @"patchBackends": patchBackends.array,
+        @"patchBackendOnlyCandidate": @(patchBackendOnlyCandidate),
+        @"score": @(score),
+        @"menuScore": @(ui),
+        @"legacyScore": @(legacy),
+        @"jailpatchScore": @(jail),
+        @"patchPrimitiveScore": @(patchPrimitive),
+        @"patchPrimitiveEvidenceOnly": @YES,
+        @"canonicalEligible": @NO,
+        @"evidence": hits,
+        @"scannedBytes": @(scanned),
+        @"menuCallGraph": menuCallGraph ?: @{},
+        @"directPatchCallEdgeCount": @(directPatchEdges)
+    } mutableCopy];
     if (imageUUID.length) record[@"menuUUID"] = imageUUID;
     record[@"hostBundleID"] = NSBundle.mainBundle.bundleIdentifier ?: @"?";
     record[@"hostVersion"] = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?";
