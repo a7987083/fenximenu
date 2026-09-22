@@ -36,7 +36,7 @@ NSString *HFADiagnosticsBeginSession(void) {
     NSString *session = gHFASessionID;
     pthread_mutex_unlock(&gHFADiagnosticsLock);
     HFADiagnosticsLog(@"session", @"start", @{
-        @"version": @"2.4.2-dev-stripped-menu-static-suite",
+        @"version": @"2.4.3-dev-verify-architecture",
         @"hostAppName": HFAHostAppName(),
         @"process": NSProcessInfo.processInfo.processName ?: @"?",
         @"os": UIDevice.currentDevice.systemVersion ?: @"?"
@@ -77,8 +77,4 @@ void HFADiagnosticsLog(NSString *stage, NSString *status, NSDictionary *details)
     HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")],
               [plain dataUsingEncoding:NSUTF8StringEncoding]);
     pthread_mutex_unlock(&gHFADiagnosticsLock);
-}
-
-void HFADiagnosticsFinishSession(NSString *status, NSDictionary *details) {
-    HFADiagnosticsLog(@"session", status ?: @"complete", details);
 }
