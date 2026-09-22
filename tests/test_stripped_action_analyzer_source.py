@@ -39,11 +39,12 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
         self.assertIn('unresolvedIndirectBranchCount', ACTION)
         self.assertIn('exact-method-pointer-address', ACTION)
         self.assertIn('assembly-csharp-method-pointer-correlation', ACTION)
-        self.assertIn('verify.dylib-arm64-relocation-register-context-and-runtime-dispatch-coverage', ACTION)
+        self.assertIn('assembly-csharp-containing-method-range', ACTION)
+        self.assertIn('verify.dylib-native-dispatch-plus-h5gg-1.9.6-offset-to-method', ACTION)
 
     def test_objc_runtime_targets_are_classified_without_invocation(self):
         for token in (
-            'com.hfa.stripped-action/v4', 'HFARuntimeTargetClassification',
+            'com.hfa.stripped-action/v5', 'HFARuntimeTargetClassification',
             'objc-runtime-dispatch', 'objcRuntimeDispatchCount', 'objcRuntimeDispatches',
             'dlsym-known-objc-runtime-match', 'x1-selector-candidate',
             'x0-receiver-provenance', 'bounded-x1-cstring-read',
@@ -52,6 +53,15 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
             self.assertIn(token, ACTION)
         self.assertNotIn('objc_msgSend(', ACTION)
         self.assertNotIn('method_invoke', ACTION)
+
+    def test_call_return_and_objc_message_chain_are_explicit(self):
+        for token in (
+            'HFARegCallResult', 'HFAClobberCallerSaved', 'arm64-call-return-clobber-model',
+            'HFASummarizeSameImageTailStub', 'objc-message-send-stub',
+            'objc-message-chain', 'messageChains', 'objcMessageChainCount',
+            'arm64-x0-return-provenance', 'returnProvenance',
+        ):
+            self.assertIn(token, ACTION)
 
     def test_objc_inventory_does_not_require_function_symbols(self):
         for token in (
@@ -66,6 +76,7 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
         self.assertIn("src/HFAMapStrippedActionAnalyzer.mm", MAKEFILE)
         self.assertIn("src/HFAMapObjCActionInventory.mm", MAKEFILE)
         self.assertIn("src/HFAIL2CPPMethodIndex.mm", MAKEFILE)
+        self.assertIn("src/HFAIL2CPPMethodRangeIndex.mm", MAKEFILE)
 
 
 if __name__ == "__main__":
