@@ -31,14 +31,16 @@ class IL2CPPMethodIndexSourceTests(unittest.TestCase):
         self.assertIn('@"methodPointerFallback": @YES', INDEX)
         self.assertIn('@"unityExecutableSegmentValidation": @YES', INDEX)
 
-    def test_action_analyzer_correlates_bl_and_blr(self):
+    def test_action_analyzer_correlates_bl_blr_and_br(self):
         self.assertIn('BLR Xn', ACTION)
+        self.assertIn('BR Xn', ACTION)
         self.assertIn('0xd63f0000U', ACTION)
+        self.assertIn('0xd61f0000U', ACTION)
         self.assertIn('exact-method-pointer-address', ACTION)
         self.assertIn('assembly-csharp-method-pointer-correlation', ACTION)
         self.assertIn('@"il2cppMethodIndex"', ACTION)
         self.assertIn('@"il2cppCorrelationCount"', ACTION)
-        self.assertIn('com.hfa.stripped-action/v2', ACTION)
+        self.assertIn('com.hfa.stripped-action/v3', ACTION)
 
     def test_module_is_compiled(self):
         self.assertIn('src/HFAIL2CPPMethodIndex.mm', MAKEFILE)
