@@ -1,11 +1,13 @@
 #import "HFAIL2CPPMethodIndex.h"
 
 #import <Foundation/Foundation.h>
-#import <mach/mach.h>
-#import <mach/mach_vm.h>
+#import <mach-o/dyld.h>
+#import <mach-o/loader.h>
+#import <mach/vm_prot.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <string.h>
+#include <stdint.h>
 
 typedef void *(*HFADomainGetFn)(void);
 typedef const void **(*HFADomainGetAssembliesFn)(const void *domain, size_t *size);
@@ -37,58 +39,89 @@ static NSString *HFASafeCString(const char *s) {
     return [NSString stringWithUTF8String:s] ?: @"";
 }
 
-static BOOL HFAReadablePointer(const void *p) {
-    if (!p) return NO;
-    mach_vm_address_t address = (mach_vm_address_t)(uintptr_t)p;
-    mach_vm_size_t size = 0;
-    vm_region_basic_info_data_64_t info = {};
-    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
-    mach_port_t object = MACH_PORT_NULL;
-    kern_return_t kr = mach_vm_region(mach_task_self(), &address, &size, VM_REGION_BASIC_INFO_64,
-                                      (vm_region_info_t)&info, &count, &object);
-    if (object != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), object);
-    return kr == KERN_SUCCESS && (info.protection & VM_PROT_READ) != 0;
+static uintptr_t HFAUnityImageBase(void) {
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; ++i) {
+        const char *raw = _dyld_get_image_name(i);
+        if (!raw) continue;
+        NSString *path = [NSString stringWithUTF8String:raw] ?: @"";
+        NSString *name = path.lastPathComponent;
+        if ([name isEqualToString:@"UnityFramework"] ||
+            [path rangeOfString:@"UnityFramework.framework/UnityFramework" options:NSCaseInsensitiveSearch].location != NSNotFound)
+            return (uintptr_t)_dyld_get_image_header(i);
+    }
+    return 0;
 }
 
-static BOOL HFAExecutablePointer(const void *p) {
-    if (!p) return NO;
-    mach_vm_address_t address = (mach_vm_address_t)(uintptr_t)p;
-    mach_vm_size_t size = 0;
-    vm_region_basic_info_data_64_t info = {};
-    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
-    mach_port_t object = MACH_PORT_NULL;
-    kern_return_t kr = mach_vm_region(mach_task_self(), &address, &size, VM_REGION_BASIC_INFO_64,
-                                      (vm_region_info_t)&info, &count, &object);
-    if (object != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), object);
-    return kr == KERN_SUCCESS && (info.protection & VM_PROT_EXECUTE) != 0;
+static BOOL HFAExecutableUnityAddress(uintptr_t address) {
+    uintptr_t imageBase = HFAUnityImageBase();
+    if (!imageBase || !address) return NO;
+    const struct mach_header_64 *mh = (const struct mach_header_64 *)imageBase;
+    if (mh->magic != MH_MAGIC_64 || mh->ncmds > 4096 || mh->sizeofcmds > 4U * 1024U * 1024U) return NO;
+
+    const uint8_t *cursor = (const uint8_t *)(mh + 1);
+    const uint8_t *end = cursor + mh->sizeofcmds;
+    uint64_t imageVMBase = UINT64_MAX;
+    for (uint32_t i = 0; i < mh->ncmds; ++i) {
+        if (cursor + sizeof(struct load_command) > end) return NO;
+        const struct load_command *lc = (const struct load_command *)cursor;
+        if (lc->cmdsize < sizeof(*lc) || cursor + lc->cmdsize > end) return NO;
+        if (lc->cmd == LC_SEGMENT_64 && lc->cmdsize >= sizeof(struct segment_command_64)) {
+            const struct segment_command_64 *seg = (const struct segment_command_64 *)cursor;
+            if (strncmp(seg->segname, SEG_TEXT, 16) == 0) imageVMBase = seg->vmaddr;
+        }
+        cursor += lc->cmdsize;
+    }
+    if (imageVMBase == UINT64_MAX) return NO;
+
+    cursor = (const uint8_t *)(mh + 1);
+    for (uint32_t i = 0; i < mh->ncmds; ++i) {
+        if (cursor + sizeof(struct load_command) > end) return NO;
+        const struct load_command *lc = (const struct load_command *)cursor;
+        if (lc->cmdsize < sizeof(*lc) || cursor + lc->cmdsize > end) return NO;
+        if (lc->cmd == LC_SEGMENT_64 && lc->cmdsize >= sizeof(struct segment_command_64)) {
+            const struct segment_command_64 *seg = (const struct segment_command_64 *)cursor;
+            if ((seg->initprot & VM_PROT_EXECUTE) && seg->vmaddr >= imageVMBase) {
+                uintptr_t start = imageBase + (uintptr_t)(seg->vmaddr - imageVMBase);
+                uintptr_t finish = start + (uintptr_t)seg->vmsize;
+                if (address >= start && address < finish) return YES;
+            }
+        }
+        cursor += lc->cmdsize;
+    }
+    return NO;
 }
 
 static void *HFAMethodPointer(const void *method, HFAMethodGetPointerFn getter,
                               NSString **sourceOut) {
+    if (sourceOut) *sourceOut = @"unavailable";
     if (!method) return NULL;
+
     if (getter) {
-        void *p = getter(method);
-        if (HFAExecutablePointer(p)) {
+        uintptr_t pointer = (uintptr_t)getter(method);
+        if (HFAExecutableUnityAddress(pointer)) {
             if (sourceOut) *sourceOut = @"il2cpp_method_get_pointer";
-            return p;
+            return (void *)pointer;
         }
     }
-    if (!HFAReadablePointer(method)) return NULL;
-    void *candidate = NULL;
-    vm_size_t copied = 0;
-    if (vm_read_overwrite(mach_task_self(), (vm_address_t)(uintptr_t)method,
-                          sizeof(candidate), (vm_address_t)&candidate, &copied) != KERN_SUCCESS ||
-        copied != sizeof(candidate) || !HFAExecutablePointer(candidate)) return NULL;
-    if (sourceOut) *sourceOut = @"methodinfo-first-word-readonly-fallback";
-    return candidate;
+
+    uintptr_t words[2] = {0, 0};
+    memcpy(words, method, sizeof(words));
+    for (NSUInteger i = 0; i < 2; ++i) {
+        if (HFAExecutableUnityAddress(words[i])) {
+            if (sourceOut) *sourceOut = [NSString stringWithFormat:@"MethodInfo[%lu]", (unsigned long)i];
+            return (void *)words[i];
+        }
+    }
+    return NULL;
 }
 
 NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
     pthread_mutex_lock(&gHFAIndexLock);
     if (gHFAIndexBuilt) {
-        NSDictionary *result = [gHFAIndexSummary retain];
+        NSDictionary *cached = [gHFAIndexSummary retain];
         pthread_mutex_unlock(&gHFAIndexLock);
-        return [result autorelease];
+        return [cached autorelease];
     }
     pthread_mutex_unlock(&gHFAIndexLock);
 
@@ -105,13 +138,15 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
     HFAMethodGetParamCountFn methodParamCount = (HFAMethodGetParamCountFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_param_count");
     HFAMethodGetPointerFn methodPointer = (HFAMethodGetPointerFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_pointer");
 
-    BOOL required = domainGet && domainAssemblies && assemblyImage && imageName && imageClassCount && imageClass && className && classMethods && methodName;
+    BOOL required = domainGet && domainAssemblies && assemblyImage && imageName &&
+                    imageClassCount && imageClass && className && classMethods && methodName;
     if (!required) {
         NSDictionary *summary = @{
             @"schema": @"com.hfa.il2cpp-method-index/v1",
             @"status": @"required-il2cpp-exports-unavailable",
             @"analysisOnly": @YES, @"canonicalEligible": @NO,
-            @"methodPointerExport": @(methodPointer != NULL)
+            @"methodPointerExport": @(methodPointer != NULL),
+            @"policy": @"read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write"
         };
         pthread_mutex_lock(&gHFAIndexLock);
         gHFAIndexSummary = [summary copy];
@@ -129,18 +164,21 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
     BOOL foundAssemblyCSharp = NO, hitLimit = NO, timedOut = NO;
 
     for (size_t ai = 0; assemblies && ai < assemblyCount; ++ai) {
-        if ([[NSDate date] timeIntervalSince1970] > deadline) { timedOut = YES; break; }
+        if (NSDate.date.timeIntervalSince1970 > deadline) { timedOut = YES; break; }
         const void *image = assemblyImage(assemblies[ai]);
         NSString *assembly = HFASafeCString(image ? imageName(image) : NULL);
         NSString *lower = assembly.lowercaseString;
         if (![lower hasPrefix:@"assembly-csharp"]) continue;
         foundAssemblyCSharp = YES;
+
         size_t classCountRaw = imageClassCount(image);
         size_t classCount = MIN(classCountRaw, (size_t)kHFAMaxClasses);
         if (classCountRaw > classCount) hitLimit = YES;
         for (size_t ci = 0; ci < classCount; ++ci) {
-            if ([[NSDate date] timeIntervalSince1970] > deadline) { timedOut = YES; break; }
-            if (classesInspected >= kHFAMaxClasses || methodsInspected >= kHFAMaxMethods) { hitLimit = YES; break; }
+            if (NSDate.date.timeIntervalSince1970 > deadline) { timedOut = YES; break; }
+            if (classesInspected >= kHFAMaxClasses || methodsInspected >= kHFAMaxMethods) {
+                hitLimit = YES; break;
+            }
             void *klass = imageClass(image, ci);
             if (!klass) continue;
             ++classesInspected;
@@ -155,24 +193,31 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
                 NSString *pointerSource = nil;
                 void *pointer = HFAMethodPointer(method, methodPointer, &pointerSource);
                 if (!pointer) continue;
+
                 Dl_info info = {};
                 NSString *imageValue = @"";
                 NSString *rva = @"";
                 if (dladdr(pointer, &info) && info.dli_fbase && info.dli_fname) {
                     NSString *path = [NSString stringWithUTF8String:info.dli_fname] ?: @"";
                     imageValue = path.lastPathComponent ?: @"";
-                    rva = [NSString stringWithFormat:@"0x%llX", (unsigned long long)((uintptr_t)pointer - (uintptr_t)info.dli_fbase)];
+                    rva = [NSString stringWithFormat:@"0x%llX",
+                           (unsigned long long)((uintptr_t)pointer - (uintptr_t)info.dli_fbase)];
                 }
                 NSString *key = [NSString stringWithFormat:@"0x%llX", (unsigned long long)(uintptr_t)pointer];
                 if (!byAddress[key] && indexed < kHFAMaxMethods) {
                     byAddress[key] = @{
-                        @"assembly": assembly ?: @"", @"namespace": namespaceName ?: @"",
-                        @"class": klassName ?: @"", @"method": methodNameValue ?: @"",
+                        @"assembly": assembly ?: @"",
+                        @"namespace": namespaceName ?: @"",
+                        @"class": klassName ?: @"",
+                        @"method": methodNameValue ?: @"",
                         @"parameterCount": methodParamCount ? @(methodParamCount(method)) : @(-1),
                         @"methodInfoToken": [NSString stringWithFormat:@"0x%llX", (unsigned long long)(uintptr_t)method],
-                        @"methodPointerToken": key, @"methodPointerSource": pointerSource ?: @"unknown",
-                        @"implementationImage": imageValue, @"implementationOffsetFromLoadBase": rva,
-                        @"analysisOnly": @YES, @"canonicalEligible": @NO
+                        @"methodPointerToken": key,
+                        @"methodPointerSource": pointerSource ?: @"unknown",
+                        @"implementationImage": imageValue,
+                        @"implementationOffsetFromLoadBase": rva,
+                        @"analysisOnly": @YES,
+                        @"canonicalEligible": @NO
                     };
                     ++indexed;
                 }
@@ -183,10 +228,17 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
     NSDictionary *summary = @{
         @"schema": @"com.hfa.il2cpp-method-index/v1",
         @"status": foundAssemblyCSharp ? @"indexed" : @"assembly-csharp-not-found",
-        @"analysisOnly": @YES, @"canonicalEligible": @NO,
-        @"assemblyCountRaw": @(assemblyCountRaw), @"classesInspected": @(classesInspected),
-        @"methodsInspected": @(methodsInspected), @"indexedMethodPointers": @(indexed),
-        @"methodPointerExport": @(methodPointer != NULL), @"timedOut": @(timedOut), @"hitLimit": @(hitLimit),
+        @"analysisOnly": @YES,
+        @"canonicalEligible": @NO,
+        @"assemblyCountRaw": @(assemblyCountRaw),
+        @"classesInspected": @(classesInspected),
+        @"methodsInspected": @(methodsInspected),
+        @"indexedMethodPointers": @(indexed),
+        @"methodPointerExport": @(methodPointer != NULL),
+        @"methodPointerFallback": @YES,
+        @"unityExecutableSegmentValidation": @YES,
+        @"timedOut": @(timedOut),
+        @"hitLimit": @(hitLimit),
         @"policy": @"read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write"
     };
 
