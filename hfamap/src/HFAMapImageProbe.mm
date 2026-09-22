@@ -1,5 +1,6 @@
 #import "HFAMapImageProbe.h"
 #import "HFAMapDiagnostics.h"
+#import "HFAMapMenuBinaryAnalyzer.h"
 
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
@@ -133,20 +134,27 @@ static NSDictionary *HFAFingerprintImage(const struct mach_header_64 *header,
         cursor += lc->cmdsize;
     }
     NSDictionary *objc = HFAObjectiveCFingerprint(path);
+    NSDictionary *menuCallGraph = HFAMapAnalyzeMenuBinary(header, slide, deadline);
+    NSUInteger directPatchEdges = [menuCallGraph[@"directPatchCallEdges"] count];
+    NSUInteger primitiveSymbolCount = [menuCallGraph[@"primitiveSymbols"] count];
     unsigned structure = [objc[@"structureScore"] unsignedIntValue];
     NSString *family = @"unknown";
-    if (patchPrimitive >= 40 && (ui >= 12 || structure >= 50)) family = @"memorypatch-menu";
+    if ((patchPrimitive >= 40 || (primitiveSymbolCount >= 2 && directPatchEdges > 0)) &&
+        (ui >= 12 || structure >= 50 || directPatchEdges > 0)) family = @"memorypatch-menu";
     else if (ui >= 30 && legacy >= 30 && legacy > jail) family = @"legacy-ap";
     else if (ui >= 30 && jail >= 28) family = @"jailpatch";
     else if (ui >= 30 || (ui >= 20 && structure >= 50)) family = @"runtime-menu";
     unsigned score = [family isEqualToString:@"unknown"] ? 0U
-        : MIN(100U, ui + MIN(MAX(MAX(legacy, jail), patchPrimitive), 45U) + MIN(structure, 25U));
+        : MIN(100U, ui + MIN(MAX(MAX(legacy, jail), patchPrimitive), 45U) + MIN(structure, 25U) +
+                    (unsigned)MIN(directPatchEdges * 5U, 20U));
     NSMutableDictionary *record = [@{ @"schema": [NSString stringWithUTF8String:kHFAMenuBinaryEvidenceSchema],
               @"path": path, @"image": path.lastPathComponent ?: @"?", @"family": family,
               @"score": @(score), @"menuScore": @(ui), @"legacyScore": @(legacy),
               @"jailpatchScore": @(jail), @"patchPrimitiveScore": @(patchPrimitive),
               @"patchPrimitiveEvidenceOnly": @YES, @"canonicalEligible": @NO,
-              @"evidence": hits, @"scannedBytes": @(scanned) } mutableCopy];
+              @"evidence": hits, @"scannedBytes": @(scanned),
+              @"menuCallGraph": menuCallGraph ?: @{},
+              @"directPatchCallEdgeCount": @(directPatchEdges) } mutableCopy];
     if (imageUUID.length) record[@"menuUUID"] = imageUUID;
     record[@"hostBundleID"] = NSBundle.mainBundle.bundleIdentifier ?: @"?";
     record[@"hostVersion"] = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?";
