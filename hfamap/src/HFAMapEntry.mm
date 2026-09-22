@@ -119,7 +119,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.4.1-dev Dispatcher Patch Args";
+    title.text = @"HFAMap v2.4.2-dev Stripped Static Suite";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
