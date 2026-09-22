@@ -1,0 +1,73 @@
+name: HFAMapUniversal v2.4.3 Verify Architecture
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.4.3-verify-architecture
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v243-verify.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Source contract tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build, sign and verify arm64 dylib
+        working-directory: hfamap
+        run: |
+          set -euo pipefail
+          export THEOS=$HOME/theos
+          make clean
+          make FINALPACKAGE=1
+
+          mkdir -p dist/v2.4.3-verify
+          src="$(find .theos -type f -name 'HFAMapUniversal.dylib' -print -quit)"
+          test -n "$src"
+          out="dist/v2.4.3-verify/HFAMapUniversal-v2.4.3-verify.dylib"
+          cp "$src" "$out"
+          test -s "$out"
+          ldid -S "$out"
+
+          file "$out" | grep -q 'Mach-O 64-bit dynamically linked shared library arm64'
+          otool -l "$out" > "$out.otool.txt"
+          grep -q 'LC_CODE_SIGNATURE' "$out.otool.txt"
+          strings "$out" > "$out.strings.txt"
+          grep -Fq 'HFAMap v2.4.3-dev Verify Architecture' "$out.strings.txt"
+          grep -Fq '[TARGETED-SECRET-PROBE]' "$out.strings.txt"
+          if grep -Fq 'objc_getClassList' "$out.strings.txt"; then
+            echo 'forbidden process-wide ObjC scan symbol/string found' >&2
+            exit 1
+          fi
+
+          echo '=== VERSION ==='
+          grep -E 'HFAMap v2\.4\.3|TARGETED-SECRET' "$out.strings.txt" | head -20 || true
+          echo '=== SIGNATURE ==='
+          grep -A4 'LC_CODE_SIGNATURE' "$out.otool.txt"
+          echo '=== SHA256 ==='
+          shasum -a 256 "$out"
+          echo '=== FILE ==='
+          file "$out"
+
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.4.3-verify-signed
+          path: hfamap/dist/v2.4.3-verify/HFAMapUniversal-v2.4.3-verify.dylib
+          if-no-files-found: error
