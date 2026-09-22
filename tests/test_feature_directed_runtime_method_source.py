@@ -39,8 +39,8 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         self.assertNotIn('vm_write', IL2CPP)
 
     def test_version_markers(self):
-        self.assertIn('2.4.6-dev-decoupled-discovery-analysis', DIAG)
-        self.assertIn('HFAMap v2.4.6-dev Decoupled', ENTRY)
+        self.assertIn('2.4.7-dev-objc-runtime-dispatch-resolver', DIAG)
+        self.assertIn('HFAMap v2.4.7-dev ObjC Dispatch', ENTRY)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
 
