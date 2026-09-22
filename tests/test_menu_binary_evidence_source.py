@@ -33,8 +33,9 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_is_v242(self):
-        self.assertIn('HFAMap v2.4.2-dev Stripped Static Suite', ENTRY)
+    def test_ui_is_v243_verify_architecture(self):
+        self.assertIn('HFAMap v2.4.3-dev Verify Architecture', ENTRY)
+        self.assertIn('Arm Targeted Runtime Probe (8s)', ENTRY)
 
 
 if __name__ == "__main__":
