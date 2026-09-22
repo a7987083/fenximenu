@@ -333,11 +333,15 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
         gHFAIL2CPPStopStatus = [@"no-installable-il2cpp-observation-point" copy];
     }
 
+    const char *dobbyVersionRaw = DobbyGetVersion();
+    NSString *dobbyVersion = dobbyVersionRaw
+        ? ([NSString stringWithUTF8String:dobbyVersionRaw] ?: @"unknown")
+        : @"unknown";
     NSDictionary *result = @{
         @"schema": @"com.hfa.il2cpp-runtime-probe/v2",
         @"status": gHFAIL2CPPStopStatus ?: @"unknown",
         @"backend": @"embedded-dobby-instrument-reversible",
-        @"dobbyVersion": HFAString(DobbyGetVersion()),
+        @"dobbyVersion": dobbyVersion,
         @"durationSeconds": @(duration),
         @"directInstrumentCount": @(directInstalled),
         @"apiHookCount": @(apiHooksInstalled),
