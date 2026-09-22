@@ -27,7 +27,7 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
             "bounded-cfg-worklist",
             "same-image-helper-traversal",
             "cfg-dataflow-candidate",
-            "read-only-bounded-cfg-no-hook-no-callback-invocation-no-memory-write",
+            "read-only-bounded-cfg-no-hook-no-selector-invocation-no-memory-write",
         ):
             self.assertIn(token, ACTION)
         self.assertIn('@"canonicalEligible": @NO', ACTION)
@@ -39,7 +39,19 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
         self.assertIn('unresolvedIndirectBranchCount', ACTION)
         self.assertIn('exact-method-pointer-address', ACTION)
         self.assertIn('assembly-csharp-method-pointer-correlation', ACTION)
-        self.assertIn('verify.dylib-arm64-relocation-and-register-context-coverage', ACTION)
+        self.assertIn('verify.dylib-arm64-relocation-register-context-and-runtime-dispatch-coverage', ACTION)
+
+    def test_objc_runtime_targets_are_classified_without_invocation(self):
+        for token in (
+            'com.hfa.stripped-action/v4', 'HFARuntimeTargetClassification',
+            'objc-runtime-dispatch', 'objcRuntimeDispatchCount', 'objcRuntimeDispatches',
+            'dlsym-known-objc-runtime-match', 'x1-selector-candidate',
+            'x0-receiver-provenance', 'bounded-x1-cstring-read',
+            'objc_msgSend', 'objc_opt_isKindOfClass',
+        ):
+            self.assertIn(token, ACTION)
+        self.assertNotIn('objc_msgSend(', ACTION)
+        self.assertNotIn('method_invoke', ACTION)
 
     def test_objc_inventory_does_not_require_function_symbols(self):
         for token in (
