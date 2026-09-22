@@ -140,6 +140,20 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary)) {
                                                                    started + 4.5, events);
                 NSArray *features = resolved[@"features"] ?: @[];
                 NSArray *runtimeRecords = resolved[@"runtimeRecords"] ?: @[];
+                NSMutableOrderedSet *runtimeHints = [NSMutableOrderedSet orderedSet];
+                for (NSDictionary *record in resolved[@"registry"] ?: @[]) {
+                    for (NSString *key in @[@"label", @"title", @"name", @"identifier"]) {
+                        NSString *value = [record[key] isKindOfClass:NSString.class] ? record[key] : @"";
+                        if (value.length) [runtimeHints addObject:value];
+                    }
+                }
+                NSMutableDictionary *runtimeCandidate = [selected mutableCopy];
+                runtimeCandidate[@"runtimeFeatureHints"] = runtimeHints.array ?: @[];
+                @synchronized(NSObject.class) {
+                    [gHFALastSelectedCandidate release];
+                    gHFALastSelectedCandidate = [runtimeCandidate copy];
+                }
+                [runtimeCandidate release];
                 NSDictionary *analysis = @{ @"schema": @"com.hfa.analysis/v2",
                                              @"status": resolved[@"status"] ?: @"complete",
                                              @"session": session, @"candidate": selected,

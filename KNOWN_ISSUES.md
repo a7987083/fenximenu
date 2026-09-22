@@ -1,5 +1,17 @@
 # Known Issues
 
+## v2.3.9 IL2CPP Runtime Resolver 边界
+
+状态：源码已实现、69/69 本地测试通过；CI/实机待验证。
+
+- “运行时抓方法”不是全 IL2CPP 构建必然可用：需要 domain/assembly/image/class/method enumeration exports，或后续 metadata-assisted internal resolver。导出被隐藏时本版会明确返回 `required-il2cpp-enumeration-exports-unavailable`。
+- 候选由菜单文字提示和通用动作词排序，只是缩小范围。方法命名完全混淆、业务入口无语义词、调用进入共享 generic thunk 时可能漏报或多义。
+- 最多安装 96 个 direct instruments；高于上限的候选会截断。不得把“未进入前 96”解释为方法不存在。
+- `DobbyInstrument` 会临时改写方法入口代码，但不替换原函数、不主动调用 managed method；停止必须恢复成功。restore failure 非零时停止继续测试并保留日志。
+- ARM64 寄存器 token 是调用现场证据，不代表已理解参数类型。未结合 matching binary/metadata/ABI 前禁止解释对象、字符串、float、struct 或返回值。
+- arm64e/PAC、共享/泛型 thunk、极短函数或受保护代码页可能导致 instrument 安装失败；结果必须按每个候选安装状态判断。
+- Fuel/Boost 已验证的 static Patch 证据保留。runtime observation 是新增证据通道，不覆盖旧路径。
+
 ## v2.3.8 IL2CPP Runtime Probe 首版边界
 
 状态：Actions Run `35697312404` 已编译通过；尚未实机。

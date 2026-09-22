@@ -5,8 +5,9 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = HFAMapUniversal
 
-HFAMapUniversal_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapDiagnostics.mm src/HFAMapImageProbe.mm src/HFAMapResolver.mm src/HFAMapHookSemantic.mm src/HFAMapRuntimeProbe.mm src/HFAIL2CPPRuntimeProbe.mm src/HFAMapOutputName.mm src/HFAMapPatchV1.mm
-HFAMapUniversal_CFLAGS = -O2 -fno-stack-protector -Wno-deprecated-declarations
+HFAMapUniversal_FILES = src/HFAMapEntry.mm src/HFAMapCore.mm src/HFAMapDiagnostics.mm src/HFAMapImageProbe.mm src/HFAMapResolver.mm src/HFAMapHookSemantic.mm src/HFAMapRuntimeProbe.mm src/HFAIL2CPPRuntimeProbe.mm src/HFAIL2CPPResolver.mm src/HFAMapOutputName.mm src/HFAMapPatchV1.mm
+HFAMapUniversal_CFLAGS = -O2 -fno-stack-protector -Wno-deprecated-declarations -Ivendor/dobby/include
+HFAMapUniversal_LDFLAGS = $(THEOS_PROJECT_DIR)/vendor/dobby/lib/libdobby.a -lc++
 HFAMapUniversal_FRAMEWORKS = UIKit Foundation QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk

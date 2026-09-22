@@ -1,9 +1,9 @@
-name: HFAMap v2.3.8 Dual Runtime Probe
+name: HFAMap v2.3.9 IL2CPP Runtime Resolver
 
 on:
   push:
     branches:
-      - feature/hfamap-v2-bounded-universal-analyzer
+      - feature/hfamap-v2.3.9-il2cpp-runtime-resolver
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -29,13 +29,31 @@ jobs:
           set -euo pipefail
           grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
           grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
-          grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          grep -q 'src/HFAIL2CPPResolver.mm' hfamap/Makefile
+          grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'il2cpp_class_from_name' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'il2cpp_runtime_invoke' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'original ? original(method, object, arguments, exception)' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'kHFAIL2CPPMaxEvents = 256' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          grep -q 'kHFAIL2CPPMaxEvents = 512' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'kHFAIL2CPPMaxMappings = 256' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          grep -q 'kHFAIL2CPPMaxDirectInstruments = 96' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          grep -q 'kHFAIL2CPPResolverMaxClasses = 12000' hfamap/src/HFAIL2CPPResolver.mm
+
+      - name: Build pinned Dobby arm64 static library
+        run: |
+          set -euo pipefail
+          DOBBY_COMMIT=5dfc8546954ce3b3198132ab13fddb89ee92cdd7
+          git clone --recursive https://github.com/jmpews/Dobby.git "$RUNNER_TEMP/Dobby"
+          git -C "$RUNNER_TEMP/Dobby" checkout "$DOBBY_COMMIT"
+          git -C "$RUNNER_TEMP/Dobby" submodule update --init --recursive
+          python3 "$RUNNER_TEMP/Dobby/scripts/platform_builder.py" \
+            --platform=iphoneos --arch=arm64 --library_build_type=static
+          mkdir -p hfamap/vendor/dobby/lib
+          cp "$RUNNER_TEMP/Dobby/build/iphoneos/arm64/libdobby.a" \
+            hfamap/vendor/dobby/lib/libdobby.a
+          file hfamap/vendor/dobby/lib/libdobby.a
+          shasum -a 256 hfamap/vendor/dobby/lib/libdobby.a
 
       - name: Install Theos
         run: |
@@ -50,22 +68,26 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.3.8-dev
+          mkdir -p hfamap/dist/v2.3.9-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          file hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_class_from_name'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_runtime_invoke'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q '2.3.8-dev-dual-runtime-probe'
-          shasum -a 256 hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib \
-            | tee hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.3.9-dev/HFAMapUniversal-v2.3.9-dev.dylib
+          out=hfamap/dist/v2.3.9-dev/HFAMapUniversal-v2.3.9-dev.dylib
+          file "$out" | grep -q arm64
+          strings "$out" | grep -q 'com.hfa.il2cpp-runtime-probe/v2'
+          strings "$out" | grep -q 'com.hfa.il2cpp-runtime-resolver/v1'
+          strings "$out" | grep -q 'direct-method-entry'
+          strings "$out" | grep -q '2.3.9-dev-il2cpp-runtime-resolver'
+          nm -gU "$out" | grep -q '_DobbyInstrument'
+          nm -gU "$out" | grep -q '_DobbyDestroy'
+          ! otool -L "$out" | grep -qi dobby
+          otool -L "$out"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.3.9-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.3.8-DualRuntimeProbe
+          name: HFAMapUniversal-v2.3.9-IL2CPPRuntimeResolver
           path: |
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-            hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.3.9-dev/HFAMapUniversal-v2.3.9-dev.dylib
+            hfamap/dist/v2.3.9-dev/SHA256SUMS.txt
           if-no-files-found: error

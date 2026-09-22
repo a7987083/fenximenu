@@ -54,8 +54,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.3.8-dev-dual-runtime-probe', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.3.8-dev Dual Runtime Probe', ENTRY)
+        self.assertIn('2.3.9-dev-il2cpp-runtime-resolver', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.3.9-dev IL2CPP Runtime Resolver', ENTRY)
 
 
 if __name__ == "__main__":

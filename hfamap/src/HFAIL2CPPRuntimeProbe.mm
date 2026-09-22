@@ -1,5 +1,7 @@
 #import "HFAIL2CPPRuntimeProbe.h"
+#import "HFAIL2CPPResolver.h"
 #import "HFAMapDiagnostics.h"
+#import "dobby.h"
 
 #import <Foundation/Foundation.h>
 #import <mach/mach.h>
@@ -10,8 +12,8 @@
 #include <string.h>
 
 // Observation-only IL2CPP resolver probe. It never suppresses or changes the
-// original call. Hooks are installed only when a reversible Dobby backend is
-// already present in the process and are destroyed when the probe stops.
+// original call. v2.3.9 embeds a pinned Dobby backend and combines exported
+// IL2CPP API observation with bounded ABI-safe method-entry instrumentation.
 
 typedef void *(*HFAClassFromNameFn)(const void *image, const char *namespaze,
                                     const char *name);
@@ -20,11 +22,10 @@ typedef const void *(*HFAClassGetMethodFn)(void *klass, const char *name,
 typedef void *(*HFARuntimeInvokeFn)(const void *method, void *object,
                                     void **arguments, void **exception);
 typedef const char *(*HFAImageGetNameFn)(const void *image);
-typedef int (*HFADobbyHookFn)(void *target, void *replacement, void **original);
-typedef int (*HFADobbyDestroyFn)(void *target);
 
-static const NSUInteger kHFAIL2CPPMaxEvents = 256;
+static const NSUInteger kHFAIL2CPPMaxEvents = 512;
 static const NSUInteger kHFAIL2CPPMaxMappings = 256;
+static const NSUInteger kHFAIL2CPPMaxDirectInstruments = 96;
 static const NSTimeInterval kHFAIL2CPPCorrelationWindow = 1.5;
 
 static pthread_mutex_t gHFAIL2CPPLock = PTHREAD_MUTEX_INITIALIZER;
@@ -38,10 +39,10 @@ static NSMutableDictionary *gHFAIL2CPPClasses;
 static NSMutableDictionary *gHFAIL2CPPMethods;
 static NSMutableArray *gHFAIL2CPPInstalledTargets;
 static NSMutableArray *gHFAIL2CPPInstalledSymbols;
+static NSMutableDictionary *gHFAIL2CPPDirectMethods;
+static NSDictionary *gHFAIL2CPPResolverEvidence;
 static NSString *gHFAIL2CPPStopStatus;
 
-static HFADobbyHookFn gHFAIL2CPPDobbyHook;
-static HFADobbyDestroyFn gHFAIL2CPPDobbyDestroy;
 static HFAImageGetNameFn gHFAIL2CPPImageGetName;
 static HFAClassFromNameFn gHFAIL2CPPClassFromNameOriginal;
 static HFAClassGetMethodFn gHFAIL2CPPClassGetMethodOriginal;
@@ -118,6 +119,36 @@ static void HFAAppendEvent(NSDictionary *payload) {
         [event release];
     }
     pthread_mutex_unlock(&gHFAIL2CPPLock);
+}
+
+static void HFADirectMethodInstrument(void *address, DobbyRegisterContext *context) {
+    if (!gHFAIL2CPPArmed || !address || !context) return;
+    NSDictionary *mapping = nil;
+    pthread_mutex_lock(&gHFAIL2CPPLock);
+    mapping = [gHFAIL2CPPDirectMethods[HFAKey(address)] copy];
+    pthread_mutex_unlock(&gHFAIL2CPPLock);
+    if (!mapping) return;
+    @autoreleasepool {
+        NSMutableDictionary *event = [NSMutableDictionary dictionaryWithDictionary:mapping];
+        event[@"stage"] = @"direct-method-entry";
+        event[@"methodPointerToken"] = HFAPointerToken(address);
+        event[@"invocationObserved"] = @YES;
+        event[@"resolutionStatus"] = @"resolved-method-entry-observed";
+        event[@"registers"] = @{
+            @"x0": HFAPointerToken((void *)(uintptr_t)context->general.regs.x0),
+            @"x1": HFAPointerToken((void *)(uintptr_t)context->general.regs.x1),
+            @"x2": HFAPointerToken((void *)(uintptr_t)context->general.regs.x2),
+            @"x3": HFAPointerToken((void *)(uintptr_t)context->general.regs.x3),
+            @"x4": HFAPointerToken((void *)(uintptr_t)context->general.regs.x4),
+            @"x5": HFAPointerToken((void *)(uintptr_t)context->general.regs.x5),
+            @"x6": HFAPointerToken((void *)(uintptr_t)context->general.regs.x6),
+            @"x7": HFAPointerToken((void *)(uintptr_t)context->general.regs.x7),
+            @"lr": HFAPointerToken((void *)(uintptr_t)context->lr),
+            @"sp": HFAPointerToken((void *)(uintptr_t)context->sp)
+        };
+        HFAAppendEvent(event);
+    }
+    [mapping release];
 }
 
 static void *HFAClassFromNameReplacement(const void *image, const char *namespaze,
@@ -216,19 +247,33 @@ static void *HFARuntimeInvokeReplacement(const void *method, void *object,
 
 static BOOL HFAInstallHook(void *target, void *replacement, void **original,
                            NSString *symbol) {
-    if (!target || !replacement || !original || !gHFAIL2CPPDobbyHook) return NO;
-    int result = gHFAIL2CPPDobbyHook(target, replacement, original);
+    if (!target || !replacement || !original) return NO;
+    int result = DobbyHook(target, replacement, original);
     if (result != 0 || !*original) return NO;
     [gHFAIL2CPPInstalledTargets addObject:HFAKey(target)];
     [gHFAIL2CPPInstalledSymbols addObject:symbol ?: @"?"];
     return YES;
 }
 
+static BOOL HFAInstallDirectInstrument(NSDictionary *candidate) {
+    uintptr_t pointer = (uintptr_t)[candidate[@"methodPointer"] unsignedLongLongValue];
+    if (!pointer || gHFAIL2CPPDirectMethods.count >= kHFAIL2CPPMaxDirectInstruments) return NO;
+    NSValue *key = HFAKey((void *)pointer);
+    if (gHFAIL2CPPDirectMethods[key]) return YES;
+    if (DobbyInstrument((void *)pointer, &HFADirectMethodInstrument) != 0) return NO;
+    gHFAIL2CPPDirectMethods[key] = candidate ?: @{};
+    [gHFAIL2CPPInstalledTargets addObject:key];
+    [gHFAIL2CPPInstalledSymbols addObject:[@"method:" stringByAppendingString:
+        candidate[@"canonical"] ?: HFAPointerToken((void *)pointer)]];
+    NSNumber *methodInfo = candidate[@"methodInfo"];
+    if (methodInfo.unsignedLongLongValue && gHFAIL2CPPMethods.count < kHFAIL2CPPMaxMappings)
+        gHFAIL2CPPMethods[HFAKey((void *)(uintptr_t)methodInfo.unsignedLongLongValue)] = candidate;
+    return YES;
+}
+
 static void HFARemoveHooksLocked(void) {
-    if (gHFAIL2CPPDobbyDestroy) {
-        for (NSValue *value in [gHFAIL2CPPInstalledTargets reverseObjectEnumerator])
-            gHFAIL2CPPDobbyDestroy(value.pointerValue);
-    }
+    for (NSValue *value in [gHFAIL2CPPInstalledTargets reverseObjectEnumerator])
+        DobbyDestroy(value.pointerValue);
     [gHFAIL2CPPInstalledTargets removeAllObjects];
     [gHFAIL2CPPInstalledSymbols removeAllObjects];
     gHFAIL2CPPClassFromNameOriginal = NULL;
@@ -246,8 +291,6 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
         pthread_mutex_unlock(&gHFAIL2CPPLock);
         return @{ @"status": @"busy", @"analysisOnly": @YES };
     }
-    gHFAIL2CPPDobbyHook = (HFADobbyHookFn)dlsym(RTLD_DEFAULT, "DobbyHook");
-    gHFAIL2CPPDobbyDestroy = (HFADobbyDestroyFn)dlsym(RTLD_DEFAULT, "DobbyDestroy");
     gHFAIL2CPPImageGetName = (HFAImageGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_name");
     gHFAIL2CPPClassFromNameTarget = dlsym(RTLD_DEFAULT, "il2cpp_class_from_name");
     gHFAIL2CPPClassGetMethodTarget = dlsym(RTLD_DEFAULT, "il2cpp_class_get_method_from_name");
@@ -259,44 +302,47 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
     gHFAIL2CPPMethods = [[NSMutableDictionary alloc] init];
     gHFAIL2CPPInstalledTargets = [[NSMutableArray alloc] init];
     gHFAIL2CPPInstalledSymbols = [[NSMutableArray alloc] init];
+    gHFAIL2CPPDirectMethods = [[NSMutableDictionary alloc] init];
     gHFAIL2CPPCandidate = [candidate copy];
     gHFAIL2CPPStarted = HFANow();
     gHFAIL2CPPDuration = duration;
     gHFAIL2CPPStopStatus = nil;
 
-    BOOL backendReady = gHFAIL2CPPDobbyHook && gHFAIL2CPPDobbyDestroy;
-    BOOL requiredExports = gHFAIL2CPPClassFromNameTarget &&
-                           gHFAIL2CPPClassGetMethodTarget &&
-                           gHFAIL2CPPRuntimeInvokeTarget;
-    if (backendReady && requiredExports) {
-        BOOL installed = HFAInstallHook(gHFAIL2CPPClassFromNameTarget,
-            (void *)&HFAClassFromNameReplacement,
-            (void **)&gHFAIL2CPPClassFromNameOriginal, @"il2cpp_class_from_name") &&
-            HFAInstallHook(gHFAIL2CPPClassGetMethodTarget,
-            (void *)&HFAClassGetMethodReplacement,
-            (void **)&gHFAIL2CPPClassGetMethodOriginal, @"il2cpp_class_get_method_from_name") &&
-            HFAInstallHook(gHFAIL2CPPRuntimeInvokeTarget,
-            (void *)&HFARuntimeInvokeReplacement,
-            (void **)&gHFAIL2CPPRuntimeInvokeOriginal, @"il2cpp_runtime_invoke");
-        if (installed) {
-            gHFAIL2CPPArmed = YES;
-            gHFAIL2CPPStopStatus = [@"armed" copy];
-        } else {
-            HFARemoveHooksLocked();
-            gHFAIL2CPPStopStatus = [@"hook-install-failed" copy];
-        }
-    } else if (!backendReady) {
-        gHFAIL2CPPStopStatus = [@"reversible-hook-backend-unavailable" copy];
+    NSTimeInterval resolverDeadline = HFANow() + MIN(1.5, MAX(0.25, duration * 0.25));
+    gHFAIL2CPPResolverEvidence = [HFAIL2CPPResolveInstrumentCandidates(
+        candidate ?: @{}, resolverDeadline, kHFAIL2CPPMaxDirectInstruments) copy];
+    NSUInteger directInstalled = 0;
+    for (NSDictionary *methodCandidate in gHFAIL2CPPResolverEvidence[@"candidates"] ?: @[])
+        if (HFAInstallDirectInstrument(methodCandidate)) ++directInstalled;
+
+    NSUInteger apiHooksInstalled = 0;
+    if (gHFAIL2CPPClassFromNameTarget && HFAInstallHook(gHFAIL2CPPClassFromNameTarget,
+        (void *)&HFAClassFromNameReplacement,
+        (void **)&gHFAIL2CPPClassFromNameOriginal, @"il2cpp_class_from_name")) ++apiHooksInstalled;
+    if (gHFAIL2CPPClassGetMethodTarget && HFAInstallHook(gHFAIL2CPPClassGetMethodTarget,
+        (void *)&HFAClassGetMethodReplacement,
+        (void **)&gHFAIL2CPPClassGetMethodOriginal, @"il2cpp_class_get_method_from_name")) ++apiHooksInstalled;
+    if (gHFAIL2CPPRuntimeInvokeTarget && HFAInstallHook(gHFAIL2CPPRuntimeInvokeTarget,
+        (void *)&HFARuntimeInvokeReplacement,
+        (void **)&gHFAIL2CPPRuntimeInvokeOriginal, @"il2cpp_runtime_invoke")) ++apiHooksInstalled;
+    if (directInstalled || apiHooksInstalled) {
+        gHFAIL2CPPArmed = YES;
+        gHFAIL2CPPStopStatus = [@"armed" copy];
     } else {
-        gHFAIL2CPPStopStatus = [@"required-il2cpp-exports-unavailable" copy];
+        HFARemoveHooksLocked();
+        gHFAIL2CPPStopStatus = [@"no-installable-il2cpp-observation-point" copy];
     }
 
     NSDictionary *result = @{
-        @"schema": @"com.hfa.il2cpp-runtime-probe/v1",
+        @"schema": @"com.hfa.il2cpp-runtime-probe/v2",
         @"status": gHFAIL2CPPStopStatus ?: @"unknown",
-        @"backend": backendReady ? @"dobby-reversible" : @"none",
+        @"backend": @"embedded-dobby-instrument-reversible",
+        @"dobbyVersion": HFAString(DobbyGetVersion()),
         @"durationSeconds": @(duration),
+        @"directInstrumentCount": @(directInstalled),
+        @"apiHookCount": @(apiHooksInstalled),
         @"installedSymbols": [NSArray arrayWithArray:gHFAIL2CPPInstalledSymbols],
+        @"resolver": gHFAIL2CPPResolverEvidence ?: @{},
         @"exports": @{
             @"il2cpp_image_get_name": @(gHFAIL2CPPImageGetName != NULL),
             @"il2cpp_class_from_name": @(gHFAIL2CPPClassFromNameTarget != NULL),
@@ -364,12 +410,8 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
     [gHFAIL2CPPInstalledTargets removeAllObjects];
     pthread_mutex_unlock(&gHFAIL2CPPLock);
     NSUInteger restoreFailures = 0;
-    if (gHFAIL2CPPDobbyDestroy) {
-        for (NSValue *value in [targetsToRestore reverseObjectEnumerator])
-            if (gHFAIL2CPPDobbyDestroy(value.pointerValue) != 0) ++restoreFailures;
-    } else if (targetsToRestore.count) {
-        restoreFailures = targetsToRestore.count;
-    }
+    for (NSValue *value in [targetsToRestore reverseObjectEnumerator])
+        if (DobbyDestroy(value.pointerValue) != 0) ++restoreFailures;
     [targetsToRestore release];
     pthread_mutex_lock(&gHFAIL2CPPLock);
     gHFAIL2CPPClassFromNameOriginal = NULL;
@@ -377,13 +419,17 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
     gHFAIL2CPPRuntimeInvokeOriginal = NULL;
     NSArray *events = HFAEnrichedEventsLocked();
     NSUInteger resolvedMethods = gHFAIL2CPPMethods.count;
-    NSUInteger invokedMethods = 0;
+    NSUInteger invokedMethods = 0, directEntries = 0, runtimeInvokes = 0;
     for (NSDictionary *event in events)
         if ([event[@"stage"] isEqualToString:@"runtime-invoke"] &&
-            [event[@"resolutionStatus"] isEqualToString:@"resolved-method-invoked"])
-            ++invokedMethods;
+            [event[@"resolutionStatus"] isEqualToString:@"resolved-method-invoked"]) {
+            ++invokedMethods; ++runtimeInvokes;
+        } else if ([event[@"stage"] isEqualToString:@"direct-method-entry"] &&
+                   [event[@"resolutionStatus"] isEqualToString:@"resolved-method-entry-observed"]) {
+            ++invokedMethods; ++directEntries;
+        }
     NSDictionary *summary = @{
-        @"schema": @"com.hfa.il2cpp-runtime-probe/v1",
+        @"schema": @"com.hfa.il2cpp-runtime-probe/v2",
         @"status": [startStatus isEqualToString:@"armed"] ? @"complete" : startStatus,
         @"reason": reason ?: @"stopped",
         @"candidateIdentity": gHFAIL2CPPCandidate ?: @{},
@@ -391,6 +437,8 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
         @"requestedDurationSeconds": @(gHFAIL2CPPDuration),
         @"eventCount": @(events.count), @"resolvedMethodCount": @(resolvedMethods),
         @"observedInvocationCount": @(invokedMethods),
+        @"directMethodEntryCount": @(directEntries), @"runtimeInvokeCount": @(runtimeInvokes),
+        @"resolver": gHFAIL2CPPResolverEvidence ?: @{},
         @"interactions": gHFAIL2CPPInteractions ?: @[], @"events": events,
         @"classification": ![startStatus isEqualToString:@"armed"] ? startStatus :
             (invokedMethods ? @"runtime-method-call-observed" :
@@ -410,6 +458,8 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
     [gHFAIL2CPPMethods release]; gHFAIL2CPPMethods = nil;
     [gHFAIL2CPPInstalledTargets release]; gHFAIL2CPPInstalledTargets = nil;
     [gHFAIL2CPPInstalledSymbols release]; gHFAIL2CPPInstalledSymbols = nil;
+    [gHFAIL2CPPDirectMethods release]; gHFAIL2CPPDirectMethods = nil;
+    [gHFAIL2CPPResolverEvidence release]; gHFAIL2CPPResolverEvidence = nil;
     [gHFAIL2CPPCandidate release]; gHFAIL2CPPCandidate = nil;
     [gHFAIL2CPPStopStatus release]; gHFAIL2CPPStopStatus = nil;
     pthread_mutex_unlock(&gHFAIL2CPPLock);

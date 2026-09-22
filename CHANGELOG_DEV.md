@@ -1,5 +1,16 @@
 # Development Changelog
 
+## v2.3.9-dev — embedded IL2CPP runtime resolver and direct method observation
+
+- 新建 `feature/hfamap-v2.3.9-il2cpp-runtime-resolver`，基线为 v2.3.8 状态提交 `5cb51b1efa15c9303904991fbaa61823a03f9b47`。
+- 新增 `HFAIL2CPPResolver`，从 runtime exports 枚举 assembly/class/method，支持 `il2cpp_method_get_pointer` 与 executable-segment-gated `MethodInfo[0..1]` fallback。
+- Resolver 限制 512 assemblies、12000 classes、180000 methods、绝对 deadline；优先 Assembly-CSharp，并结合菜单 registry title/identifier 排序候选。
+- Dobby 固定 `5dfc8546954ce3b3198132ab13fddb89ee92cdd7`，CI 从源码构建 arm64 iPhoneOS static library；仓库不提交不透明预编译库。
+- 新增最多 96 个 direct method entry 的 `DobbyInstrument`；记录 x0-x7/lr/sp 和 canonical method identity，原函数自然继续，不承担未知 ABI 转发。
+- 保留 `class_from_name / class_get_method_from_name / runtime_invoke` 观测，并用预解析 MethodInfo 补充 invoke 映射。
+- 静态 Patch/Canonical 生成规则不变；Resolver 结果固定 analysis-only，不能直接升格为 patch。
+- 本地 69/69 tests 通过；当前尚未提交、尚未 CI 编译、尚未实机。
+
 ## v2.3.8-dev — reversible IL2CPP resolver/invoke observation
 
 - 从用户上传的 v2.3.7 完整交付包恢复当前源码，并在既有开发分支追加历史；不覆盖远端故意保留的 v2.1.1 rollback commit。

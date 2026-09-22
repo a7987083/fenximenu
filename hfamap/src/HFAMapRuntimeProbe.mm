@@ -436,7 +436,7 @@ void HFAMapStopRuntimeProbe(NSString *reason) {
     NSDictionary *il2cppRuntimeProbe = HFAIL2CPPRuntimeProbeStop(reason ?: @"stopped");
     NSDictionary *summary = @{
         @"schema": @"com.hfa.runtime-probe/v2",
-        @"version": @"2.3.8-dev-dual-runtime-probe",
+        @"version": @"2.3.9-dev-il2cpp-runtime-resolver",
         @"status": @"complete",
         @"reason": reason ?: @"stopped",
         @"menuImage": gHFAProbeMenuImage ?: @"?",
@@ -525,7 +525,7 @@ void HFAMapArmRuntimeProbeForCandidate(NSDictionary *candidate, NSTimeInterval d
     for (UIControl *control in gHFAProbeControls)
         [control addTarget:target action:@selector(observeControl:) forControlEvents:kHFAProbeEvents];
     NSDictionary *armed = @{
-        @"version": @"2.3.8-dev-dual-runtime-probe",
+        @"version": @"2.3.9-dev-il2cpp-runtime-resolver",
         @"menuImage": menuImage,
         @"candidateIdentity": gHFAProbeCandidate,
         @"durationSeconds": @(duration),

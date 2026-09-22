@@ -1,5 +1,19 @@
 # HFAMap Roadmap
 
+## 当前开发 — v2.3.9-dev IL2CPP Runtime Resolver
+
+基线为 `feature/hfamap-v2-bounded-universal-analyzer@5cb51b1efa15c9303904991fbaa61823a03f9b47`，新分支 `feature/hfamap-v2.3.9-il2cpp-runtime-resolver`。移植 `UnitXP_SP3-Moonstone@a3b8db8651eaea23ec0ae7e5fca497e8f67bcf6c` 的 IL2CPP runtime metadata resolver 思路，并把 Dobby 固定到 `5dfc8546954ce3b3198132ab13fddb89ee92cdd7` 静态链接进 dylib。
+
+本版在已有 resolver/invoke export 观测之外，枚举 Assembly/Class/Method，取得经过 executable Mach-O segment 校验的方法指针，并对最多 96 个与菜单标题及通用动作语义相关的候选入口安装 `DobbyInstrument`。instrument callback 只读取 ARM64 x0-x7/lr/sp，不替换未知签名函数、不主动调用 managed method；停止时逐项 `DobbyDestroy`。
+
+Next Task：
+
+1. 提交源码并完成 macOS/Theos arm64 CI 编译与 Mach-O/依赖验证；
+2. XP Hero 分两轮只触发 Currency、Exp，检查 `direct-method-entry` 与最近 UI interaction 的关联；
+3. Earn Fuel/Boost 继续保留 static Patch；另做 runtime method 观测，不互相覆盖；
+4. 每轮必须 `hooksRestored=true`、`hookRestoreFailureCount=0`；
+5. 对 export 被隐藏或枚举 API 不完整的游戏保持 fail-closed，并转 metadata-assisted/internal resolver 后续通道。
+
 ## 当前开发 — v2.3.8-dev Dual Runtime Probe
 
 从用户提供并已验证的 v2.3.7 完整源码恢复开发，在既有 `feature/hfamap-v2-bounded-universal-analyzer` 分支追加提交，不改写远端的回退历史。新增 `com.hfa.il2cpp-runtime-probe/v1`：在可逆 Dobby backend 与三个必要 IL2CPP exports 同时存在时，临时观测 `il2cpp_class_from_name -> il2cpp_class_get_method_from_name -> il2cpp_runtime_invoke`，并将 1.5 秒内的 UI 交互与 class/method/instance/argument/result/exception token 关联。
