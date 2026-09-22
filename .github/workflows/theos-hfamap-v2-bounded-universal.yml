@@ -1,9 +1,9 @@
-name: HFAMap v2.4.6 Decoupled Discovery Analysis
+name: HFAMap v2.4.7 ObjC Runtime Dispatch Resolver
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.6-decoupled-discovery-analysis
+      - feature/hfamap-v2.4.7-objc-runtime-dispatch-resolver
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -30,7 +30,6 @@ jobs:
           grep -q 'src/HFAMapFastDiscovery.mm' hfamap/Makefile
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
-          grep -q 'deepAnalysisPerformed' hfamap/src/HFAMapFastDiscovery.mm
           ! grep -q 'HFAMapAnalyzeMenuBinary' hfamap/src/HFAMapFastDiscovery.mm
           ! grep -q 'HFAMapInventoryStrippedObjCActions' hfamap/src/HFAMapFastDiscovery.mm
           ! grep -q 'HFAIL2CPPBuildMethodIndex' hfamap/src/HFAMapFastDiscovery.mm
@@ -40,11 +39,16 @@ jobs:
           grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
           grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
           grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
-          grep -q '2.4.6-dev-decoupled-discovery-analysis' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.4.6-dev Decoupled' hfamap/src/HFAMapEntry.mm
-          grep -q 'com.hfa.stripped-action/v3' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'bounded-cfg-worklist' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q '2.4.7-dev-objc-runtime-dispatch-resolver' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.7-dev ObjC Dispatch' hfamap/src/HFAMapEntry.mm
+          grep -q 'com.hfa.stripped-action/v4' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'objc-runtime-dispatch' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'x1-selector-candidate' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'x0-receiver-provenance' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'dlsym-known-objc-runtime-match' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'verify.dylib-arm64-relocation-register-context-and-runtime-dispatch-coverage' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'exact-user-activated-control-target-action' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          ! grep -q 'objc_msgSend(' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'vm_write' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -62,28 +66,29 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.6-dev
+          mkdir -p hfamap/dist/v2.4.7-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
-          out=hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.6.strings"
+            hfamap/dist/v2.4.7-dev/HFAMapUniversal-v2.4.7-dev.dylib
+          out=hfamap/dist/v2.4.7-dev/HFAMapUniversal-v2.4.7-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.7.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
-          grep -q 'full-list-first-no-deep-analysis' "$strings_file"
-          grep -q 'com.hfa.stripped-action/v3' "$strings_file"
-          grep -q 'HFAMap v2.4.6-dev Decoupled' "$strings_file"
+          grep -q 'com.hfa.stripped-action/v4' "$strings_file"
+          grep -q 'objc-runtime-dispatch' "$strings_file"
+          grep -q 'x1-selector-candidate' "$strings_file"
+          grep -q 'HFAMap v2.4.7-dev ObjC Dispatch' "$strings_file"
           grep -q '1. Search Menu' "$strings_file"
           grep -q '2. Deep Analyze Menu' "$strings_file"
           grep -q '3. Runtime Probe (8s)' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.6-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.7-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.6-DecoupledDiscoveryAnalysis
+          name: HFAMapUniversal-v2.4.7-ObjCRuntimeDispatchResolver
           path: |
-            hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
-            hfamap/dist/v2.4.6-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.7-dev/HFAMapUniversal-v2.4.7-dev.dylib
+            hfamap/dist/v2.4.7-dev/SHA256SUMS.txt
           if-no-files-found: error
