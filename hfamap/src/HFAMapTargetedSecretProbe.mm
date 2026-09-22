@@ -1,4 +1,5 @@
 #import "HFAMapTargetedSecretProbe.h"
+#import "HFAMapImageProbe.h"
 
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -43,6 +44,20 @@ static void HFATSPLog(const char *fmt, ...) {
         fflush(f);
         fclose(f);
     }
+}
+
+static NSDictionary *HFASelectCandidateForTargetedProbe(void) {
+    NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
+    NSArray<NSDictionary *> *candidates = HFAMapDiscoverMenuImages(NSDate.date.timeIntervalSince1970 + 2.0, events);
+    if (!candidates.count) return nil;
+    NSDictionary *first = candidates.firstObject;
+    if ([first[@"score"] unsignedIntegerValue] < 50U) return nil;
+    if (candidates.count > 1) {
+        NSInteger firstScore = [first[@"score"] integerValue];
+        NSInteger secondScore = [candidates[1][@"score"] integerValue];
+        if (firstScore - secondScore < 10) return nil;
+    }
+    return first;
 }
 
 static uintptr_t HFAStripCodePointer(uintptr_t value) {
@@ -246,10 +261,11 @@ void HFAMapStopTargetedSecretProbe(NSString *reason) {
 
 NSDictionary *HFAMapArmTargetedSecretProbe(NSDictionary *candidate, NSTimeInterval duration) {
     HFAMapStopTargetedSecretProbe(@"rearm");
+    if (!candidate) candidate = HFASelectCandidateForTargetedProbe();
     NSString *path = [candidate[@"path"] isKindOfClass:NSString.class] ? candidate[@"path"] : nil;
     NSString *image = [candidate[@"image"] isKindOfClass:NSString.class] ? candidate[@"image"] : path.lastPathComponent;
     if (!path.length || !image.length)
-        return @{ @"status": @"missing-selected-image", @"installed": @0 };
+        return @{ @"status": @"missing-or-ambiguous-selected-image", @"installed": @0 };
 
     [gSelectedPath release];
     [gSelectedImage release];
