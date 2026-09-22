@@ -1,0 +1,154 @@
+{
+  "schema": "com.hfa.pathofkings-research-handoff/v1",
+  "date": "2026-09-23",
+  "repository": "a7987083/fenximenu",
+  "inspected_branch": "feature/hfamap-v2.4.2-stripped-menu-static-suite",
+  "inspected_head_before_documentation": "f6849f9b545d1064f2b6fe7787a01bd0b9cc2526",
+  "state": "reverse-research-complete-resolver-design-ready-runtime-target-plaintext-pending",
+  "samples": {
+    "standalone": {
+      "name": "libpathofkings.dylib",
+      "sha256": "a7775bcd7ed38a799c2ba0d1c2dd2588d5cd2c15853d943a059d914f96f37ed6",
+      "size": 5749821
+    },
+    "deb": {
+      "name": "Path of Kings 1.4.1 Jailbreak iOS Hack by iOSGods.com.deb",
+      "sha256": "34a8df5856ffbf57dde51e1d04813c67f68684b82ad155f672db73da43cf580f",
+      "embedded_dylib_path": "/Library/MobileSubstrate/DynamicLibraries/pathofkings.dylib",
+      "embedded_dylib_sha256": "060d9850b4c17d45341f91488737384c9bbf2dcbf4821c3a6ad5d9894a77edf0",
+      "embedded_dylib_size": 5693664,
+      "bundle_filter": "com.TornadoBear.WayOfKings"
+    }
+  },
+  "architecture_model": {
+    "execution_backends": [
+      "StaticPatchBackend",
+      "RuntimeHookBackend"
+    ],
+    "discovery_backends": [
+      "RuntimeDebugResolver"
+    ]
+  },
+  "menu_functions": {
+    "God Mode": {
+      "classification": "runtime-native-hook",
+      "replacement_rva": "0x4128",
+      "logic": "captured-target-object-and-enabled-state-can-early-return-before-original",
+      "target_rva": null,
+      "device_verified_in_this_session": false
+    },
+    "Damage": {
+      "classification": "runtime-native-hook",
+      "replacement_rva": "0x4128",
+      "logic": "multiply-incoming-damage-before-original",
+      "target_rva": null,
+      "device_verified_in_this_session": false
+    },
+    "Defence": {
+      "classification": "runtime-native-hook",
+      "replacement_rva": "0x4128",
+      "logic": "divide-incoming-damage-before-original",
+      "target_rva": null,
+      "device_verified_in_this_session": false
+    },
+    "Debug Menu": {
+      "classification": "runtime-debug",
+      "backend": "hardware-breakpoint-watchpoint-mach-exception-arm64-debug-state",
+      "device_verified_in_this_session": false
+    }
+  },
+  "native_hook_registrations": [
+    {
+      "descriptor_rva": "0x4B6848",
+      "replacement_rva": "0x4128",
+      "original_storage_rva": "0x543CB8",
+      "target_plaintext_rva": null
+    },
+    {
+      "descriptor_rva": "0x4B6870",
+      "replacement_rva": "0x4050",
+      "original_storage_rva": "0x543CA8",
+      "target_plaintext_rva": null
+    },
+    {
+      "descriptor_rva": "0x4B6898",
+      "replacement_rva": "0x40BC",
+      "original_storage_rva": "0x543CB0",
+      "target_plaintext_rva": null
+    }
+  ],
+  "descriptor": {
+    "size": "0x28",
+    "plaintext_length": 10,
+    "flags": "0x01031211",
+    "key_slot": 1,
+    "plaintext_semantics": "hex-rva-string-beginning-0x",
+    "iv_bytes": 16,
+    "ciphertext_bytes": 16,
+    "ciphertext_stable_across_two_supplied_builds": false
+  },
+  "secret_and_decrypt": {
+    "secret_getter_rva": "0x2117A0",
+    "secret_field_offset": "0x10",
+    "real_decrypt_rva": "0x2129A4",
+    "aes128_key_schedule_candidate_rva": "0x2117A8",
+    "block_decrypt_helper_rva": "0x212520",
+    "key_register_rva": "0x213A2C",
+    "key_fetch_rva": "0x213AE4",
+    "key_table_rva": "0x5443C0",
+    "slot1_storage_rva": "0x5443C8",
+    "slot1_key_on_disk": false,
+    "slot1_key_runtime_provisioned": true
+  },
+  "hfamap_v242_gap": {
+    "source_file": "hfamap/src/HFAMapPatchExecutionTrace.m",
+    "relevant_blob_sha": "d486d48824443965d4fad789bd99724ae568adcb",
+    "current_decrypt_relation": "getter-plus-0xD00",
+    "sample_getter_plus_0xD00": "0x2124A0",
+    "sample_real_decrypt": "0x2129A4",
+    "fixed_relation_valid_for_sample": false,
+    "dedicated_key_probe": "HFAProbeKey2Path",
+    "generic_key_slot_resolver": false,
+    "slot1_probe_available": false
+  },
+  "runtime_debug": {
+    "debug_installer_rva": "0x11A354",
+    "exception_callback_rva": "0xFF08C",
+    "exception_receiver_area_rva": "~0x11A670",
+    "debug_state_configurator_rva": "0x124D20",
+    "watchpoint_register_area_rva": "0x120FE0",
+    "breakpoint_register_area_rva": "0x12117C",
+    "watchpoint_cooldown_area_rva": "0x1263D8",
+    "imports": [
+      "task_set_exception_ports",
+      "mach_msg",
+      "mach_msg_overwrite",
+      "thread_get_state",
+      "thread_set_state"
+    ]
+  },
+  "corrected_false_interpretations": [
+    "0x211CA4-is-not-the-authoritative-decrypt-entry",
+    "0x543CB8-is-original-pointer-storage-not-target-rva",
+    "0x4128-is-replacement-rva-not-target-rva",
+    "0x4B6848-0x4B6870-0x4B6898-are-descriptors-not-target-rvas",
+    "do-not-replace-getter-plus-0xD00-with-another-fixed-delta"
+  ],
+  "next_version_requirements": [
+    "GenericSecretDecryptResolver",
+    "GenericKeySlotResolver-slot1-slot2-N",
+    "NativeHookResolver",
+    "runtime-decrypt-plaintext-observation",
+    "bounded-structural-decrypt-discovery",
+    "target-image-and-executable-range-validation",
+    "optional-RuntimeDebugResolver-PC-LR-RVA-capture"
+  ],
+  "strict_status": {
+    "research_recorded": true,
+    "resolver_source_modified": false,
+    "resolver_committed": false,
+    "resolver_ci_built": false,
+    "resolver_device_verified": false,
+    "exact_three_target_rvas_recovered": false
+  }
+}
