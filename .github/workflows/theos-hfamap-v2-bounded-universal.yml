@@ -1,9 +1,9 @@
-name: HFAMap v2.4.5 Dispatcher CFG Correlator
+name: HFAMap v2.4.6 Decoupled Discovery Analysis
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.5-dispatcher-cfg-hwbp-correlator
+      - feature/hfamap-v2.4.6-decoupled-discovery-analysis
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -27,26 +27,24 @@ jobs:
       - name: Check source invariants
         run: |
           set -euo pipefail
-          grep -q 'src/HFAIL2CPPMethodIndex.mm' hfamap/Makefile
-          grep -q 'com.hfa.il2cpp-method-index/v1' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'kHFAMaxMethods = 32768' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'MethodInfo\[%lu\]' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'HFAExecutableUnityAddress' hfamap/src/HFAIL2CPPMethodIndex.mm
-          grep -q 'unityExecutableSegmentValidation' hfamap/src/HFAIL2CPPMethodIndex.mm
+          grep -q 'src/HFAMapFastDiscovery.mm' hfamap/Makefile
+          grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
+          grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
+          grep -q 'deepAnalysisPerformed' hfamap/src/HFAMapFastDiscovery.mm
+          ! grep -q 'HFAMapAnalyzeMenuBinary' hfamap/src/HFAMapFastDiscovery.mm
+          ! grep -q 'HFAMapInventoryStrippedObjCActions' hfamap/src/HFAMapFastDiscovery.mm
+          ! grep -q 'HFAIL2CPPBuildMethodIndex' hfamap/src/HFAMapFastDiscovery.mm
+          grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
+          grep -q 'HFAMapRunSelectedDeepAnalysis' hfamap/src/HFAMapCore.mm
+          grep -q 'globalRediscoveryPerformed' hfamap/src/HFAMapCore.mm
+          grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
+          grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
+          grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
+          grep -q '2.4.6-dev-decoupled-discovery-analysis' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.6-dev Decoupled' hfamap/src/HFAMapEntry.mm
           grep -q 'com.hfa.stripped-action/v3' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'bounded-cfg-worklist' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'BR Xn' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q '0xd61f0000U' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q '0xd63f0000U' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'same-image-helper-traversal' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'verify.dylib-arm64-relocation-and-register-context-coverage' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'exact-method-pointer-address' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'assembly-csharp-method-pointer-correlation' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'gHFAIL2CPPSessionActive' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'featureDirectedAnalysisRequiresHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'exact-user-activated-control-target-action' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q '2.4.5-dev-dispatcher-cfg-correlator' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.4.5-dev Dispatcher CFG' hfamap/src/HFAMapEntry.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'vm_write' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -64,27 +62,28 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.5-dev
+          mkdir -p hfamap/dist/v2.4.6-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
-          out=hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.5.strings"
+            hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
+          out=hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.6.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
-          grep -q 'com.hfa.il2cpp-method-index/v1' "$strings_file"
+          grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
+          grep -q 'full-list-first-no-deep-analysis' "$strings_file"
           grep -q 'com.hfa.stripped-action/v3' "$strings_file"
-          grep -q 'bounded-cfg-worklist' "$strings_file"
-          grep -q 'same-image-helper-traversal' "$strings_file"
-          grep -q 'assembly-csharp-method-pointer-correlation' "$strings_file"
-          grep -q 'HFAMap v2.4.5-dev Dispatcher CFG' "$strings_file"
+          grep -q 'HFAMap v2.4.6-dev Decoupled' "$strings_file"
+          grep -q '1. Search Menu' "$strings_file"
+          grep -q '2. Deep Analyze Menu' "$strings_file"
+          grep -q '3. Runtime Probe (8s)' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.5-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.6-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.5-DispatcherCFGCorrelator
+          name: HFAMapUniversal-v2.4.6-DecoupledDiscoveryAnalysis
           path: |
-            hfamap/dist/v2.4.5-dev/HFAMapUniversal-v2.4.5-dev.dylib
-            hfamap/dist/v2.4.5-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.6-dev/HFAMapUniversal-v2.4.6-dev.dylib
+            hfamap/dist/v2.4.6-dev/SHA256SUMS.txt
           if-no-files-found: error
