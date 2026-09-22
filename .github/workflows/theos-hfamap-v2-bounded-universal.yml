@@ -1,9 +1,9 @@
-name: HFAMap v2.4.8 Call Return Method Range
+name: HFAMap v2.4.9 Post Call Type Branch
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.8-call-return-method-range
+      - feature/hfamap-v2.4.9-postcall-type-branch
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -39,19 +39,22 @@ jobs:
           grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
           grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
           grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
-          grep -q '2.4.8-dev-call-return-method-range' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.4.8-dev Method Range' hfamap/src/HFAMapEntry.mm
+          grep -q '2.4.9-dev-postcall-type-branch' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.9-dev Type Branch' hfamap/src/HFAMapEntry.mm
           grep -q 'src/HFAIL2CPPMethodRangeIndex.mm' hfamap/Makefile
           grep -q 'com.hfa.il2cpp-method-range-index/v1' hfamap/src/HFAIL2CPPMethodRangeIndex.mm
           grep -q 'containing-method-range' hfamap/src/HFAIL2CPPMethodRangeIndex.mm
           grep -q 'same-unity-executable-segment-next-method-start-bounded-span' hfamap/src/HFAIL2CPPMethodRangeIndex.mm
           grep -q 'h5gg-1.9.6-offset-to-cached-method-native-range-index' hfamap/src/HFAIL2CPPMethodRangeIndex.mm
-          grep -q 'com.hfa.stripped-action/v5' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'com.hfa.stripped-action/v6' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'same-image-objc-tail-stub-summary' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'arm64-call-return-clobber-model' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'objc-message-chain' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'post-call-stack-slot-provenance' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'condition-provenance' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'type-branch-resolver' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'typeBranches' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'assembly-csharp-containing-method-range' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'verify.dylib-native-dispatch-plus-h5gg-1.9.6-offset-to-method' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'verify.dylib-native-dispatch-register-context-plus-h5gg-1.9.6-offset-to-method' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           grep -q 'exact-user-activated-control-target-action' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'objc_msgSend(' hfamap/src/HFAMapStrippedActionAnalyzer.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -71,30 +74,30 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.8-dev
+          mkdir -p hfamap/dist/v2.4.9-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.8-dev/HFAMapUniversal-v2.4.8-dev.dylib
-          out=hfamap/dist/v2.4.8-dev/HFAMapUniversal-v2.4.8-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.8.strings"
+            hfamap/dist/v2.4.9-dev/HFAMapUniversal-v2.4.9-dev.dylib
+          out=hfamap/dist/v2.4.9-dev/HFAMapUniversal-v2.4.9-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.9.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
-          grep -q 'com.hfa.stripped-action/v5' "$strings_file"
+          grep -q 'com.hfa.stripped-action/v6' "$strings_file"
           grep -q 'com.hfa.il2cpp-method-range-index/v1' "$strings_file"
-          grep -q 'containing-method-range' "$strings_file"
-          grep -q 'objc-message-chain' "$strings_file"
-          grep -q 'HFAMap v2.4.8-dev Method Range' "$strings_file"
+          grep -q 'post-call-stack-slot-provenance' "$strings_file"
+          grep -q 'type-branch-resolver' "$strings_file"
+          grep -q 'HFAMap v2.4.9-dev Type Branch' "$strings_file"
           grep -q '1. Search Menu' "$strings_file"
           grep -q '2. Deep Analyze Menu' "$strings_file"
           grep -q '3. Runtime Probe (8s)' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.8-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.9-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.8-CallReturnMethodRange
+          name: HFAMapUniversal-v2.4.9-PostCallTypeBranch
           path: |
-            hfamap/dist/v2.4.8-dev/HFAMapUniversal-v2.4.8-dev.dylib
-            hfamap/dist/v2.4.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.9-dev/HFAMapUniversal-v2.4.9-dev.dylib
+            hfamap/dist/v2.4.9-dev/SHA256SUMS.txt
           if-no-files-found: error
