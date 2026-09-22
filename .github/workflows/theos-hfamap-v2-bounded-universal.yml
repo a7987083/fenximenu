@@ -35,6 +35,14 @@ jobs:
           grep -q 'createWithAsm' hfamap/src/HFAMapImageProbe.mm
           grep -q 'memorypatch-menu' hfamap/src/HFAMapImageProbe.mm
           grep -q 'patchPrimitiveEvidenceOnly' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'src/HFAMapMenuBinaryAnalyzer.mm' hfamap/Makefile
+          grep -q 'com.hfa.menu-callgraph/v1' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'LC_SYMTAB' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'SEG_LINKEDIT' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'MemoryPatch13createWithHex' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'arm64-direct-bl' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'directPatchCallEdges' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
+          grep -q 'menuCallGraph' hfamap/src/HFAMapImageProbe.mm
           grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
           grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
@@ -68,6 +76,9 @@ jobs:
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.il2cpp-runtime-probe/v1' "$strings_file"
           grep -q 'com.hfa.menu-binary-evidence/v1' "$strings_file"
+          grep -q 'com.hfa.menu-callgraph/v1' "$strings_file"
+          grep -q 'directPatchCallEdges' "$strings_file"
+          grep -q 'arm64-direct-bl' "$strings_file"
           grep -q 'MemoryPatch' "$strings_file"
           grep -q 'memorypatch-menu' "$strings_file"
           grep -q 'HFAMap v2.4.0-dev Menu Binary Evidence' "$strings_file"
