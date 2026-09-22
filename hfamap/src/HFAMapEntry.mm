@@ -121,7 +121,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.4.4-dev Feature Runtime Method";
+    title.text = @"HFAMap v2.4.5-dev Dispatcher CFG";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
@@ -147,7 +147,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:probe];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 146.0, 222.0, 84.0)];
-    status.text = @"Open original menu, then scan.\nProbe analyzes the exact original\ncontrol target/action without invoking it.";
+    status.text = @"Open original menu, then scan.\nProbe follows exact action CFG\nand correlates IL2CPP method targets.";
     status.numberOfLines = 4;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];
