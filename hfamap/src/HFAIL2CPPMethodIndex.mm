@@ -2,6 +2,7 @@
 
 #import <Foundation/Foundation.h>
 #import <mach/mach.h>
+#import <mach/mach_vm.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <string.h>
@@ -72,9 +73,6 @@ static void *HFAMethodPointer(const void *method, HFAMethodGetPointerFn getter,
             return p;
         }
     }
-    // Common IL2CPP MethodInfo layouts place methodPointer in the first word.
-    // This is read-only fallback evidence only; it is accepted only if the
-    // candidate is in an executable VM region.
     if (!HFAReadablePointer(method)) return NULL;
     void *candidate = NULL;
     vm_size_t copied = 0;
@@ -95,31 +93,19 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
     pthread_mutex_unlock(&gHFAIndexLock);
 
     HFADomainGetFn domainGet = (HFADomainGetFn)dlsym(RTLD_DEFAULT, "il2cpp_domain_get");
-    HFADomainGetAssembliesFn domainAssemblies =
-        (HFADomainGetAssembliesFn)dlsym(RTLD_DEFAULT, "il2cpp_domain_get_assemblies");
-    HFAAssemblyGetImageFn assemblyImage =
-        (HFAAssemblyGetImageFn)dlsym(RTLD_DEFAULT, "il2cpp_assembly_get_image");
-    HFAImageGetNameFn imageName =
-        (HFAImageGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_name");
-    HFAImageGetClassCountFn imageClassCount =
-        (HFAImageGetClassCountFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_class_count");
-    HFAImageGetClassFn imageClass =
-        (HFAImageGetClassFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_class");
-    HFAClassGetNameFn className =
-        (HFAClassGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_name");
-    HFAClassGetNamespaceFn classNamespace =
-        (HFAClassGetNamespaceFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_namespace");
-    HFAClassGetMethodsFn classMethods =
-        (HFAClassGetMethodsFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_methods");
-    HFAMethodGetNameFn methodName =
-        (HFAMethodGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_name");
-    HFAMethodGetParamCountFn methodParamCount =
-        (HFAMethodGetParamCountFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_param_count");
-    HFAMethodGetPointerFn methodPointer =
-        (HFAMethodGetPointerFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_pointer");
+    HFADomainGetAssembliesFn domainAssemblies = (HFADomainGetAssembliesFn)dlsym(RTLD_DEFAULT, "il2cpp_domain_get_assemblies");
+    HFAAssemblyGetImageFn assemblyImage = (HFAAssemblyGetImageFn)dlsym(RTLD_DEFAULT, "il2cpp_assembly_get_image");
+    HFAImageGetNameFn imageName = (HFAImageGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_name");
+    HFAImageGetClassCountFn imageClassCount = (HFAImageGetClassCountFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_class_count");
+    HFAImageGetClassFn imageClass = (HFAImageGetClassFn)dlsym(RTLD_DEFAULT, "il2cpp_image_get_class");
+    HFAClassGetNameFn className = (HFAClassGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_name");
+    HFAClassGetNamespaceFn classNamespace = (HFAClassGetNamespaceFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_namespace");
+    HFAClassGetMethodsFn classMethods = (HFAClassGetMethodsFn)dlsym(RTLD_DEFAULT, "il2cpp_class_get_methods");
+    HFAMethodGetNameFn methodName = (HFAMethodGetNameFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_name");
+    HFAMethodGetParamCountFn methodParamCount = (HFAMethodGetParamCountFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_param_count");
+    HFAMethodGetPointerFn methodPointer = (HFAMethodGetPointerFn)dlsym(RTLD_DEFAULT, "il2cpp_method_get_pointer");
 
-    BOOL required = domainGet && domainAssemblies && assemblyImage && imageName &&
-                    imageClassCount && imageClass && className && classMethods && methodName;
+    BOOL required = domainGet && domainAssemblies && assemblyImage && imageName && imageClassCount && imageClass && className && classMethods && methodName;
     if (!required) {
         NSDictionary *summary = @{
             @"schema": @"com.hfa.il2cpp-method-index/v1",
@@ -154,9 +140,7 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
         if (classCountRaw > classCount) hitLimit = YES;
         for (size_t ci = 0; ci < classCount; ++ci) {
             if ([[NSDate date] timeIntervalSince1970] > deadline) { timedOut = YES; break; }
-            if (classesInspected >= kHFAMaxClasses || methodsInspected >= kHFAMaxMethods) {
-                hitLimit = YES; break;
-            }
+            if (classesInspected >= kHFAMaxClasses || methodsInspected >= kHFAMaxMethods) { hitLimit = YES; break; }
             void *klass = imageClass(image, ci);
             if (!klass) continue;
             ++classesInspected;
@@ -177,26 +161,18 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
                 if (dladdr(pointer, &info) && info.dli_fbase && info.dli_fname) {
                     NSString *path = [NSString stringWithUTF8String:info.dli_fname] ?: @"";
                     imageValue = path.lastPathComponent ?: @"";
-                    rva = [NSString stringWithFormat:@"0x%llX",
-                           (unsigned long long)((uintptr_t)pointer - (uintptr_t)info.dli_fbase)];
+                    rva = [NSString stringWithFormat:@"0x%llX", (unsigned long long)((uintptr_t)pointer - (uintptr_t)info.dli_fbase)];
                 }
-                NSString *key = [NSString stringWithFormat:@"0x%llX",
-                                 (unsigned long long)(uintptr_t)pointer];
+                NSString *key = [NSString stringWithFormat:@"0x%llX", (unsigned long long)(uintptr_t)pointer];
                 if (!byAddress[key] && indexed < kHFAMaxMethods) {
                     byAddress[key] = @{
-                        @"assembly": assembly ?: @"",
-                        @"namespace": namespaceName ?: @"",
-                        @"class": klassName ?: @"",
-                        @"method": methodNameValue ?: @"",
+                        @"assembly": assembly ?: @"", @"namespace": namespaceName ?: @"",
+                        @"class": klassName ?: @"", @"method": methodNameValue ?: @"",
                         @"parameterCount": methodParamCount ? @(methodParamCount(method)) : @(-1),
-                        @"methodInfoToken": [NSString stringWithFormat:@"0x%llX",
-                                              (unsigned long long)(uintptr_t)method],
-                        @"methodPointerToken": key,
-                        @"methodPointerSource": pointerSource ?: @"unknown",
-                        @"implementationImage": imageValue,
-                        @"implementationOffsetFromLoadBase": rva,
-                        @"analysisOnly": @YES,
-                        @"canonicalEligible": @NO
+                        @"methodInfoToken": [NSString stringWithFormat:@"0x%llX", (unsigned long long)(uintptr_t)method],
+                        @"methodPointerToken": key, @"methodPointerSource": pointerSource ?: @"unknown",
+                        @"implementationImage": imageValue, @"implementationOffsetFromLoadBase": rva,
+                        @"analysisOnly": @YES, @"canonicalEligible": @NO
                     };
                     ++indexed;
                 }
@@ -208,12 +184,9 @@ NSDictionary *HFAIL2CPPBuildMethodIndex(NSTimeInterval deadline) {
         @"schema": @"com.hfa.il2cpp-method-index/v1",
         @"status": foundAssemblyCSharp ? @"indexed" : @"assembly-csharp-not-found",
         @"analysisOnly": @YES, @"canonicalEligible": @NO,
-        @"assemblyCountRaw": @(assemblyCountRaw),
-        @"classesInspected": @(classesInspected),
-        @"methodsInspected": @(methodsInspected),
-        @"indexedMethodPointers": @(indexed),
-        @"methodPointerExport": @(methodPointer != NULL),
-        @"timedOut": @(timedOut), @"hitLimit": @(hitLimit),
+        @"assemblyCountRaw": @(assemblyCountRaw), @"classesInspected": @(classesInspected),
+        @"methodsInspected": @(methodsInspected), @"indexedMethodPointers": @(indexed),
+        @"methodPointerExport": @(methodPointer != NULL), @"timedOut": @(timedOut), @"hitLimit": @(hitLimit),
         @"policy": @"read-only-il2cpp-metadata-enumeration-no-runtime-invoke-no-hook-no-memory-write"
     };
 
