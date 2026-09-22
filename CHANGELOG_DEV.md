@@ -8,7 +8,10 @@
 - 记录 assembly/namespace/class/method/parameter count、对象/参数/结果/异常 pointer token，并与最近 1.5 秒 UI 交互相关联；events/mappings 各限 256。
 - 本版不主动调用游戏方法、未验证参数签名、`gameStateWritten=false`、`canonicalEligible=false`；临时 Hook 会诚实记录 instrumentation code memory write。
 - XP Hero Currency/Exp 作为 runtime-method-call 候选；Enemy Can't Attack 仍为 Legacy/AP。Earn Fuel/Boost 仍为 menu-hook-field-dataflow，不错误改类。
-- 新增 6 项源码合同测试并升级 CI；本地 68/68 tests 与 Python compile 已通过。编译、CI 与设备状态将在完成后分别记录。
+- 新增 6 项源码合同测试并升级 CI；本地与 Actions 均为 68/68 tests，Python compile 通过。
+- 实现提交 `54370834a2414a216a30cd97de86429126218b01`；Actions Run `35697312404` 成功，artifact `10681226081`。
+- CI arm64 dylib：196608 bytes；Mach-O UUID `7C045523-558F-38D0-B06B-5FF612C3EB43`；LC_CODE_SIGNATURE 3056 bytes；SHA256 `43e79104d484a010b99d7f92ee38a2ec56938b54288ac9f2f0752588362d4dd4`。
+- 当前严格状态：已修改、已提交、已 CI 编译、未实机；不得把 CI 成功写成 runtime resolver 已在 XP Hero 命中。
 
 ## v2.3.7-dev — 成功逻辑完整交付包
 

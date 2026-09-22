@@ -2,7 +2,7 @@
 
 ## v2.3.8 IL2CPP Runtime Probe 首版边界
 
-状态：源码开发中；尚未 CI 编译、尚未实机。
+状态：Actions Run `35697312404` 已编译通过；尚未实机。
 
 - 目标进程若未提供可逆 `DobbyHook/DobbyDestroy`，探针会返回 `reversible-hook-backend-unavailable`，不会降级为无法可靠恢复的 Hook。
 - IL2CPP exports 可能被 strip/隐藏；任一必要 export 缺失时返回 `required-il2cpp-exports-unavailable`。

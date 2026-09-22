@@ -8,7 +8,9 @@
 - 可用门：目标进程必须可解析 `DobbyHook/DobbyDestroy` 及 `il2cpp_class_from_name`、`il2cpp_class_get_method_from_name`、`il2cpp_runtime_invoke`；不满足即 fail closed 并输出原因。
 - 已知盲区：目标可能在 Arm 前缓存 MethodInfo，或直接调用 method pointer 绕过 `il2cpp_runtime_invoke`。0 event 不能证明不存在 runtime method。
 - 首轮设备步骤：XP Hero Arm 后只触发 Currency 一次，等待自动 Stop；再 Arm 只触发 Exp 一次；保存两轮 RuntimeProbe/Diagnostics。Enemy Can't Attack 与 Fuel/Boost 不用于验证这条方法链。
-- 当前状态会在提交后补充 Commit/Actions/artifact；在 CI 成功前不得写“已编译”。
+- 实现提交 `54370834a2414a216a30cd97de86429126218b01`；Actions Run `35697312404` 全步骤成功；artifact `10681226081`。
+- arm64 dylib：196608 bytes；UUID `7C045523-558F-38D0-B06B-5FF612C3EB43`；LC_CODE_SIGNATURE 3056 bytes；SHA256 `43e79104d484a010b99d7f92ee38a2ec56938b54288ac9f2f0752588362d4dd4`。
+- 当前严格状态：已提交、已 CI 编译、未实机。下一证据门仍是 XP Hero 两轮单功能 Probe 与 hook restore=0。
 
 ## 2026-09-22 成功逻辑完整交付包
 

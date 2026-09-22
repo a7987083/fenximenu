@@ -8,7 +8,7 @@
 
 Next Task：
 
-1. CI 编译并交付 v2.3.8 dylib；
+1. 已完成：Actions Run `35697312404` 编译并交付 v2.3.8 arm64 dylib；
 2. XP Hero 连续两轮 Arm，分别只点 Currency、Exp，保存 RuntimeProbe/Diagnostics；
 3. 若 exports 或 reversible backend unavailable，保存完整状态，不扩大为不可恢复 inline hook；
 4. 对捕获的 assembly/namespace/class/method/parameterCount 与 matching binary+metadata 交叉验证；
