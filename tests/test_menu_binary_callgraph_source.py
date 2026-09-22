@@ -39,16 +39,43 @@ class MenuBinaryCallGraphSourceTests(unittest.TestCase):
         self.assertIn('callsiteRVA', ANALYZER)
         self.assertIn('primitiveRVA', ANALYZER)
 
-    def test_entry_symbols_include_verify_style_contract(self):
+    def test_entry_and_dispatcher_symbols_are_inventoried(self):
         for token in ("setupModMenu", "offset:patch:", "machoPath", "initialValue"):
             self.assertIn(token, ANALYZER)
+        self.assertIn('objc_msgSend$', ANALYZER)
+        self.assertIn('dispatcherSymbols', ANALYZER)
+        self.assertIn('kHFAMenuMaxDispatcherSymbols = 256', ANALYZER)
+
+    def test_patch_argument_evidence_is_bounded_and_noncanonical(self):
+        for token in (
+            'kHFAMenuArgumentWindowBytes = 32',
+            'kHFAMenuMaxArgumentEvidence = 8',
+            'movz-immediate-candidate',
+            'argumentEvidence',
+            'candidate-only-no-abi-binding',
+            'near-callsite-immediate-candidates-not-proven-arguments',
+        ):
+            self.assertIn(token, ANALYZER)
+        self.assertIn('@"canonicalEligible": @NO', ANALYZER)
+        self.assertIn('@"analysisOnly": @YES', ANALYZER)
+
+    def test_menu_family_is_separate_from_patch_backend(self):
+        self.assertIn('com.hfa.menu-binary-evidence/v2', IMAGE)
+        self.assertIn('@"menuFamily"', IMAGE)
+        self.assertIn('@"patchBackends"', IMAGE)
+        self.assertIn('@"legacy-ap"', IMAGE)
+        self.assertIn('@"jailpatch"', IMAGE)
+        legacy_index = IMAGE.index('legacy >= 30 && legacy > jail')
+        backend_index = IMAGE.index('NSMutableOrderedSet *patchBackends')
+        self.assertLess(legacy_index, backend_index)
+        self.assertNotIn('family = @"memorypatch-menu"', IMAGE)
 
     def test_analysis_is_attached_but_noncanonical(self):
         self.assertIn('HFAMapAnalyzeMenuBinary(header, slide, deadline)', IMAGE)
         self.assertIn('@"menuCallGraph"', IMAGE)
         self.assertIn('@"directPatchCallEdgeCount"', IMAGE)
         self.assertIn('@"canonicalEligible": @NO', ANALYZER)
-        self.assertIn('@"analysisOnly": @YES', ANALYZER)
+        self.assertIn('@"patchPrimitiveEvidenceOnly": @YES', IMAGE)
 
     def test_module_is_compiled_and_v239_path_stays_absent(self):
         self.assertIn('src/HFAMapMenuBinaryAnalyzer.mm', MAKEFILE)
