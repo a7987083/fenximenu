@@ -30,7 +30,7 @@ class DecoupledDiscoveryAnalysisTests(unittest.TestCase):
         self.assertIn('1. Search Menu', ENTRY)
         self.assertIn('2. Deep Analyze Menu', ENTRY)
         self.assertIn('3. Runtime Probe (8s)', ENTRY)
-        self.assertIn('HFAMap v2.4.8-dev Method Range', ENTRY)
+        self.assertIn('HFAMap v2.4.9-dev Type Branch', ENTRY)
 
     def test_fast_module_is_compiled(self):
         self.assertIn('src/HFAMapFastDiscovery.mm', MAKEFILE)
