@@ -53,8 +53,19 @@ jobs:
           file "$out" | grep -q 'Mach-O 64-bit dynamically linked shared library arm64'
           otool -l "$out" | grep -q 'LC_CODE_SIGNATURE'
 
+          # Release identity must match the artifact name. Do not allow a v2.4.3
+          # artifact that still presents the old v2.4.2 UI/version marker.
+          strings "$out" | grep -Fq 'HFAMap v2.4.3-dev Generic Secret Native Hook'
+          if strings "$out" | grep -Fq 'HFAMap v2.4.2-dev Stripped Static Suite'; then
+            echo 'stale v2.4.2 visible version marker found in v2.4.3 artifact' >&2
+            exit 1
+          fi
+          strings "$out" | grep -Fq '[SECRET-OBSERVER] version=2.4.3'
+
           echo '=== CODE SIGNATURE LOAD COMMAND ==='
           otool -l "$out" | grep -A4 'LC_CODE_SIGNATURE'
+          echo '=== VERSION MARKERS ==='
+          strings "$out" | grep -E 'HFAMap v2\.4\.[0-9]|SECRET-OBSERVER' | head -20
           echo '=== SHA256 ==='
           shasum -a 256 "$out"
           echo '=== FILE ==='
