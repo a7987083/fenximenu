@@ -2,7 +2,7 @@
 
 ## v2.3.9 IL2CPP Runtime Resolver 边界
 
-状态：源码已实现、69/69 本地测试通过；CI/实机待验证。
+状态：源码已提交、69/69 tests 与 Actions Run `35722643492` 编译通过；实机待验证。
 
 - “运行时抓方法”不是全 IL2CPP 构建必然可用：需要 domain/assembly/image/class/method enumeration exports，或后续 metadata-assisted internal resolver。导出被隐藏时本版会明确返回 `required-il2cpp-enumeration-exports-unavailable`。
 - 候选由菜单文字提示和通用动作词排序，只是缩小范围。方法命名完全混淆、业务入口无语义词、调用进入共享 generic thunk 时可能漏报或多义。

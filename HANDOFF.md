@@ -1,13 +1,15 @@
 # HFAMap Handoff
 
-## 2026-09-22 v2.3.9-dev IL2CPP Runtime Resolver（开发中）
+## 2026-09-22 v2.3.9-dev IL2CPP Runtime Resolver（已编译，待实机）
 
 - 分支：`feature/hfamap-v2.3.9-il2cpp-runtime-resolver`；基线 `5cb51b1efa15c9303904991fbaa61823a03f9b47`。
 - Resolver 来源基线：`a7987083/UnitXP_SP3-Moonstone@a3b8db8651eaea23ec0ae7e5fca497e8f67bcf6c`；移植的是 runtime export discovery、bounded metadata enumeration、MethodInfo pointer fallback 与 executable segment validation，不复制 UnitXP UI/Builder。
 - Hook backend：`jmpews/Dobby@5dfc8546954ce3b3198132ab13fddb89ee92cdd7`；CI 源码构建并静态链接。使用 `DobbyInstrument`，避免以猜测函数签名转发 managed method。
 - 上限：96 direct instruments、512 events、256 mappings、12000 classes、180000 methods；停止逐项 `DobbyDestroy`。
 - `runtimeFeatureHints` 来自本轮 registry 的 label/title/name/identifier，只参与候选排序，不是确认方法语义。
-- 69/69 本地测试通过。当前严格状态：已修改、未提交、未 CI 编译、未运行、未实机。
+- 69/69 tests 通过。当前 HEAD `cbc0351b9d12ba6762dbd3b340e4ff90688614a4`；Actions Run `35722643492` 成功；artifact `10691817650`。
+- arm64 dylib：266272 bytes；UUID `6AF0A6F6-CD75-3D59-8A42-28DC806996F6`；SHA256 `561e979e0181724dc5f54d43160ae8e698d956ab0016a76839a7c1c9090b3e2d`；Dobby 静态内置且无外部 Dobby dylib 依赖。
+- 当前严格状态：已修改、已提交、已 CI 编译、未运行、未实机。
 - 首轮实机：XP Currency 与 Exp 分开 Arm；检查 `resolver.status`、`directInstrumentCount`、`direct-method-entry`、`nearInteraction`、restore failure。0 event 仍不能证明没有方法。
 
 ## 2026-09-22 v2.3.8-dev Dual Runtime Probe（开发中）

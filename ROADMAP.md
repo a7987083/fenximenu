@@ -6,10 +6,12 @@
 
 本版在已有 resolver/invoke export 观测之外，枚举 Assembly/Class/Method，取得经过 executable Mach-O segment 校验的方法指针，并对最多 96 个与菜单标题及通用动作语义相关的候选入口安装 `DobbyInstrument`。instrument callback 只读取 ARM64 x0-x7/lr/sp，不替换未知签名函数、不主动调用 managed method；停止时逐项 `DobbyDestroy`。
 
+构建状态：实现提交已完成；Actions Run `35722643492` 全步骤成功。产物为 266272-byte arm64 Mach-O，UUID `6AF0A6F6-CD75-3D59-8A42-28DC806996F6`，SHA256 `561e979e0181724dc5f54d43160ae8e698d956ab0016a76839a7c1c9090b3e2d`。CI 验证 Dobby 静态内置，`otool -L` 无外部 Dobby 依赖。
+
 Next Task：
 
-1. 提交源码并完成 macOS/Theos arm64 CI 编译与 Mach-O/依赖验证；
-2. XP Hero 分两轮只触发 Currency、Exp，检查 `direct-method-entry` 与最近 UI interaction 的关联；
+1. XP Hero 分两轮只触发 Currency、Exp，检查 `direct-method-entry` 与最近 UI interaction 的关联；
+2. 核对 `backend=embedded-dobby-instrument-reversible`、`resolver.status` 与 direct instrument 安装数；
 3. Earn Fuel/Boost 继续保留 static Patch；另做 runtime method 观测，不互相覆盖；
 4. 每轮必须 `hooksRestored=true`、`hookRestoreFailureCount=0`；
 5. 对 export 被隐藏或枚举 API 不完整的游戏保持 fail-closed，并转 metadata-assisted/internal resolver 后续通道。

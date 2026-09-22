@@ -9,7 +9,10 @@
 - 新增最多 96 个 direct method entry 的 `DobbyInstrument`；记录 x0-x7/lr/sp 和 canonical method identity，原函数自然继续，不承担未知 ABI 转发。
 - 保留 `class_from_name / class_get_method_from_name / runtime_invoke` 观测，并用预解析 MethodInfo 补充 invoke 映射。
 - 静态 Patch/Canonical 生成规则不变；Resolver 结果固定 analysis-only，不能直接升格为 patch。
-- 本地 69/69 tests 通过；当前尚未提交、尚未 CI 编译、尚未实机。
+- 69/69 tests 通过；实现与 CI 修复已提交到 `feature/hfamap-v2.3.9-il2cpp-runtime-resolver`，当前 HEAD `cbc0351b9d12ba6762dbd3b340e4ff90688614a4`。
+- Actions Run `35722643492` 全步骤成功；artifact `10691817650`，ZIP digest `f0ac0ff6d073a9990c610dca81a355eef72bce9a91d5998aa6ada1cc1a8c3d44`。
+- CI arm64 dylib：266272 bytes；Mach-O UUID `6AF0A6F6-CD75-3D59-8A42-28DC806996F6`；SHA256 `561e979e0181724dc5f54d43160ae8e698d956ab0016a76839a7c1c9090b3e2d`；无外部 Dobby dylib 依赖。
+- 当前严格状态：已修改、已提交、已 CI 编译、未实机；不能把 build success 写成已在目标游戏捕获方法。
 
 ## v2.3.8-dev — reversible IL2CPP resolver/invoke observation
 
