@@ -1,9 +1,9 @@
-name: HFAMap v2.4.1 Dispatcher Patch Args
+name: HFAMap v2.4.2 Stripped Menu Static Suite
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.4.1-dispatcher-patch-args
+      - feature/hfamap-v2.4.2-stripped-menu-static-suite
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -27,30 +27,25 @@ jobs:
       - name: Check source invariants
         run: |
           set -euo pipefail
-          grep -q 'kHFAMaxImages = 2048' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'com.hfa.menu-binary-evidence/v2' hfamap/src/HFAMapImageProbe.mm
-          grep -q '@"menuFamily"' hfamap/src/HFAMapImageProbe.mm
-          grep -q '@"patchBackends"' hfamap/src/HFAMapImageProbe.mm
-          ! grep -q 'family = @"memorypatch-menu"' hfamap/src/HFAMapImageProbe.mm
-          grep -q 'src/HFAMapMenuBinaryAnalyzer.mm' hfamap/Makefile
-          grep -q 'com.hfa.menu-callgraph/v2' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'LC_SYMTAB' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'SEG_LINKEDIT' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'objc_msgSend\$' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'dispatcherSymbols' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'movz-immediate-candidate' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'candidate-only-no-abi-binding' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'directPatchCallEdges' hfamap/src/HFAMapMenuBinaryAnalyzer.mm
-          grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
+          grep -q 'com.hfa.menu-binary-evidence/v3' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'strippedObjCInventory' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'analysisCapabilities' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'get_OrigBytes' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'findIdaPatternFirst' hfamap/src/HFAMapImageProbe.mm
+          grep -q 'src/HFAMapStrippedActionAnalyzer.mm' hfamap/Makefile
+          grep -q 'src/HFAMapObjCActionInventory.mm' hfamap/Makefile
+          grep -q 'com.hfa.stripped-action/v1' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'kHFAActionMaxInstructions = 512' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'arm64-x0-x7-candidate' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'read-only-local-dataflow-no-hook-no-callback-invocation-no-memory-write' hfamap/src/HFAMapStrippedActionAnalyzer.mm
+          grep -q 'objc_copyClassNamesForImage' hfamap/src/HFAMapObjCActionInventory.mm
+          grep -q 'class_copyMethodList' hfamap/src/HFAMapObjCActionInventory.mm
+          grep -q '2.4.2-dev-stripped-menu-static-suite' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.4.2-dev Stripped Static Suite' hfamap/src/HFAMapEntry.mm
           grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'il2cpp_class_from_name' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'il2cpp_runtime_invoke' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'original ? original(method, object, arguments, exception)' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'kHFAIL2CPPMaxEvents = 256' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'kHFAIL2CPPMaxMappings = 256' hfamap/src/HFAIL2CPPRuntimeProbe.mm
 
       - name: Install Theos
         run: |
@@ -65,27 +60,27 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.4.1-dev
+          mkdir -p hfamap/dist/v2.4.2-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
-          out=hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.4.1.strings"
+            hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
+          out=hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.4.2.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
-          grep -q 'com.hfa.il2cpp-runtime-probe/v1' "$strings_file"
-          grep -q 'com.hfa.menu-binary-evidence/v2' "$strings_file"
-          grep -q 'com.hfa.menu-callgraph/v2' "$strings_file"
-          grep -q 'dispatcherSymbols' "$strings_file"
-          grep -q 'argumentEvidence' "$strings_file"
-          grep -q 'arm64-direct-bl' "$strings_file"
+          grep -q 'com.hfa.menu-binary-evidence/v3' "$strings_file"
+          grep -q 'com.hfa.stripped-action/v1' "$strings_file"
+          grep -q 'com.hfa.stripped-objc-inventory/v1' "$strings_file"
+          grep -q 'arm64-x0-x7-candidate' "$strings_file"
+          grep -q 'strippedObjCInventory' "$strings_file"
+          grep -q 'HFAMap v2.4.2-dev Stripped Static Suite' "$strings_file"
           ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.4.1-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.4.2-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.4.1-DispatcherPatchArgs
+          name: HFAMapUniversal-v2.4.2-StrippedMenuStaticSuite
           path: |
-            hfamap/dist/v2.4.1-dev/HFAMapUniversal-v2.4.1-dev.dylib
-            hfamap/dist/v2.4.1-dev/SHA256SUMS.txt
+            hfamap/dist/v2.4.2-dev/HFAMapUniversal-v2.4.2-dev.dylib
+            hfamap/dist/v2.4.2-dev/SHA256SUMS.txt
           if-no-files-found: error
