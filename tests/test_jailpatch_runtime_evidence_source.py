@@ -54,8 +54,9 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.4.2-dev-stripped-menu-static-suite', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.4.2-dev Stripped Static Suite', ENTRY)
+        self.assertIn('2.4.3-dev-generic-secret-native-hook', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.4.3-dev Generic Secret Native Hook', ENTRY)
+        self.assertNotIn('HFAMap v2.4.2-dev Stripped Static Suite', ENTRY)
 
 
 if __name__ == "__main__":
