@@ -40,11 +40,11 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
         self.assertIn('exact-method-pointer-address', ACTION)
         self.assertIn('assembly-csharp-method-pointer-correlation', ACTION)
         self.assertIn('assembly-csharp-containing-method-range', ACTION)
-        self.assertIn('verify.dylib-native-dispatch-plus-h5gg-1.9.6-offset-to-method', ACTION)
+        self.assertIn('verify.dylib-native-dispatch-register-context-plus-h5gg-1.9.6-offset-to-method', ACTION)
 
     def test_objc_runtime_targets_are_classified_without_invocation(self):
         for token in (
-            'com.hfa.stripped-action/v5', 'HFARuntimeTargetClassification',
+            'com.hfa.stripped-action/v6', 'HFARuntimeTargetClassification',
             'objc-runtime-dispatch', 'objcRuntimeDispatchCount', 'objcRuntimeDispatches',
             'dlsym-known-objc-runtime-match', 'x1-selector-candidate',
             'x0-receiver-provenance', 'bounded-x1-cstring-read',
@@ -60,6 +60,17 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
             'HFASummarizeSameImageTailStub', 'objc-message-send-stub',
             'objc-message-chain', 'messageChains', 'objcMessageChainCount',
             'arm64-x0-return-provenance', 'returnProvenance',
+        ):
+            self.assertIn(token, ACTION)
+
+    def test_post_call_stack_and_type_branch_provenance_are_explicit(self):
+        for token in (
+            'kHFAMaxStackSlots = 64', 'post-call-register-provenance',
+            'post-call-stack-slot-provenance', 'str-uimm-sp-provenance',
+            'stur-sp-provenance', 'condition-provenance', 'type-branch-resolver',
+            'typeBranches', 'typeBranchCount', 'cmp-immediate', 'cmp-register',
+            'csel-provenance', 'type-or-call-result-zero-test',
+            'cmp-subs-conditioned-type-branch',
         ):
             self.assertIn(token, ACTION)
 
