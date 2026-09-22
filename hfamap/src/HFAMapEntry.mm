@@ -139,7 +139,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 10.0, 236.0, 28.0)];
-    title.text = @"HFAMap v2.4.7-dev ObjC Dispatch";
+    title.text = @"HFAMap v2.4.8-dev Method Range";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:16.0];
     [panel addSubview:title];
@@ -160,7 +160,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:probe];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 196.0, 236.0, 94.0)];
-    status.text = @"1 Search = frozen fast discovery\n2 Analyze = selected menu only\n3 Probe = CFG + ObjC runtime dispatch";
+    status.text = @"1 Search = frozen fast discovery\n2 Analyze = selected menu only\n3 Probe = call/return + MethodRange";
     status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:12.5];
@@ -173,7 +173,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [window bringSubviewToFront:button];
     gHFAMapPanel = panel;
     gHFAMapButton = button;
-    NSLog(@"[HFAMap] v2.4.7 ObjC runtime dispatch UI installed on window=%@", window);
+    NSLog(@"[HFAMap] v2.4.8 call/return + method range UI installed on window=%@", window);
     return YES;
 }
 
