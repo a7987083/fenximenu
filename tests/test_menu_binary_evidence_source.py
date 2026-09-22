@@ -12,16 +12,19 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         for token in (
             "MemoryPatch", "createWithHex", "createWithBytes", "createWithAsm",
             "CodePatch", "ActiveCodePatch offset:", "machoPath",
+            "get_OrigBytes", "get_PatchBytes", "get_CurrBytes",
+            "findHexFirst", "findIdaPatternFirst", "asm_arch", "asm_code",
         ):
             self.assertIn(token, IMAGE_PROBE)
         self.assertIn('@"patchBackends"', IMAGE_PROBE)
         self.assertIn('@"menuFamily"', IMAGE_PROBE)
+        self.assertIn('@"analysisCapabilities"', IMAGE_PROBE)
         self.assertNotIn('family = @"memorypatch-menu"', IMAGE_PROBE)
-        self.assertIn('@"patchPrimitiveScore"', IMAGE_PROBE)
 
-    def test_evidence_is_analysis_only(self):
-        self.assertIn('com.hfa.menu-binary-evidence/v2', IMAGE_PROBE)
-        self.assertIn('@"patchPrimitiveEvidenceOnly": @YES', IMAGE_PROBE)
+    def test_stripped_inventory_is_attached(self):
+        self.assertIn('com.hfa.menu-binary-evidence/v3', IMAGE_PROBE)
+        self.assertIn('HFAMapInventoryStrippedObjCActions', IMAGE_PROBE)
+        self.assertIn('@"strippedObjCInventory"', IMAGE_PROBE)
         self.assertIn('@"canonicalEligible": @NO', IMAGE_PROBE)
 
     def test_v238_runtime_probe_is_preserved(self):
@@ -30,8 +33,8 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_is_v241(self):
-        self.assertIn('HFAMap v2.4.1-dev Dispatcher Patch Args', ENTRY)
+    def test_ui_is_v242(self):
+        self.assertIn('HFAMap v2.4.2-dev Stripped Static Suite', ENTRY)
 
 
 if __name__ == "__main__":
