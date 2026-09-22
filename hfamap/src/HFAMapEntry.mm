@@ -78,10 +78,12 @@ static void HFAMapTogglePanel(void)
     gHFAMapStatus.text = @"Runtime probe armed for 8s.\nTap one original menu control.";
     HFAMapArmLastSelectedRuntimeProbe(^(NSDictionary *summary) {
         NSString *status = summary[@"status"] ?: @"?";
-        if ([status isEqualToString:@"complete"])
+        if ([status isEqualToString:@"complete"] || [summary[@"featureDirectedAnalysisCount"] unsignedIntegerValue] > 0)
             gHFAMapStatus.text = [NSString stringWithFormat:
-                @"Probe complete — %@ events.\nSee %@",
-                summary[@"eventCount"] ?: @0, HFAOutputFileName(@"RuntimeProbe.json")];
+                @"Probe done — %@ events, %@ method links.\nSee %@",
+                summary[@"eventCount"] ?: @0,
+                summary[@"featureDirectedCorrelationCount"] ?: @0,
+                HFAOutputFileName(@"RuntimeProbe.json")];
         else
             gHFAMapStatus.text = [NSString stringWithFormat:@"Probe stopped: %@", status];
     });
@@ -119,7 +121,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 12.0, 222.0, 26.0)];
-    title.text = @"HFAMap v2.4.3-dev Runtime Action Correlator";
+    title.text = @"HFAMap v2.4.4-dev Feature Runtime Method";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [panel addSubview:title];
@@ -145,7 +147,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:probe];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 146.0, 222.0, 84.0)];
-    status.text = @"Open original menu, then scan.\nProbe is optional and observes only\nyour next original-menu control event.";
+    status.text = @"Open original menu, then scan.\nProbe analyzes the exact original\ncontrol target/action without invoking it.";
     status.numberOfLines = 4;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:13.0];
