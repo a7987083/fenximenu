@@ -7,6 +7,8 @@
 #import "HFAMapPatchV1.h"
 #import "HFAMapRuntimeProbe.h"
 #import "HFAMapFeatureHandlerResolver.h"
+#import "HFAMapStaticCatalog.h"
+#import "HFAMapStaticCatalogBridge.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
@@ -126,6 +128,7 @@ void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
             @"candidates": candidates ?: @[],
             @"candidateCount": @(candidates.count),
             @"deepAnalysisPerformed": @NO,
+            @"staticCatalogLoaded": @(HFAMapStaticCatalogCurrent() != nil),
             @"elapsedMs": @((NSDate.date.timeIntervalSince1970 - started) * 1000.0)
         };
         HFAWriteJSON(summary, HFAOutputFileName(@"Discovery.json"));
@@ -133,7 +136,8 @@ void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
         HFADiagnosticsFinishSession(selected ? @"selected" : @"incomplete", @{
             @"candidateCount": @(candidates.count),
             @"selectedImage": selected[@"image"] ?: @"",
-            @"deepAnalysisPerformed": @NO
+            @"deepAnalysisPerformed": @NO,
+            @"staticCatalogLoaded": @(HFAMapStaticCatalogCurrent() != nil)
         });
         dispatch_async(dispatch_get_main_queue(), ^{
             @synchronized(NSObject.class) { gHFADiscovering = NO; }
@@ -165,17 +169,23 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
         @"selectedImage": selected[@"image"] ?: @"?",
         @"selectedPath": selected[@"path"] ?: @"?",
         @"discoveryReused": @YES,
-        @"globalRediscoveryPerformed": @NO
+        @"globalRediscoveryPerformed": @NO,
+        @"staticCatalogLoaded": @(HFAMapStaticCatalogCurrent() != nil)
     });
 
     dispatch_async(dispatch_get_main_queue(), ^{
         NSTimeInterval captureStarted = NSDate.date.timeIntervalSince1970;
         NSDictionary *snapshot = HFAMapCaptureFeatureSeeds(selected, captureStarted + 0.50, events);
-        NSDictionary *handlerGraph = [HFAMapAnalyzeFeatureHandlerSnapshot(snapshot, selected) retain];
+        NSDictionary *rawHandlerGraph = HFAMapAnalyzeFeatureHandlerSnapshot(snapshot, selected);
+        NSDictionary *handlerGraph = [HFAMapStaticCatalogAnnotateHandlerGraph(rawHandlerGraph,
+            selected[@"image"] ?: @"") retain];
         HFADiagnosticsLog(@"feature-handler-graph", handlerGraph[@"status"] ?: @"complete", @{
             @"recordCount": handlerGraph[@"recordCount"] ?: @0,
             @"runtimeMethodCandidateCount": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
             @"il2cppCorrelationCount": handlerGraph[@"il2cppCorrelationCount"] ?: @0,
+            @"staticCatalogLoaded": handlerGraph[@"staticCatalogLoaded"] ?: @NO,
+            @"staticCatalogMatchedBlockCount": handlerGraph[@"staticCatalogMatchedBlockCount"] ?: @0,
+            @"staticCatalogMatchedRuntimeMethodCount": handlerGraph[@"staticCatalogMatchedRuntimeMethodCount"] ?: @0,
             @"policy": handlerGraph[@"policy"] ?: @""
         });
         HFADiagnosticsLog(@"ui-snapshot", @"complete", snapshot[@"metrics"] ?: @{});
@@ -194,6 +204,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"registry": resolved[@"registry"] ?: @[],
                 @"runtimeRecords": runtimeRecords,
                 @"featureHandlerGraph": handlerGraph ?: @{},
+                @"staticCatalog": HFAMapStaticCatalogCurrent() ?: @{},
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
@@ -227,6 +238,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"schema": @"com.hfa.registry/v1", @"session": session,
                 @"candidate": selected, @"records": resolved[@"registry"] ?: @[],
                 @"featureHandlerGraph": handlerGraph ?: @{},
+                @"staticCatalog": HFAMapStaticCatalogCurrent() ?: @{},
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
@@ -237,6 +249,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"schema": @"com.hfa.igmm.runtime/v1", @"session": session,
                 @"candidate": selected, @"records": runtimeRecords,
                 @"featureHandlerGraph": handlerGraph ?: @{},
+                @"staticCatalog": HFAMapStaticCatalogCurrent() ?: @{},
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"analysisOnly": @YES,
                 @"status": resolved[@"status"] ?: @"complete"
@@ -247,6 +260,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"validated": @(features.count),
                 @"unresolved": @([resolved[@"unresolved"] count]),
                 @"runtimeMethodCandidates": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
+                @"staticCatalogMatchedBlockCount": handlerGraph[@"staticCatalogMatchedBlockCount"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
