@@ -59,7 +59,7 @@ static void HFAMapTogglePanel(void)
 
 - (void)analyze
 {
-    gHFAMapStatus.text = @"Analyzing selected menu only…";
+    gHFAMapStatus.text = @"Analyzing selected menu + feature handlers…";
     HFAMapRunSelectedDeepAnalysis(^(NSDictionary *summary) {
         NSString *status = summary[@"status"] ?: @"?";
         if ([status isEqualToString:@"no-selected-menu"]) {
@@ -69,9 +69,10 @@ static void HFAMapTogglePanel(void)
         NSArray *features = summary[@"features"] ?: @[];
         NSArray *registry = summary[@"registry"] ?: @[];
         NSArray *unresolved = summary[@"unresolved"] ?: @[];
-        gHFAMapStatus.text = [NSString stringWithFormat:@"Analysis %@ — %lu registry\n%lu validated · %lu unresolved",
+        NSDictionary *graph = summary[@"featureHandlerGraph"] ?: @{};
+        gHFAMapStatus.text = [NSString stringWithFormat:@"Analysis %@ — %lu registry\n%lu validated · %lu method candidates",
                               status, (unsigned long)registry.count, (unsigned long)features.count,
-                              (unsigned long)unresolved.count];
+                              (unsigned long)[graph[@"runtimeMethodCandidateCount"] unsignedIntegerValue]];
     });
 }
 
@@ -139,7 +140,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 10.0, 236.0, 28.0)];
-    title.text = @"HFAMap v2.5.0-dev Callback Method";
+    title.text = @"HFAMap v2.5.1-dev Generic Handler";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:16.0];
     [panel addSubview:title];
@@ -160,7 +161,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:probe];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 196.0, 236.0, 94.0)];
-    status.text = @"1 Search = frozen fast discovery\n2 Analyze = selected menu only\n3 Probe = exact callback x0/x1/x2 → Method";
+    status.text = @"1 Search = frozen fast discovery\n2 Analyze = feature→handler→method descriptor\n3 Probe = exact callback runtime correlation";
     status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:12.5];
@@ -173,7 +174,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [window bringSubviewToFront:button];
     gHFAMapPanel = panel;
     gHFAMapButton = button;
-    NSLog(@"[HFAMap] v2.5.0 descriptor/callback method UI installed on window=%@", window);
+    NSLog(@"[HFAMap] v2.5.1 generic feature handler/method descriptor UI installed on window=%@", window);
     return YES;
 }
 
