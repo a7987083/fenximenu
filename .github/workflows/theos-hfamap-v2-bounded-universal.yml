@@ -39,6 +39,14 @@ jobs:
           grep -q 'kHFABundleScanMaxFiles = 512' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q '@"APP"' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q '@"DATA"' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'HFAMap v2.5.7-dev' hfamap/src/HFAMapEntry.mm
+          grep -q '\[HFAMap\] v2.5.7 UI installed' hfamap/src/HFAMapEntry.mm
+          grep -q 'HFAMap v2.5.7' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q '\[HFAMap\] v2.5.7 APP Bundle deep scanner installed' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q 'HFAMap v2.5.3' hfamap/src/HFAMapEntry.mm
+          ! grep -q '\[HFAMap\] v2.5.3' hfamap/src/HFAMapEntry.mm
+          ! grep -q 'HFAMap v2.5.4' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q '\[HFAMap\] v2.5.4' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
           grep -q 'HFAMapRunSelectedDeepAnalysis' hfamap/src/HFAMapCore.mm
@@ -87,7 +95,15 @@ jobs:
           grep -q 'com.hfa.static-runtime-method/v1' "$strings_file"
           grep -q 'com.hfa.descriptor-static-callback/v1' "$strings_file"
           grep -q '2.5.7-dev-crash-safe-runtime-probe' "$strings_file"
+          grep -q 'HFAMap v2.5.7-dev' "$strings_file"
+          grep -q '\[HFAMap\] v2.5.7 UI installed' "$strings_file"
+          grep -q 'HFAMap v2.5.7' "$strings_file"
+          grep -q '\[HFAMap\] v2.5.7 APP Bundle deep scanner installed' "$strings_file"
           grep -q 'fail-closed-no-inline-backend-no-il2cpp-export-hook' "$strings_file"
+          ! grep -q 'HFAMap v2.5.3' "$strings_file"
+          ! grep -q '\[HFAMap\] v2.5.3' "$strings_file"
+          ! grep -q 'HFAMap v2.5.4' "$strings_file"
+          ! grep -q '\[HFAMap\] v2.5.4' "$strings_file"
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
           ! grep -q 'XPHero' "$strings_file"
