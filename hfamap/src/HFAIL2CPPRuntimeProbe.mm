@@ -377,9 +377,13 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
     pthread_mutex_unlock(&gHFAIL2CPPLock);
 
     NSUInteger restoreFailures = 0;
-    if (gHFAIL2CPPDobbyDestroy) for (NSValue *value in [targetsToRestore reverseObjectEnumerator])
-        if (gHFAIL2CPPDobbyDestroy(value.pointerValue) != 0) ++restoreFailures;
-    else if (targetsToRestore.count) restoreFailures = targetsToRestore.count;
+    if (gHFAIL2CPPDobbyDestroy) {
+        for (NSValue *value in [targetsToRestore reverseObjectEnumerator]) {
+            if (gHFAIL2CPPDobbyDestroy(value.pointerValue) != 0) ++restoreFailures;
+        }
+    } else if (targetsToRestore.count) {
+        restoreFailures = targetsToRestore.count;
+    }
     [targetsToRestore release];
 
     pthread_mutex_lock(&gHFAIL2CPPLock);
