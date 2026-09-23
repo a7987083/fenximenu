@@ -26,11 +26,12 @@ class DecoupledDiscoveryAnalysisTests(unittest.TestCase):
         self.assertIn('@NO', CORE)
         self.assertIn('run-discovery-first', CORE)
 
-    def test_ui_has_three_explicit_buttons(self):
+    def test_ui_has_static_catalog_button_without_changing_three_runtime_phases(self):
         self.assertIn('1. Search Menu', ENTRY)
         self.assertIn('2. Deep Analyze Menu', ENTRY)
         self.assertIn('3. Runtime Probe (8s)', ENTRY)
-        self.assertIn('HFAMap v2.5.2-dev Feature Ownership', ENTRY)
+        self.assertIn('4. Static Analyze Dylib', ENTRY)
+        self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
 
     def test_fast_module_is_compiled(self):
         self.assertIn('src/HFAMapFastDiscovery.mm', MAKEFILE)
