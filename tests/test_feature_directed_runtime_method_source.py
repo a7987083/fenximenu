@@ -43,7 +43,7 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
 
     def test_version_markers(self):
         self.assertIn('2.5.4-dev-generic-descriptor-static-callback', DIAG)
-        self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
+        self.assertIn('HFAMap v2.5.4-r2 Stable Loader', ENTRY)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
 
