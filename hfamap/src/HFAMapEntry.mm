@@ -8,6 +8,10 @@ static UIView *gHFAMapPanel = nil;
 static UIButton *gHFAMapButton = nil;
 static UILabel *gHFAMapStatus = nil;
 
+static const NSUInteger kHFABundleScanMaxDepth = 12;
+static const NSUInteger kHFABundleScanMaxFiles = 512;
+static const NSUInteger kHFABundlePickerMaxItems = 128;
+
 static UIWindow *HFAMapFindWindow(void)
 {
     UIApplication *app = UIApplication.sharedApplication;
@@ -28,35 +32,73 @@ static UIViewController *HFAMapTopController(void)
     return controller;
 }
 
-// UI-only file picker scope. Static analysis itself remains pure file parsing in HFAMapStaticCatalog.
-// Start at the app data-container root so a user can drop a dylib at the root, Documents, Library,
-// or another ordinary sandbox subdirectory without moving it specifically into Documents.
-static NSArray<NSDictionary *> *HFAMapListSandboxRootDylibs(void)
+static void HFAAppendDylibsFromRoot(NSString *root,
+                                    NSString *rootLabel,
+                                    NSMutableArray<NSDictionary *> *results,
+                                    NSMutableSet<NSString *> *seen)
 {
-    NSString *root = NSHomeDirectory();
-    if (!root.length) return @[];
-    static const NSUInteger kMaxFiles = 128;
-    static const NSUInteger kMaxDepth = 4;
-    NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager] enumeratorAtURL:[NSURL fileURLWithPath:root]
-        includingPropertiesForKeys:@[NSURLIsRegularFileKey, NSURLFileSizeKey]
-        options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:^BOOL(__unused NSURL *url, __unused NSError *error) { return YES; }];
-    NSMutableArray *results = [NSMutableArray array];
+    if (!root.length || results.count >= kHFABundleScanMaxFiles) return;
+    NSURL *rootURL = [NSURL fileURLWithPath:root isDirectory:YES];
+    NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager]
+        enumeratorAtURL:rootURL
+        includingPropertiesForKeys:@[NSURLIsRegularFileKey, NSURLFileSizeKey, NSURLIsSymbolicLinkKey]
+        options:NSDirectoryEnumerationSkipsHiddenFiles
+        errorHandler:^BOOL(__unused NSURL *url, __unused NSError *error) { return YES; }];
+
     for (NSURL *url in enumerator) {
-        if (results.count >= kMaxFiles) break;
-        NSString *relative = [url.path substringFromIndex:MIN(root.length + 1, url.path.length)];
-        if (relative.pathComponents.count > kMaxDepth + 1) { [enumerator skipDescendants]; continue; }
-        NSNumber *regular = nil, *size = nil;
+        if (results.count >= kHFABundleScanMaxFiles) break;
+        NSString *path = url.path ?: @"";
+        if (!path.length || path.length <= root.length) continue;
+        NSString *relative = [path substringFromIndex:MIN(root.length + 1, path.length)];
+        NSUInteger depth = relative.pathComponents.count;
+        if (depth > kHFABundleScanMaxDepth) {
+            [enumerator skipDescendants];
+            continue;
+        }
+
+        NSNumber *regular = nil, *symlink = nil, *size = nil;
         [url getResourceValue:&regular forKey:NSURLIsRegularFileKey error:nil];
-        if (![regular boolValue] || ![url.pathExtension.lowercaseString isEqualToString:@"dylib"]) continue;
+        [url getResourceValue:&symlink forKey:NSURLIsSymbolicLinkKey error:nil];
+        if (![regular boolValue] || [symlink boolValue]) continue;
+        if (![url.pathExtension.lowercaseString isEqualToString:@"dylib"]) continue;
+        if ([seen containsObject:path]) continue;
         [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
-        [results addObject:@{ @"name": url.lastPathComponent ?: @"?",
-                              @"path": url.path ?: @"",
-                              @"relativePath": relative ?: @"",
-                              @"size": size ?: @0,
-                              @"enumerationRoot": @"NSHomeDirectory" }];
+        [seen addObject:path];
+        [results addObject:@{
+            @"name": url.lastPathComponent ?: @"?",
+            @"path": path,
+            @"relativePath": relative ?: @"",
+            @"size": size ?: @0,
+            @"rootLabel": rootLabel ?: @"ROOT",
+            @"depth": @(depth)
+        }];
     }
+}
+
+static NSArray<NSDictionary *> *HFAMapListBundleAndDataDylibs(void)
+{
+    NSMutableArray<NSDictionary *> *results = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+
+    NSString *bundleRoot = NSBundle.mainBundle.bundlePath;
+    HFAAppendDylibsFromRoot(bundleRoot, @"APP", results, seen);
+
+    NSString *dataRoot = NSHomeDirectory();
+    if (dataRoot.length && ![dataRoot isEqualToString:bundleRoot])
+        HFAAppendDylibsFromRoot(dataRoot, @"DATA", results, seen);
+
     [results sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
-        return [a[@"relativePath"] compare:b[@"relativePath"] options:NSCaseInsensitiveSearch];
+        NSString *la = a[@"rootLabel"] ?: @"";
+        NSString *lb = b[@"rootLabel"] ?: @"";
+        if (![la isEqualToString:lb]) {
+            if ([la isEqualToString:@"APP"]) return NSOrderedAscending;
+            if ([lb isEqualToString:@"APP"]) return NSOrderedDescending;
+        }
+        NSUInteger da = [a[@"depth"] unsignedIntegerValue];
+        NSUInteger db = [b[@"depth"] unsignedIntegerValue];
+        if (da < db) return NSOrderedAscending;
+        if (da > db) return NSOrderedDescending;
+        return [(a[@"relativePath"] ?: @"") compare:(b[@"relativePath"] ?: @"") options:NSCaseInsensitiveSearch];
     }];
     return results;
 }
@@ -83,6 +125,7 @@ static void HFAMapTogglePanel(void)
     dispatch_once(&onceToken, ^{ obj = [HFAMapFloatingTarget new]; });
     return obj;
 }
+
 - (void)toggle { HFAMapTogglePanel(); }
 
 - (void)discover
@@ -112,11 +155,10 @@ static void HFAMapTogglePanel(void)
             return;
         }
         NSDictionary *graph = summary[@"featureHandlerGraph"] ?: @{};
-        gHFAMapStatus.text = [NSString stringWithFormat:
-            @"Analysis %@ — %@ handlers matched\n%@ static runtime methods",
-            status,
-            graph[@"staticCatalogMatchedBlockCount"] ?: @0,
-            graph[@"staticCatalogMatchedRuntimeMethodCount"] ?: @0];
+        gHFAMapStatus.text = [NSString stringWithFormat:@"Analysis %@ — %@ handlers matched\n%@ static runtime methods",
+                              status,
+                              graph[@"staticCatalogMatchedBlockCount"] ?: @0,
+                              graph[@"staticCatalogMatchedRuntimeMethodCount"] ?: @0];
     });
 }
 
@@ -147,56 +189,68 @@ static void HFAMapTogglePanel(void)
 
 - (void)staticAnalyze
 {
-    NSArray<NSDictionary *> *files = HFAMapListSandboxRootDylibs();
-    if (!files.count) {
-        gHFAMapStatus.text = @"No .dylib found under game root.";
-        return;
-    }
     UIViewController *controller = HFAMapTopController();
     if (!controller) {
         gHFAMapStatus.text = @"Unable to present dylib picker.";
         return;
     }
 
-    UIAlertController *picker = [UIAlertController alertControllerWithTitle:@"Static Analyze Dylib"
-        message:@"Scanning game root. Read-only file analysis; selected dylib is NOT loaded or executed."
-        preferredStyle:UIAlertControllerStyleActionSheet];
-    NSUInteger limit = MIN(files.count, 32U);
-    for (NSUInteger i = 0; i < limit; ++i) {
-        NSDictionary *entry = files[i];
-        NSString *title = entry[@"relativePath"] ?: entry[@"name"] ?: @"dylib";
-        [picker addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-            NSString *path = entry[@"path"];
-            gHFAMapStatus.text = [NSString stringWithFormat:@"Static analyzing %@…", entry[@"name"] ?: @"dylib"];
-            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-                NSError *analysisError = nil;
-                NSDictionary *catalog = HFAMapStaticCatalogAnalyzeFile(path, &analysisError);
-                NSError *persistError = nil;
-                BOOL registered = catalog && HFAMapStaticCatalogRegisterAndPersist(catalog, &persistError);
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (!registered) {
-                        NSError *error = analysisError ?: persistError;
-                        gHFAMapStatus.text = [NSString stringWithFormat:@"Static analysis failed:\n%@",
-                                              error.localizedDescription ?: @"unknown error"];
-                        return;
-                    }
-                    gHFAMapStatus.text = [NSString stringWithFormat:
-                        @"Catalog READY ✅ %@\n%@ methods · same-session loaded",
-                        catalog[@"source"][@"fileName"] ?: @"dylib",
-                        catalog[@"runtimeMethodCount"] ?: @0];
-                });
-            });
-        }]];
-    }
-    if (files.count > limit)
-        picker.message = [picker.message stringByAppendingFormat:@"\nShowing first %lu of %lu files.",
-                          (unsigned long)limit, (unsigned long)files.count];
-    [picker addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    if (picker.popoverPresentationController) {
-        picker.popoverPresentationController.sourceView = gHFAMapPanel ?: controller.view;
-        picker.popoverPresentationController.sourceRect = gHFAMapPanel ? gHFAMapPanel.bounds : controller.view.bounds;
-    }
-    [controller presentViewController:picker animated:YES completion:nil];
+    gHFAMapStatus.text = @"Deep scanning APP Bundle + DATA container…";
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSArray<NSDictionary *> *files = HFAMapListBundleAndDataDylibs();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIViewController *top = HFAMapTopController();
+            if (!top) return;
+            if (!files.count) {
+                gHFAMapStatus.text = @"No .dylib found under APP Bundle or DATA container.";
+                return;
+            }
+
+            UIAlertController *picker = [UIAlertController alertControllerWithTitle:@"Static Analyze Dylib"
+                message:[NSString stringWithFormat:@"APP Bundle deep scan (depth %lu) + DATA. Found %lu dylibs. Read-only; selected dylib is NOT loaded or executed.",
+                         (unsigned long)kHFABundleScanMaxDepth, (unsigned long)files.count]
+                preferredStyle:UIAlertControllerStyleActionSheet];
+
+            NSUInteger limit = MIN(files.count, kHFABundlePickerMaxItems);
+            for (NSUInteger i = 0; i < limit; ++i) {
+                NSDictionary *entry = files[i];
+                NSString *title = [NSString stringWithFormat:@"[%@] %@",
+                                   entry[@"rootLabel"] ?: @"?",
+                                   entry[@"relativePath"] ?: entry[@"name"] ?: @"dylib"];
+                [picker addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+                    NSString *path = entry[@"path"];
+                    gHFAMapStatus.text = [NSString stringWithFormat:@"Static analyzing %@…", entry[@"name"] ?: @"dylib"];
+                    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+                        NSError *analysisError = nil;
+                        NSDictionary *catalog = HFAMapStaticCatalogAnalyzeFile(path, &analysisError);
+                        NSError *persistError = nil;
+                        BOOL registered = catalog && HFAMapStaticCatalogRegisterAndPersist(catalog, &persistError);
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if (!registered) {
+                                NSError *error = analysisError ?: persistError;
+                                gHFAMapStatus.text = [NSString stringWithFormat:@"Static analysis failed:\n%@",
+                                                      error.localizedDescription ?: @"unknown error"];
+                                return;
+                            }
+                            gHFAMapStatus.text = [NSString stringWithFormat:@"Catalog READY ✅ %@\n%@ methods · same-session loaded",
+                                                  catalog[@"source"][@"fileName"] ?: @"dylib",
+                                                  catalog[@"runtimeMethodCount"] ?: @0];
+                        });
+                    });
+                }]];
+            }
+
+            if (files.count > limit)
+                picker.message = [picker.message stringByAppendingFormat:@"\nShowing first %lu of %lu files.",
+                                  (unsigned long)limit, (unsigned long)files.count];
+            [picker addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+            if (picker.popoverPresentationController) {
+                picker.popoverPresentationController.sourceView = gHFAMapPanel ?: top.view;
+                picker.popoverPresentationController.sourceRect = gHFAMapPanel ? gHFAMapPanel.bounds : top.view.bounds;
+            }
+            [top presentViewController:picker animated:YES completion:nil];
+        });
+    });
 }
 @end
 
@@ -229,8 +283,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     button.titleLabel.font = [UIFont boldSystemFontOfSize:15.0];
     button.layer.borderWidth = 1.0;
     button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
-    [button addTarget:[HFAMapFloatingTarget shared] action:@selector(toggle)
-      forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:[HFAMapFloatingTarget shared] action:@selector(toggle) forControlEvents:UIControlEventTouchUpInside];
 
     UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, y, 264.0, 354.0)];
     panel.backgroundColor = [UIColor colorWithWhite:0.06 alpha:0.94];
@@ -240,33 +293,29 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 10.0, 236.0, 28.0)];
-    title.text = @"HFAMap v2.5.3-dev Static Catalog";
+    title.text = @"HFAMap v2.5.4-r2 Stable Loader";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:16.0];
     [panel addSubview:title];
 
-    UIButton *discover = HFAMakeActionButton(CGRectMake(14.0, 46.0, 236.0, 42.0),
-                                              @"1. Search Menu", @selector(discover));
+    UIButton *discover = HFAMakeActionButton(CGRectMake(14.0, 46.0, 236.0, 42.0), @"1. Search Menu", @selector(discover));
     discover.backgroundColor = [UIColor colorWithRed:0.15 green:0.34 blue:0.70 alpha:1.0];
     [panel addSubview:discover];
 
-    UIButton *analyze = HFAMakeActionButton(CGRectMake(14.0, 96.0, 236.0, 42.0),
-                                             @"2. Deep Analyze Menu", @selector(analyze));
+    UIButton *analyze = HFAMakeActionButton(CGRectMake(14.0, 96.0, 236.0, 42.0), @"2. Deep Analyze Menu", @selector(analyze));
     analyze.backgroundColor = [UIColor colorWithRed:0.16 green:0.48 blue:0.42 alpha:1.0];
     [panel addSubview:analyze];
 
-    UIButton *probe = HFAMakeActionButton(CGRectMake(14.0, 146.0, 236.0, 42.0),
-                                           @"3. Runtime Probe (8s)", @selector(probe));
+    UIButton *probe = HFAMakeActionButton(CGRectMake(14.0, 146.0, 236.0, 42.0), @"3. Runtime Probe (8s)", @selector(probe));
     probe.backgroundColor = [UIColor colorWithRed:0.46 green:0.24 blue:0.66 alpha:1.0];
     [panel addSubview:probe];
 
-    UIButton *staticAnalyze = HFAMakeActionButton(CGRectMake(14.0, 196.0, 236.0, 42.0),
-                                                   @"4. Static Analyze Dylib", @selector(staticAnalyze));
+    UIButton *staticAnalyze = HFAMakeActionButton(CGRectMake(14.0, 196.0, 236.0, 42.0), @"4. Static Analyze Dylib", @selector(staticAnalyze));
     staticAnalyze.backgroundColor = [UIColor colorWithRed:0.56 green:0.34 blue:0.16 alpha:1.0];
     [panel addSubview:staticAnalyze];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 246.0, 236.0, 94.0)];
-    status.text = @"4 Static = game root dylib → Catalog\nCatalog is registered immediately\n2/3 reuse it in the same game session";
+    status.text = @"4 Static = APP Bundle deep scan + DATA\nCatalog registers immediately\n2/3 reuse it in the same session";
     status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:12.5];
@@ -279,7 +328,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [window bringSubviewToFront:button];
     gHFAMapPanel = panel;
     gHFAMapButton = button;
-    NSLog(@"[HFAMap] v2.5.3 offline static catalog UI installed on window=%@", window);
+    NSLog(@"[HFAMap] v2.5.4-r2 stable-loader UI installed on window=%@ bundleRoot=%@", window, NSBundle.mainBundle.bundlePath);
     return YES;
 }
 
@@ -297,7 +346,7 @@ __attribute__((constructor))
 static void HFAMapConstructor(void)
 {
     @autoreleasepool {
-        NSLog(@"[HFAMap] Theos build entry loaded");
+        NSLog(@"[HFAMap] v2.5.4-r2 Theos build entry loaded");
         HFAMapScheduleInstall(0);
     }
 }
