@@ -34,7 +34,7 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         self.assertIn('@"selectorInvokedByProbe": @NO', IL2CPP)
         self.assertIn('@"impReplaced": @NO', IL2CPP)
         self.assertIn('@"memoryWritten": @NO', IL2CPP)
-        self.assertIn('feature-directed-read-only-correlation-no-dobby-no-il2cpp-export-hook', IL2CPP)
+        self.assertIn('feature-directed-read-only-correlation-no-inline-backend-no-il2cpp-export-hook', IL2CPP)
         for forbidden in ('DobbyHook', 'DobbyDestroy', 'DobbyInstrument', 'il2cpp_runtime_invoke', 'vm_write'):
             self.assertNotIn(forbidden, IL2CPP)
 
