@@ -53,8 +53,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.4.9-dev-postcall-type-branch', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.4.9-dev Type Branch', ENTRY)
+        self.assertIn('2.5.0-dev-descriptor-callback-method', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.5.0-dev Callback Method', ENTRY)
 
 
 if __name__ == "__main__":
