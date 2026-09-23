@@ -111,7 +111,7 @@ static void HFAPresentStaticAnalysisResult(UIViewController *controller,
         message = [NSString stringWithFormat:@"Static analysis failed\n%@",
                    error.localizedDescription ?: @"unknown error"];
     }
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"HFAMap v2.5.4"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"HFAMap v2.5.7"
                                                                     message:message
                                                              preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
@@ -142,8 +142,6 @@ static void HFAStaticAnalyzeBundleRootReplacement(__unused id self, __unused SEL
                     return;
                 }
 
-                // Compact picker: no title/message header. Each item already carries [APP]/[DATA].
-                // This avoids wasting a large block of vertical space above the dylib list.
                 UIAlertController *picker = [UIAlertController alertControllerWithTitle:nil
                     message:nil preferredStyle:UIAlertControllerStyleActionSheet];
                 NSUInteger limit = MIN(files.count, kHFABundlePickerMaxItems);
@@ -193,7 +191,7 @@ static void HFAInstallBundleRootScannerOverride(void) {
     Method method = class_getInstanceMethod(cls, @selector(staticAnalyze));
     if (!method) return;
     method_setImplementation(method, (IMP)HFAStaticAnalyzeBundleRootReplacement);
-    NSLog(@"[HFAMap] v2.5.4 APP Bundle deep scanner installed root=%@ depth=%lu maxFiles=%lu",
+    NSLog(@"[HFAMap] v2.5.7 APP Bundle deep scanner installed root=%@ depth=%lu maxFiles=%lu",
           NSBundle.mainBundle.bundlePath,
           (unsigned long)kHFABundleScanMaxDepth,
           (unsigned long)kHFABundleScanMaxFiles);
