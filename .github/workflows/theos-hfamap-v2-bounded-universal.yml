@@ -1,9 +1,9 @@
-name: HFAMap v2.5.4 Bundle Root Deep Scan
+name: HFAMap v2.5.4-r2 Stable Loader Bundle Scan
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.4-bundle-root-deep-scan
+      - feature/hfamap-v2.5.4-r2-stable-loader-bundle-scan
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -31,12 +31,15 @@ jobs:
           grep -q 'src/HFAMapStaticCatalog.mm' hfamap/Makefile
           grep -q 'src/HFAMapStaticCatalogBridge.mm' hfamap/Makefile
           grep -q 'src/HFAMapDescriptorStaticCallbackResolver.mm' hfamap/Makefile
-          grep -q 'src/HFAMapBundleRootScanner.mm' hfamap/Makefile
-          grep -q 'NSBundle.mainBundle.bundlePath' hfamap/src/HFAMapBundleRootScanner.mm
-          grep -q 'kHFABundleScanMaxDepth = 12' hfamap/src/HFAMapBundleRootScanner.mm
-          grep -q 'kHFABundleScanMaxFiles = 512' hfamap/src/HFAMapBundleRootScanner.mm
-          grep -q '@"APP"' hfamap/src/HFAMapBundleRootScanner.mm
-          grep -q '@"DATA"' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q 'HFAMapBundleRootScanner.mm' hfamap/Makefile
+          grep -q 'NSBundle.mainBundle.bundlePath' hfamap/src/HFAMapEntry.mm
+          grep -q 'kHFABundleScanMaxDepth = 12' hfamap/src/HFAMapEntry.mm
+          grep -q 'kHFABundleScanMaxFiles = 512' hfamap/src/HFAMapEntry.mm
+          grep -q '@"APP"' hfamap/src/HFAMapEntry.mm
+          grep -q '@"DATA"' hfamap/src/HFAMapEntry.mm
+          grep -q 'v2.5.4-r2 Stable Loader' hfamap/src/HFAMapEntry.mm
+          ! grep -q 'method_setImplementation' hfamap/src/HFAMapEntry.mm
+          ! grep -q 'NSClassFromString' hfamap/src/HFAMapEntry.mm
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
@@ -78,29 +81,34 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.4-dev
+          mkdir -p hfamap/dist/v2.5.4-r2
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-          out=hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.5.4.strings"
+            hfamap/dist/v2.5.4-r2/HFAMapUniversal-v2.5.4-r2.dylib
+          out=hfamap/dist/v2.5.4-r2/HFAMapUniversal-v2.5.4-r2.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.5.4-r2.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.static-catalog/v1' "$strings_file"
           grep -q 'com.hfa.static-runtime-method/v1' "$strings_file"
           grep -q 'com.hfa.descriptor-static-callback/v1' "$strings_file"
           grep -q 'unique-ordered-static-callback-pointer-cluster' "$strings_file"
-          grep -q 'APP Bundle deep scanner installed' "$strings_file"
+          grep -q 'v2.5.4-r2 Stable Loader' "$strings_file"
           grep -q '4. Static Analyze Dylib' "$strings_file"
+          ! grep -q 'method_setImplementation' "$strings_file"
+          ! grep -q 'APP Bundle deep scanner installed' "$strings_file"
+          ! otool -L "$out" | grep -q '/CoreGraphics.framework/'
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
           ! grep -q 'XPHero' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.4-dev/SHA256SUMS.txt
+          otool -L "$out" | tee hfamap/dist/v2.5.4-r2/LOAD_COMMANDS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.4-r2/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.4-BundleRootDeepScan
+          name: HFAMapUniversal-v2.5.4-r2-StableLoaderBundleScan
           path: |
-            hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-            hfamap/dist/v2.5.4-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.4-r2/HFAMapUniversal-v2.5.4-r2.dylib
+            hfamap/dist/v2.5.4-r2/SHA256SUMS.txt
+            hfamap/dist/v2.5.4-r2/LOAD_COMMANDS.txt
           if-no-files-found: error
