@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 // v2.5.7 crash-safe backend.
-// Deliberately does NOT resolve/use DobbyHook/DobbyDestroy and never patches
+// Deliberately does not resolve or use any inline-hook backend and never patches
 // IL2CPP exports. Correlation is derived only from the exact user-activated
 // UIControl -> target/action -> implementation chain plus bounded static/context
 // analysis of that implementation.
@@ -175,7 +175,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
         @"instrumentationCodeModifiedTemporarily": @NO,
         @"memoryWritten": @NO,
         @"gameStateWritten": @NO,
-        @"policy": @"fail-closed-no-dobby-no-il2cpp-export-hook"
+        @"policy": @"fail-closed-no-inline-backend-no-il2cpp-export-hook"
     };
     pthread_mutex_unlock(&gHFASafeLock);
 
@@ -305,7 +305,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
         @"gameStateWritten": @NO,
         @"analysisOnly": @YES,
         @"canonicalEligible": @NO,
-        @"policy": @"feature-directed-read-only-correlation-no-dobby-no-il2cpp-export-hook"
+        @"policy": @"feature-directed-read-only-correlation-no-inline-backend-no-il2cpp-export-hook"
     };
 
     [interactions release];
