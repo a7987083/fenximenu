@@ -53,7 +53,7 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.5.3-dev-offline-static-catalog', DIAGNOSTICS)
+        self.assertIn('2.5.4-dev-generic-descriptor-static-callback', DIAGNOSTICS)
         self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
 
 
