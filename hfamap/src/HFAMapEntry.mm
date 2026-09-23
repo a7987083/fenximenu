@@ -28,6 +28,39 @@ static UIViewController *HFAMapTopController(void)
     return controller;
 }
 
+// UI-only file picker scope. Static analysis itself remains pure file parsing in HFAMapStaticCatalog.
+// Start at the app data-container root so a user can drop a dylib at the root, Documents, Library,
+// or another ordinary sandbox subdirectory without moving it specifically into Documents.
+static NSArray<NSDictionary *> *HFAMapListSandboxRootDylibs(void)
+{
+    NSString *root = NSHomeDirectory();
+    if (!root.length) return @[];
+    static const NSUInteger kMaxFiles = 128;
+    static const NSUInteger kMaxDepth = 4;
+    NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager] enumeratorAtURL:[NSURL fileURLWithPath:root]
+        includingPropertiesForKeys:@[NSURLIsRegularFileKey, NSURLFileSizeKey]
+        options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:^BOOL(__unused NSURL *url, __unused NSError *error) { return YES; }];
+    NSMutableArray *results = [NSMutableArray array];
+    for (NSURL *url in enumerator) {
+        if (results.count >= kMaxFiles) break;
+        NSString *relative = [url.path substringFromIndex:MIN(root.length + 1, url.path.length)];
+        if (relative.pathComponents.count > kMaxDepth + 1) { [enumerator skipDescendants]; continue; }
+        NSNumber *regular = nil, *size = nil;
+        [url getResourceValue:&regular forKey:NSURLIsRegularFileKey error:nil];
+        if (![regular boolValue] || ![url.pathExtension.lowercaseString isEqualToString:@"dylib"]) continue;
+        [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
+        [results addObject:@{ @"name": url.lastPathComponent ?: @"?",
+                              @"path": url.path ?: @"",
+                              @"relativePath": relative ?: @"",
+                              @"size": size ?: @0,
+                              @"enumerationRoot": @"NSHomeDirectory" }];
+    }
+    [results sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+        return [a[@"relativePath"] compare:b[@"relativePath"] options:NSCaseInsensitiveSearch];
+    }];
+    return results;
+}
+
 static void HFAMapTogglePanel(void)
 {
     if (gHFAMapPanel) gHFAMapPanel.hidden = !gHFAMapPanel.hidden;
@@ -114,9 +147,9 @@ static void HFAMapTogglePanel(void)
 
 - (void)staticAnalyze
 {
-    NSArray<NSDictionary *> *files = HFAMapStaticCatalogListDocumentDylibs();
+    NSArray<NSDictionary *> *files = HFAMapListSandboxRootDylibs();
     if (!files.count) {
-        gHFAMapStatus.text = @"No .dylib found under Documents.";
+        gHFAMapStatus.text = @"No .dylib found under game root.";
         return;
     }
     UIViewController *controller = HFAMapTopController();
@@ -126,7 +159,7 @@ static void HFAMapTogglePanel(void)
     }
 
     UIAlertController *picker = [UIAlertController alertControllerWithTitle:@"Static Analyze Dylib"
-        message:@"Read-only file analysis. The selected dylib will NOT be loaded or executed."
+        message:@"Scanning game root. Read-only file analysis; selected dylib is NOT loaded or executed."
         preferredStyle:UIAlertControllerStyleActionSheet];
     NSUInteger limit = MIN(files.count, 32U);
     for (NSUInteger i = 0; i < limit; ++i) {
@@ -233,7 +266,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:staticAnalyze];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 246.0, 236.0, 94.0)];
-    status.text = @"4 Static = Documents dylib → Catalog\nCatalog is registered immediately\n2/3 reuse it in the same game session";
+    status.text = @"4 Static = game root dylib → Catalog\nCatalog is registered immediately\n2/3 reuse it in the same game session";
     status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:12.5];
