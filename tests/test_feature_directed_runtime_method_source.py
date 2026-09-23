@@ -42,8 +42,8 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         self.assertNotIn('vm_write', IL2CPP)
 
     def test_version_markers(self):
-        self.assertIn('2.5.1-dev-generic-feature-handler-method-descriptor', DIAG)
-        self.assertIn('HFAMap v2.5.1-dev Generic Handler', ENTRY)
+        self.assertIn('2.5.2-dev-generic-feature-ownership-resolver', DIAG)
+        self.assertIn('HFAMap v2.5.2-dev Feature Ownership', ENTRY)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
 
