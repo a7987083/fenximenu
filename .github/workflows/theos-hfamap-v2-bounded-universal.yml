@@ -1,9 +1,9 @@
-name: HFAMap v2.5.2 Generic Feature Ownership Resolver
+name: HFAMap v2.5.3 Offline Static Catalog
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.2-generic-feature-ownership-resolver
+      - feature/hfamap-v2.5.3-offline-static-catalog
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -28,6 +28,8 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'src/HFAMapFastDiscovery.mm' hfamap/Makefile
+          grep -q 'src/HFAMapStaticCatalog.mm' hfamap/Makefile
+          grep -q 'src/HFAMapStaticCatalogBridge.mm' hfamap/Makefile
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
           ! grep -q 'HFAMapAnalyzeMenuBinary' hfamap/src/HFAMapFastDiscovery.mm
@@ -35,33 +37,38 @@ jobs:
           ! grep -q 'HFAIL2CPPBuildMethodIndex' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
           grep -q 'HFAMapRunSelectedDeepAnalysis' hfamap/src/HFAMapCore.mm
+          grep -q 'HFAMapStaticCatalogAnnotateHandlerGraph' hfamap/src/HFAMapCore.mm
           grep -q 'globalRediscoveryPerformed' hfamap/src/HFAMapCore.mm
           grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
           grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
           grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
-          grep -q '2.5.2-dev-generic-feature-ownership-resolver' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.5.2-dev Feature Ownership' hfamap/src/HFAMapEntry.mm
+          grep -q '4. Static Analyze Dylib' hfamap/src/HFAMapEntry.mm
+          grep -q '2.5.3-dev-offline-static-catalog' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.5.3-dev Static Catalog' hfamap/src/HFAMapEntry.mm
+          grep -q 'com.hfa.static-catalog/v1' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'com.hfa.static-runtime-method/v1' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'offline-file-read-only-no-dlopen' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'NSDataReadingMappedIfSafe' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'LC_FUNCTION_STARTS' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'LC_UUID' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'same-session-static-catalog-rva' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q 'runtime-handler-rva-to-same-session-static-catalog' hfamap/src/HFAMapStaticCatalogBridge.mm
+          ! grep -q 'dlopen(' hfamap/src/HFAMapStaticCatalog.mm
           grep -q 'src/HFAIL2CPPMethodRangeIndex.mm' hfamap/Makefile
           grep -q 'src/HFAMapFeatureContextAnalyzer.mm' hfamap/Makefile
           grep -q 'src/HFAMapFeatureHandlerResolver.mm' hfamap/Makefile
           grep -q 'com.hfa.feature-handler-graph/v2' hfamap/src/HFAMapFeatureHandlerResolver.mm
           grep -q 'com.hfa.feature-ownership/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
           grep -q 'com.hfa.runtime-method-descriptor/v2' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'exact-ui-action-to-sender-relative-descriptor-handler-object-graph' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'verify-style-known-feature-ownership-descriptor-to-callback-no-global-method-guessing' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'no-sample-name-no-sample-rva-no-known-method-input' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'HFAIL2CPPMethodContainingRuntimeAddress' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'featureHandlerGraph' hfamap/src/HFAMapCore.mm
-          grep -q 'com.hfa.feature-context/v1' hfamap/src/HFAMapFeatureContextAnalyzer.mm
           grep -q 'contextSeededAnalysis' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'com.hfa.stripped-action/v6' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          ! grep -q 'CheatGetMoney' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          ! grep -q 'CheatLevelUp' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          ! grep -q 'XPHero' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          ! grep -q '0xB8B608' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          ! grep -q '0xB8BA50' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q 'CheatGetMoney' hfamap/src/HFAMapStaticCatalog.mm
+          ! grep -q 'CheatLevelUp' hfamap/src/HFAMapStaticCatalog.mm
+          ! grep -q 'XPHero' hfamap/src/HFAMapStaticCatalog.mm
+          ! grep -q '0xB8B608' hfamap/src/HFAMapStaticCatalog.mm
+          ! grep -q '0xB8BA50' hfamap/src/HFAMapStaticCatalog.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          ! grep -q 'vm_write' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q 'vm_write' hfamap/src/HFAMapStaticCatalog.mm
 
       - name: Install Theos
         run: |
@@ -76,34 +83,30 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.2-dev
+          mkdir -p hfamap/dist/v2.5.3-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
-          out=hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.5.2.strings"
+            hfamap/dist/v2.5.3-dev/HFAMapUniversal-v2.5.3-dev.dylib
+          out=hfamap/dist/v2.5.3-dev/HFAMapUniversal-v2.5.3-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.5.3.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
-          grep -q 'com.hfa.stripped-action/v6' "$strings_file"
-          grep -q 'com.hfa.il2cpp-method-range-index/v1' "$strings_file"
-          grep -q 'com.hfa.feature-context/v1' "$strings_file"
           grep -q 'com.hfa.feature-handler-graph/v2' "$strings_file"
-          grep -q 'com.hfa.feature-ownership/v1' "$strings_file"
-          grep -q 'com.hfa.runtime-method-descriptor/v2' "$strings_file"
-          grep -q 'HFAMap v2.5.2-dev Feature Ownership' "$strings_file"
-          grep -q '1. Search Menu' "$strings_file"
-          grep -q '2. Deep Analyze Menu' "$strings_file"
-          grep -q '3. Runtime Probe (8s)' "$strings_file"
+          grep -q 'com.hfa.static-catalog/v1' "$strings_file"
+          grep -q 'com.hfa.static-runtime-method/v1' "$strings_file"
+          grep -q 'same-session-static-catalog-rva' "$strings_file"
+          grep -q 'HFAMap v2.5.3-dev Static Catalog' "$strings_file"
+          grep -q '4. Static Analyze Dylib' "$strings_file"
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
           ! grep -q 'XPHero' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.2-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.3-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.2-GenericFeatureOwnershipResolver
+          name: HFAMapUniversal-v2.5.3-OfflineStaticCatalog
           path: |
-            hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
-            hfamap/dist/v2.5.2-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.3-dev/HFAMapUniversal-v2.5.3-dev.dylib
+            hfamap/dist/v2.5.3-dev/SHA256SUMS.txt
           if-no-files-found: error
