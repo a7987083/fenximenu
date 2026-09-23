@@ -27,17 +27,19 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertIn('@"strippedObjCInventory"', IMAGE_PROBE)
         self.assertIn('@"canonicalEligible": @NO', IMAGE_PROBE)
 
-    def test_v238_runtime_probe_is_preserved(self):
+    def test_v238_runtime_probe_source_remains_historical_only(self):
         self.assertIn('dlsym(RTLD_DEFAULT, "DobbyHook")', IL2CPP)
         self.assertIn('dlsym(RTLD_DEFAULT, "DobbyDestroy")', IL2CPP)
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_is_v253(self):
-        self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
+    def test_ui_is_v257(self):
+        self.assertIn('HFAMap v2.5.7-dev', ENTRY)
+        self.assertIn('[HFAMap] v2.5.7 UI installed', ENTRY)
         self.assertIn('1. Search Menu', ENTRY)
         self.assertIn('2. Deep Analyze Menu', ENTRY)
         self.assertIn('4. Static Analyze Dylib', ENTRY)
+        self.assertNotIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
 
 
 if __name__ == "__main__":
