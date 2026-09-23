@@ -42,7 +42,7 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         self.assertNotIn('vm_write', IL2CPP)
 
     def test_version_markers(self):
-        self.assertIn('2.5.3-dev-offline-static-catalog', DIAG)
+        self.assertIn('2.5.4-dev-generic-descriptor-static-callback', DIAG)
         self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
