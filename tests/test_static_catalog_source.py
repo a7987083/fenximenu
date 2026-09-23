@@ -11,9 +11,12 @@ MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 
 
 class StaticCatalogSourceTests(unittest.TestCase):
-    def test_documents_picker_and_offline_read_only_analysis(self):
+    def test_game_root_picker_and_offline_read_only_analysis(self):
         for token in (
-            'HFAMapStaticCatalogListDocumentDylibs',
+            'HFAMapListSandboxRootDylibs',
+            'NSHomeDirectory()',
+            'enumerationRoot',
+            'game root',
             'HFAMapStaticCatalogAnalyzeFile',
             'NSDataReadingMappedIfSafe',
             'analysisMode',
