@@ -78,7 +78,6 @@ static NSArray<NSDictionary *> *HFADeepBundleDylibInventory(void) {
     NSString *bundleRoot = NSBundle.mainBundle.bundlePath;
     HFAAppendDylibsFromRoot(bundleRoot, @"APP", results, seen);
 
-    // Keep the writable data container as a secondary source for manually copied test dylibs.
     NSString *dataRoot = NSHomeDirectory();
     if (dataRoot.length && ![dataRoot isEqualToString:bundleRoot])
         HFAAppendDylibsFromRoot(dataRoot, @"DATA", results, seen);
@@ -124,7 +123,7 @@ static void HFAStaticAnalyzeBundleRootReplacement(__unused id self, __unused SEL
     if (!controller) return;
 
     UIAlertController *scanning = [UIAlertController alertControllerWithTitle:@"Static Analyze Dylib"
-        message:@"Deep scanning .app Bundle root (depth 12) + data container…"
+        message:@"Deep scanning .app Bundle root…"
         preferredStyle:UIAlertControllerStyleAlert];
     [controller presentViewController:scanning animated:YES completion:nil];
 
@@ -143,15 +142,10 @@ static void HFAStaticAnalyzeBundleRootReplacement(__unused id self, __unused SEL
                     return;
                 }
 
-                NSString *message = [NSString stringWithFormat:
-                    @"Found %lu dylibs. APP = %@, DATA = %@. Deep scan max depth %lu. Showing first %lu.",
-                    (unsigned long)files.count,
-                    NSBundle.mainBundle.bundlePath ?: @"?",
-                    NSHomeDirectory() ?: @"?",
-                    (unsigned long)kHFABundleScanMaxDepth,
-                    (unsigned long)MIN(files.count, kHFABundlePickerMaxItems)];
-                UIAlertController *picker = [UIAlertController alertControllerWithTitle:@"Static Analyze Dylib"
-                    message:message preferredStyle:UIAlertControllerStyleActionSheet];
+                // Compact picker: no title/message header. Each item already carries [APP]/[DATA].
+                // This avoids wasting a large block of vertical space above the dylib list.
+                UIAlertController *picker = [UIAlertController alertControllerWithTitle:nil
+                    message:nil preferredStyle:UIAlertControllerStyleActionSheet];
                 NSUInteger limit = MIN(files.count, kHFABundlePickerMaxItems);
                 for (NSUInteger i = 0; i < limit; ++i) {
                     NSDictionary *entry = files[i];
