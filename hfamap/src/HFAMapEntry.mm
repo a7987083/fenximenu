@@ -68,7 +68,6 @@ static void HFAMapTogglePanel(void)
         }
         NSArray *features = summary[@"features"] ?: @[];
         NSArray *registry = summary[@"registry"] ?: @[];
-        NSArray *unresolved = summary[@"unresolved"] ?: @[];
         NSDictionary *graph = summary[@"featureHandlerGraph"] ?: @{};
         gHFAMapStatus.text = [NSString stringWithFormat:@"Analysis %@ — %lu registry\n%lu validated · %lu method candidates",
                               status, (unsigned long)registry.count, (unsigned long)features.count,
