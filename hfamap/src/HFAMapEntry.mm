@@ -28,9 +28,6 @@ static UIViewController *HFAMapTopController(void)
     return controller;
 }
 
-// UI-only file picker scope. Static analysis itself remains pure file parsing in HFAMapStaticCatalog.
-// Start at the app data-container root so a user can drop a dylib at the root, Documents, Library,
-// or another ordinary sandbox subdirectory without moving it specifically into Documents.
 static NSArray<NSDictionary *> *HFAMapListSandboxRootDylibs(void)
 {
     NSString *root = NSHomeDirectory();
@@ -240,7 +237,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 10.0, 236.0, 28.0)];
-    title.text = @"HFAMap v2.5.3-dev Static Catalog";
+    title.text = @"HFAMap v2.5.7-dev";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:16.0];
     [panel addSubview:title];
@@ -266,7 +263,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [panel addSubview:staticAnalyze];
 
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(14.0, 246.0, 236.0, 94.0)];
-    status.text = @"4 Static = game root dylib → Catalog\nCatalog is registered immediately\n2/3 reuse it in the same game session";
+    status.text = @"4 Static = imported dylib evidence → Catalog\nCatalog is registered immediately\n2/3 reuse it in the same game session";
     status.numberOfLines = 5;
     status.textColor = [UIColor colorWithWhite:0.88 alpha:1.0];
     status.font = [UIFont systemFontOfSize:12.5];
@@ -279,7 +276,7 @@ static BOOL HFAMapInstallFloatingUI(void)
     [window bringSubviewToFront:button];
     gHFAMapPanel = panel;
     gHFAMapButton = button;
-    NSLog(@"[HFAMap] v2.5.3 offline static catalog UI installed on window=%@", window);
+    NSLog(@"[HFAMap] v2.5.7 UI installed on window=%@", window);
     return YES;
 }
 
@@ -297,7 +294,7 @@ __attribute__((constructor))
 static void HFAMapConstructor(void)
 {
     @autoreleasepool {
-        NSLog(@"[HFAMap] Theos build entry loaded");
+        NSLog(@"[HFAMap] v2.5.7 Theos build entry loaded");
         HFAMapScheduleInstall(0);
     }
 }
