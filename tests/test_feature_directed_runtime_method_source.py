@@ -24,7 +24,10 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
             'class_getInstanceMethod',
             'method_getImplementation',
             'HFAMapAnalyzeStrippedActionIMP',
+            'HFAMapAnalyzeFeatureCallbackContext',
+            'contextSeededAnalysis',
             'exact-user-activated-control-target-action',
+            'verify-style-known-callback-downstream-x0-target-x1-cmd-x2-sender',
             'feature-directed-method-correlation-observed',
         ):
             self.assertIn(token, IL2CPP)
@@ -39,8 +42,8 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         self.assertNotIn('vm_write', IL2CPP)
 
     def test_version_markers(self):
-        self.assertIn('2.4.9-dev-postcall-type-branch', DIAG)
-        self.assertIn('HFAMap v2.4.9-dev Type Branch', ENTRY)
+        self.assertIn('2.5.0-dev-descriptor-callback-method', DIAG)
+        self.assertIn('HFAMap v2.5.0-dev Callback Method', ENTRY)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
 
