@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#include <stdint.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -12,9 +13,9 @@ NSDictionary *HFAMapStaticCatalogAnalyzeFile(NSString *path, NSError **error);
 BOOL HFAMapStaticCatalogRegisterAndPersist(NSDictionary *catalog, NSError **error);
 
 // Current in-memory catalog, if any.
-nullable NSDictionary *HFAMapStaticCatalogCurrent(void);
+NSDictionary * _Nullable HFAMapStaticCatalogCurrent(void);
 
 // Runtime lookup by loaded image + RVA. UUID must match when both sides expose one.
-nullable NSDictionary *HFAMapStaticCatalogLookup(NSString *loadedImage, uint64_t rva);
+NSDictionary * _Nullable HFAMapStaticCatalogLookup(NSString *loadedImage, uint64_t rva);
 
 NS_ASSUME_NONNULL_END
