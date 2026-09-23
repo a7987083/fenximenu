@@ -1,9 +1,9 @@
-name: HFAMap v2.5.4 Descriptor Static Callback
+name: HFAMap v2.5.4 Bundle Root Deep Scan
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.4-generic-descriptor-static-callback
+      - feature/hfamap-v2.5.4-bundle-root-deep-scan
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -31,6 +31,12 @@ jobs:
           grep -q 'src/HFAMapStaticCatalog.mm' hfamap/Makefile
           grep -q 'src/HFAMapStaticCatalogBridge.mm' hfamap/Makefile
           grep -q 'src/HFAMapDescriptorStaticCallbackResolver.mm' hfamap/Makefile
+          grep -q 'src/HFAMapBundleRootScanner.mm' hfamap/Makefile
+          grep -q 'NSBundle.mainBundle.bundlePath' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'kHFABundleScanMaxDepth = 12' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'kHFABundleScanMaxFiles = 512' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q '@"APP"' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q '@"DATA"' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
@@ -83,6 +89,7 @@ jobs:
           grep -q 'com.hfa.static-runtime-method/v1' "$strings_file"
           grep -q 'com.hfa.descriptor-static-callback/v1' "$strings_file"
           grep -q 'unique-ordered-static-callback-pointer-cluster' "$strings_file"
+          grep -q 'APP Bundle deep scanner installed' "$strings_file"
           grep -q '4. Static Analyze Dylib' "$strings_file"
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
@@ -92,7 +99,7 @@ jobs:
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.4-DescriptorStaticCallback
+          name: HFAMapUniversal-v2.5.4-BundleRootDeepScan
           path: |
             hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
             hfamap/dist/v2.5.4-dev/SHA256SUMS.txt
