@@ -1,9 +1,9 @@
-name: HFAMap v2.5.1 Generic Feature Handler Method Descriptor
+name: HFAMap v2.5.2 Generic Feature Ownership Resolver
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.1-generic-feature-handler-method-descriptor
+      - feature/hfamap-v2.5.2-generic-feature-ownership-resolver
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -39,15 +39,17 @@ jobs:
           grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
           grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
           grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
-          grep -q '2.5.1-dev-generic-feature-handler-method-descriptor' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.5.1-dev Generic Handler' hfamap/src/HFAMapEntry.mm
+          grep -q '2.5.2-dev-generic-feature-ownership-resolver' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.5.2-dev Feature Ownership' hfamap/src/HFAMapEntry.mm
           grep -q 'src/HFAIL2CPPMethodRangeIndex.mm' hfamap/Makefile
           grep -q 'src/HFAMapFeatureContextAnalyzer.mm' hfamap/Makefile
           grep -q 'src/HFAMapFeatureHandlerResolver.mm' hfamap/Makefile
-          grep -q 'com.hfa.feature-handler-graph/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'com.hfa.runtime-method-descriptor/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'known-feature-object-graph-to-block-invoke-only' hfamap/src/HFAMapFeatureHandlerResolver.mm
-          grep -q 'verify-style-known-descriptor-callback-downstream-no-global-method-guessing' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'com.hfa.feature-handler-graph/v2' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'com.hfa.feature-ownership/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'com.hfa.runtime-method-descriptor/v2' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'exact-ui-action-to-sender-relative-descriptor-handler-object-graph' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'verify-style-known-feature-ownership-descriptor-to-callback-no-global-method-guessing' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'no-sample-name-no-sample-rva-no-known-method-input' hfamap/src/HFAMapFeatureHandlerResolver.mm
           grep -q 'HFAIL2CPPMethodContainingRuntimeAddress' hfamap/src/HFAMapFeatureHandlerResolver.mm
           grep -q 'featureHandlerGraph' hfamap/src/HFAMapCore.mm
           grep -q 'com.hfa.feature-context/v1' hfamap/src/HFAMapFeatureContextAnalyzer.mm
@@ -56,6 +58,8 @@ jobs:
           ! grep -q 'CheatGetMoney' hfamap/src/HFAMapFeatureHandlerResolver.mm
           ! grep -q 'CheatLevelUp' hfamap/src/HFAMapFeatureHandlerResolver.mm
           ! grep -q 'XPHero' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q '0xB8B608' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q '0xB8BA50' hfamap/src/HFAMapFeatureHandlerResolver.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           ! grep -q 'vm_write' hfamap/src/HFAMapFeatureHandlerResolver.mm
 
@@ -72,32 +76,34 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.1-dev
+          mkdir -p hfamap/dist/v2.5.2-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
-          out=hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.5.1.strings"
+            hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
+          out=hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.5.2.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
           grep -q 'com.hfa.stripped-action/v6' "$strings_file"
           grep -q 'com.hfa.il2cpp-method-range-index/v1' "$strings_file"
           grep -q 'com.hfa.feature-context/v1' "$strings_file"
-          grep -q 'com.hfa.feature-handler-graph/v1' "$strings_file"
-          grep -q 'com.hfa.runtime-method-descriptor/v1' "$strings_file"
-          grep -q 'HFAMap v2.5.1-dev Generic Handler' "$strings_file"
+          grep -q 'com.hfa.feature-handler-graph/v2' "$strings_file"
+          grep -q 'com.hfa.feature-ownership/v1' "$strings_file"
+          grep -q 'com.hfa.runtime-method-descriptor/v2' "$strings_file"
+          grep -q 'HFAMap v2.5.2-dev Feature Ownership' "$strings_file"
           grep -q '1. Search Menu' "$strings_file"
           grep -q '2. Deep Analyze Menu' "$strings_file"
           grep -q '3. Runtime Probe (8s)' "$strings_file"
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.1-dev/SHA256SUMS.txt
+          ! grep -q 'XPHero' "$strings_file"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.2-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.1-GenericFeatureHandlerMethodDescriptor
+          name: HFAMapUniversal-v2.5.2-GenericFeatureOwnershipResolver
           path: |
-            hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
-            hfamap/dist/v2.5.1-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.2-dev/HFAMapUniversal-v2.5.2-dev.dylib
+            hfamap/dist/v2.5.2-dev/SHA256SUMS.txt
           if-no-files-found: error
