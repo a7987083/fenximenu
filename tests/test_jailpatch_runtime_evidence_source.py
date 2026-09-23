@@ -53,8 +53,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('known-exact-selector', RESOLVER)
 
     def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.5.1-dev-generic-feature-handler-method-descriptor', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.5.1-dev Generic Handler', ENTRY)
+        self.assertIn('2.5.2-dev-generic-feature-ownership-resolver', DIAGNOSTICS)
+        self.assertIn('HFAMap v2.5.2-dev Feature Ownership', ENTRY)
 
 
 if __name__ == "__main__":
