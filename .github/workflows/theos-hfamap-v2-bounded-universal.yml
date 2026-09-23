@@ -1,9 +1,9 @@
-name: HFAMap v2.5.0 Descriptor Callback Method
+name: HFAMap v2.5.1 Generic Feature Handler Method Descriptor
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.0-bounded-branch-method-correlator
+      - feature/hfamap-v2.5.1-generic-feature-handler-method-descriptor
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -39,24 +39,25 @@ jobs:
           grep -q '1. Search Menu' hfamap/src/HFAMapEntry.mm
           grep -q '2. Deep Analyze Menu' hfamap/src/HFAMapEntry.mm
           grep -q '3. Runtime Probe (8s)' hfamap/src/HFAMapEntry.mm
-          grep -q '2.5.0-dev-descriptor-callback-method' hfamap/src/HFAMapDiagnostics.mm
-          grep -q 'HFAMap v2.5.0-dev Callback Method' hfamap/src/HFAMapEntry.mm
+          grep -q '2.5.1-dev-generic-feature-handler-method-descriptor' hfamap/src/HFAMapDiagnostics.mm
+          grep -q 'HFAMap v2.5.1-dev Generic Handler' hfamap/src/HFAMapEntry.mm
           grep -q 'src/HFAIL2CPPMethodRangeIndex.mm' hfamap/Makefile
           grep -q 'src/HFAMapFeatureContextAnalyzer.mm' hfamap/Makefile
+          grep -q 'src/HFAMapFeatureHandlerResolver.mm' hfamap/Makefile
+          grep -q 'com.hfa.feature-handler-graph/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'com.hfa.runtime-method-descriptor/v1' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'known-feature-object-graph-to-block-invoke-only' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'verify-style-known-descriptor-callback-downstream-no-global-method-guessing' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'HFAIL2CPPMethodContainingRuntimeAddress' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'featureHandlerGraph' hfamap/src/HFAMapCore.mm
           grep -q 'com.hfa.feature-context/v1' hfamap/src/HFAMapFeatureContextAnalyzer.mm
-          grep -q 'exact-callback-arm64-abi-x0-target-x1-selector-x2-sender' hfamap/src/HFAMapFeatureContextAnalyzer.mm
-          grep -q 'verify.dylib-descriptor-callback-downstream-plus-h5gg-method-range' hfamap/src/HFAMapFeatureContextAnalyzer.mm
-          grep -q 'evaluatedWithoutSelectorInvocation' hfamap/src/HFAMapFeatureContextAnalyzer.mm
-          grep -q 'HFAIL2CPPMethodContainingRuntimeAddress' hfamap/src/HFAMapFeatureContextAnalyzer.mm
           grep -q 'contextSeededAnalysis' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'verify-style-known-callback-downstream-x0-target-x1-cmd-x2-sender' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          grep -q 'exact-user-activated-control-target-action' hfamap/src/HFAIL2CPPRuntimeProbe.mm
           grep -q 'com.hfa.stripped-action/v6' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          grep -q 'assembly-csharp-containing-method-range' hfamap/src/HFAMapStrippedActionAnalyzer.mm
-          ! grep -q 'objc_msgSend(' hfamap/src/HFAMapFeatureContextAnalyzer.mm
+          ! grep -q 'CheatGetMoney' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q 'CheatLevelUp' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          ! grep -q 'XPHero' hfamap/src/HFAMapFeatureHandlerResolver.mm
           ! grep -q 'DobbyInstrument' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          ! grep -q 'direct-method-entry' hfamap/src/HFAIL2CPPRuntimeProbe.mm
-          ! grep -q 'vm_write' hfamap/src/HFAIL2CPPRuntimeProbe.mm
+          ! grep -q 'vm_write' hfamap/src/HFAMapFeatureHandlerResolver.mm
 
       - name: Install Theos
         run: |
@@ -71,30 +72,32 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.0-dev
+          mkdir -p hfamap/dist/v2.5.1-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.5.0-dev/HFAMapUniversal-v2.5.0-dev.dylib
-          out=hfamap/dist/v2.5.0-dev/HFAMapUniversal-v2.5.0-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.5.0.strings"
+            hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
+          out=hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.5.1.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.fast-menu-discovery/v1' "$strings_file"
           grep -q 'com.hfa.stripped-action/v6' "$strings_file"
           grep -q 'com.hfa.il2cpp-method-range-index/v1' "$strings_file"
           grep -q 'com.hfa.feature-context/v1' "$strings_file"
-          grep -q 'exact-callback-arm64-abi-x0-target-x1-selector-x2-sender' "$strings_file"
-          grep -q 'HFAMap v2.5.0-dev Callback Method' "$strings_file"
+          grep -q 'com.hfa.feature-handler-graph/v1' "$strings_file"
+          grep -q 'com.hfa.runtime-method-descriptor/v1' "$strings_file"
+          grep -q 'HFAMap v2.5.1-dev Generic Handler' "$strings_file"
           grep -q '1. Search Menu' "$strings_file"
           grep -q '2. Deep Analyze Menu' "$strings_file"
           grep -q '3. Runtime Probe (8s)' "$strings_file"
-          ! grep -q 'direct-method-entry' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.0-dev/SHA256SUMS.txt
+          ! grep -q 'CheatGetMoney' "$strings_file"
+          ! grep -q 'CheatLevelUp' "$strings_file"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.1-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.0-DescriptorCallbackMethod
+          name: HFAMapUniversal-v2.5.1-GenericFeatureHandlerMethodDescriptor
           path: |
-            hfamap/dist/v2.5.0-dev/HFAMapUniversal-v2.5.0-dev.dylib
-            hfamap/dist/v2.5.0-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.1-dev/HFAMapUniversal-v2.5.1-dev.dylib
+            hfamap/dist/v2.5.1-dev/SHA256SUMS.txt
           if-no-files-found: error
