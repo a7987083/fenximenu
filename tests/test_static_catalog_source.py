@@ -14,10 +14,13 @@ MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 class StaticCatalogSourceTests(unittest.TestCase):
     def test_game_root_picker_and_offline_read_only_analysis(self):
         for token in (
-            'HFAMapListSandboxRootDylibs',
+            'HFAMapListBundleAndDataDylibs',
+            'NSBundle.mainBundle.bundlePath',
             'NSHomeDirectory()',
-            'enumerationRoot',
-            'game root',
+            'kHFABundleScanMaxDepth = 12',
+            'kHFABundleScanMaxFiles = 512',
+            '@"APP"',
+            '@"DATA"',
             'HFAMapStaticCatalogAnalyzeFile',
             'NSDataReadingMappedIfSafe',
             'analysisMode',
@@ -27,6 +30,7 @@ class StaticCatalogSourceTests(unittest.TestCase):
             self.assertIn(token, SOURCE + HEADER + ENTRY)
         self.assertNotIn('dlopen(', SOURCE)
         self.assertNotIn('NSBundle bundleWithPath', SOURCE)
+        self.assertNotIn('method_setImplementation', ENTRY)
 
     def test_macho_identity_and_function_catalog_are_generic(self):
         for token in (
@@ -89,6 +93,7 @@ class StaticCatalogSourceTests(unittest.TestCase):
         self.assertIn('src/HFAMapStaticCatalog.mm', MAKEFILE)
         self.assertIn('src/HFAMapStaticCatalogBridge.mm', MAKEFILE)
         self.assertIn('src/HFAMapDescriptorStaticCallbackResolver.mm', MAKEFILE)
+        self.assertNotIn('src/HFAMapBundleRootScanner.mm', MAKEFILE)
 
 
 if __name__ == '__main__':
