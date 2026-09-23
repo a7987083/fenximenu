@@ -1,9 +1,9 @@
-name: HFAMap v2.5.4 Bundle Root Deep Scan
+name: HFAMap v2.5.7 Crash Safe Runtime Probe
 
 on:
   push:
     branches:
-      - feature/hfamap-v2.5.4-bundle-root-deep-scan
+      - feature/hfamap-v2.5.7-crash-safe-runtime-probe
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -32,13 +32,14 @@ jobs:
           grep -q 'src/HFAMapStaticCatalogBridge.mm' hfamap/Makefile
           grep -q 'src/HFAMapDescriptorStaticCallbackResolver.mm' hfamap/Makefile
           grep -q 'src/HFAMapBundleRootScanner.mm' hfamap/Makefile
+          grep -q 'src/HFAIL2CPPRuntimeProbeSafe.mm' hfamap/Makefile
+          ! grep -q 'src/HFAIL2CPPRuntimeProbe.mm' hfamap/Makefile
           grep -q 'NSBundle.mainBundle.bundlePath' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q 'kHFABundleScanMaxDepth = 12' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q 'kHFABundleScanMaxFiles = 512' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q '@"APP"' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q '@"DATA"' hfamap/src/HFAMapBundleRootScanner.mm
           grep -q 'com.hfa.fast-menu-discovery/v1' hfamap/src/HFAMapFastDiscovery.mm
-          grep -q 'full-list-first-no-deep-analysis' hfamap/src/HFAMapFastDiscovery.mm
           grep -q 'HFAMapRunMenuDiscovery' hfamap/src/HFAMapCore.mm
           grep -q 'HFAMapRunSelectedDeepAnalysis' hfamap/src/HFAMapCore.mm
           grep -q 'HFAMapStaticCatalogAnnotateHandlerGraph' hfamap/src/HFAMapCore.mm
@@ -46,24 +47,21 @@ jobs:
           grep -q 'com.hfa.static-catalog/v1' hfamap/src/HFAMapStaticCatalog.mm
           grep -q 'com.hfa.static-runtime-method/v1' hfamap/src/HFAMapStaticCatalog.mm
           grep -q 'offline-file-read-only-no-dlopen' hfamap/src/HFAMapStaticCatalog.mm
-          grep -q 'NSDataReadingMappedIfSafe' hfamap/src/HFAMapStaticCatalog.mm
-          grep -q 'LC_FUNCTION_STARTS' hfamap/src/HFAMapStaticCatalog.mm
-          grep -q 'LC_UUID' hfamap/src/HFAMapStaticCatalog.mm
-          grep -q 'runtime-handler-rva-to-same-session-static-catalog' hfamap/src/HFAMapStaticCatalogBridge.mm
-          grep -q 'unique-descriptor-type-cohort' hfamap/src/HFAMapStaticCatalogBridge.mm
-          grep -q 'HFAMapResolveDescriptorStaticCallbacks' hfamap/src/HFAMapStaticCatalogBridge.mm
           grep -q 'com.hfa.descriptor-static-callback/v1' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          grep -q 'exact-descriptor-token-or-unique-ordered-pointer-cluster-fail-closed' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          grep -q 'unique-ordered-static-callback-pointer-cluster' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          grep -q 'no-game-name-no-feature-name-no-method-name-no-fixed-rva' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          ! grep -q 'dlopen(' hfamap/src/HFAMapStaticCatalog.mm
+          grep -q '2.5.7-dev-crash-safe-runtime-probe' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          grep -q 'fail-closed-no-dobby-no-il2cpp-export-hook' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          grep -q '@"runtimeInvokeHooked": @NO' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          grep -q '@"hookInstalled": @NO' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          grep -q '@"memoryWritten": @NO' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          ! grep -q 'DobbyHook' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          ! grep -q 'DobbyDestroy' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          ! grep -q 'il2cpp_runtime_invoke' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
+          ! grep -q 'vm_write' hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm
           ! grep -q 'CheatGetMoney' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
           ! grep -q 'CheatLevelUp' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
           ! grep -q 'XPHero' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
           ! grep -q '0xB8B608' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
           ! grep -q '0xB8BA50' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          ! grep -q 'DobbyHook' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
-          ! grep -q 'vm_write' hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm
 
       - name: Install Theos
         run: |
@@ -78,29 +76,28 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.4-dev
+          mkdir -p hfamap/dist/v2.5.7-dev
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-          out=hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-          strings_file="$RUNNER_TEMP/hfamap-v2.5.4.strings"
+            hfamap/dist/v2.5.7-dev/HFAMapUniversal-v2.5.7-dev.dylib
+          out=hfamap/dist/v2.5.7-dev/HFAMapUniversal-v2.5.7-dev.dylib
+          strings_file="$RUNNER_TEMP/hfamap-v2.5.7.strings"
           file "$out" | grep -q arm64
           strings "$out" > "$strings_file"
           grep -q 'com.hfa.static-catalog/v1' "$strings_file"
           grep -q 'com.hfa.static-runtime-method/v1' "$strings_file"
           grep -q 'com.hfa.descriptor-static-callback/v1' "$strings_file"
-          grep -q 'unique-ordered-static-callback-pointer-cluster' "$strings_file"
-          grep -q 'APP Bundle deep scanner installed' "$strings_file"
-          grep -q '4. Static Analyze Dylib' "$strings_file"
+          grep -q '2.5.7-dev-crash-safe-runtime-probe' "$strings_file"
+          grep -q 'fail-closed-no-dobby-no-il2cpp-export-hook' "$strings_file"
           ! grep -q 'CheatGetMoney' "$strings_file"
           ! grep -q 'CheatLevelUp' "$strings_file"
           ! grep -q 'XPHero' "$strings_file"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.4-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.7-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.4-BundleRootDeepScan
+          name: HFAMapUniversal-v2.5.7-CrashSafeRuntimeProbe
           path: |
-            hfamap/dist/v2.5.4-dev/HFAMapUniversal-v2.5.4-dev.dylib
-            hfamap/dist/v2.5.4-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.7-dev/HFAMapUniversal-v2.5.7-dev.dylib
+            hfamap/dist/v2.5.7-dev/SHA256SUMS.txt
           if-no-files-found: error
