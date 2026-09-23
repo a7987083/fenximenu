@@ -5,6 +5,7 @@
 #import <mach/mach.h>
 #include <dlfcn.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const NSUInteger kHFAHandlerMaxNodes = 48;
