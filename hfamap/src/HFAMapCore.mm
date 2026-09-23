@@ -6,6 +6,7 @@
 #import "HFAMapOutputName.h"
 #import "HFAMapPatchV1.h"
 #import "HFAMapRuntimeProbe.h"
+#import "HFAMapFeatureHandlerResolver.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
@@ -170,6 +171,13 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSTimeInterval captureStarted = NSDate.date.timeIntervalSince1970;
         NSDictionary *snapshot = HFAMapCaptureFeatureSeeds(selected, captureStarted + 0.50, events);
+        NSDictionary *handlerGraph = [HFAMapAnalyzeFeatureHandlerSnapshot(snapshot, selected) retain];
+        HFADiagnosticsLog(@"feature-handler-graph", handlerGraph[@"status"] ?: @"complete", @{
+            @"recordCount": handlerGraph[@"recordCount"] ?: @0,
+            @"runtimeMethodCandidateCount": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
+            @"il2cppCorrelationCount": handlerGraph[@"il2cppCorrelationCount"] ?: @0,
+            @"policy": handlerGraph[@"policy"] ?: @""
+        });
         HFADiagnosticsLog(@"ui-snapshot", @"complete", snapshot[@"metrics"] ?: @{});
         dispatch_async(HFAWorker(), ^{
             NSDictionary *resolved = HFAMapResolveFeatureSeeds(selected, snapshot, started + 9.0, events);
@@ -185,6 +193,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"features": features,
                 @"registry": resolved[@"registry"] ?: @[],
                 @"runtimeRecords": runtimeRecords,
+                @"featureHandlerGraph": handlerGraph ?: @{},
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
@@ -217,6 +226,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
             HFAWriteJSON(@{
                 @"schema": @"com.hfa.registry/v1", @"session": session,
                 @"candidate": selected, @"records": resolved[@"registry"] ?: @[],
+                @"featureHandlerGraph": handlerGraph ?: @{},
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
@@ -226,6 +236,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
             HFAWriteJSON(@{
                 @"schema": @"com.hfa.igmm.runtime/v1", @"session": session,
                 @"candidate": selected, @"records": runtimeRecords,
+                @"featureHandlerGraph": handlerGraph ?: @{},
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"analysisOnly": @YES,
                 @"status": resolved[@"status"] ?: @"complete"
@@ -235,9 +246,11 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"selectedImage": selected[@"image"] ?: @"?",
                 @"validated": @(features.count),
                 @"unresolved": @([resolved[@"unresolved"] count]),
+                @"runtimeMethodCandidates": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
+            [handlerGraph release];
             [selected release];
             dispatch_async(dispatch_get_main_queue(), ^{
                 @synchronized(NSObject.class) { gHFAAnalyzing = NO; }
