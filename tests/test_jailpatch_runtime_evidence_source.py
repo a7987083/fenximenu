@@ -54,7 +54,7 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
 
     def test_version_and_ui_are_advanced(self):
         self.assertIn('2.5.4-dev-generic-descriptor-static-callback', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
+        self.assertIn('HFAMap v2.5.4-r2 Stable Loader', ENTRY)
 
 
 if __name__ == "__main__":
