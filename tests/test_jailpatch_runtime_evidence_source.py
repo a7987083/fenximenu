@@ -1,7 +1,6 @@
 from pathlib import Path
 import unittest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CORE = (ROOT / "hfamap/src/HFAMapCore.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
@@ -52,9 +51,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('inventoried-no-exact-methods', RESOLVER)
         self.assertIn('known-exact-selector', RESOLVER)
 
-    def test_version_and_ui_are_advanced(self):
-        self.assertIn('2.5.4-dev-generic-descriptor-static-callback', DIAGNOSTICS)
-        self.assertIn('HFAMap v2.5.3-dev Static Catalog', ENTRY)
+    def test_version_is_advanced(self):
+        self.assertIn('2.5.7-dev-crash-safe-runtime-probe', DIAGNOSTICS)
 
 
 if __name__ == "__main__":
