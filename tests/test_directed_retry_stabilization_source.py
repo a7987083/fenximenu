@@ -32,7 +32,7 @@ class DirectedRetryStabilizationTests(unittest.TestCase):
     def test_version_marker_is_compiled(self):
         self.assertIn('src/HFAMapVersion2512.mm', MAKEFILE)
         self.assertIn('2.5.12-dev-directed-retry-stabilization', VERSION)
-        self.assertIn('HFAMap v2.5.12', BUNDLE)
+        self.assertIn('HFAResolveDirectedWithRetry', BUNDLE)
 
     def test_no_new_hook_or_memory_write_path(self):
         for forbidden in ('DobbyHook', 'MSHookFunction', 'vm_write', 'mach_vm_write'):
