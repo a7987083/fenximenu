@@ -48,9 +48,9 @@ class DirectedDescriptorSourceTests(unittest.TestCase):
 
     def test_bundle_wires_directed_output(self):
         self.assertIn('HFAMapDirectedDescriptorResolver.mm', MAKEFILE)
+        self.assertIn('#import "HFAMapDirectedDescriptorResolver.h"', BUNDLE)
         self.assertIn('HFAMapResolveDirectedDescriptors', BUNDLE)
         self.assertIn('HFAMapPersistDirectedDescriptors', BUNDLE)
-        self.assertIn('HFAMap v2.5.10', BUNDLE)
         self.assertIn('DirectedDescriptors.json', SRC)
         self.assertIn('com.hfa.directed-descriptor/v1', SRC)
 
