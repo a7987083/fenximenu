@@ -38,8 +38,8 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
         for forbidden in ('DobbyHook', 'DobbyDestroy', 'DobbyInstrument', 'il2cpp_runtime_invoke', 'vm_write'):
             self.assertNotIn(forbidden, IL2CPP)
 
-    def test_version_markers(self):
-        self.assertIn('2.5.7-dev-crash-safe-runtime-probe', DIAG)
+    def test_version_metadata_exists_without_pin_to_old_release(self):
+        self.assertIn('@"version": @"', DIAG)
         self.assertIn('featureDirectedCorrelationCount', ENTRY)
 
 
