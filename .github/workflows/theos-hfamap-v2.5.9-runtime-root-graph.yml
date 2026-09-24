@@ -1,0 +1,65 @@
+name: HFAMap v2.5.9 Runtime Root Descriptor Graph
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.9-runtime-root-descriptor-graph
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.9-runtime-root-graph.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Check v2.5.9 invariants
+        run: |
+          set -euo pipefail
+          grep -q 'src/HFAMapRuntimeRootGraphResolver.mm' hfamap/Makefile
+          grep -q 'src/HFAMapVersion259.mm' hfamap/Makefile
+          grep -q 'UNIVERSAL-ROOTED-READ-ONLY-NO-SAMPLE-SPECIAL-CASES' hfamap/src/HFAMapRuntimeRootGraphResolver.mm
+          grep -q 'com.hfa.runtime-root-graph/v1' hfamap/src/HFAMapRuntimeRootGraphResolver.mm
+          grep -q 'HFAMap v2.5.9' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'HFAMap v2.5.9-dev' hfamap/src/HFAMapVersion259.mm
+          ! grep -q 'RogueLegend' hfamap/src/HFAMapRuntimeRootGraphResolver.mm
+          ! grep -q 'CheatGetMoney' hfamap/src/HFAMapRuntimeRootGraphResolver.mm
+          ! grep -q 'DobbyHook' hfamap/src/HFAMapRuntimeRootGraphResolver.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.9-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.9-dev/HFAMapUniversal-v2.5.9-dev.dylib
+          out=hfamap/dist/v2.5.9-dev/HFAMapUniversal-v2.5.9-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap259.strings"
+          file "$out" | grep -q arm64
+          grep -q 'HFAMap v2.5.9-dev' "$RUNNER_TEMP/hfamap259.strings"
+          grep -q '2.5.9-dev-runtime-root-descriptor-graph' "$RUNNER_TEMP/hfamap259.strings"
+          grep -q 'com.hfa.runtime-root-graph/v1' "$RUNNER_TEMP/hfamap259.strings"
+          grep -q 'UNIVERSAL-ROOTED-READ-ONLY-NO-SAMPLE-SPECIAL-CASES' "$RUNNER_TEMP/hfamap259.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.9-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.9-RuntimeRootDescriptorGraph
+          path: |
+            hfamap/dist/v2.5.9-dev/HFAMapUniversal-v2.5.9-dev.dylib
+            hfamap/dist/v2.5.9-dev/SHA256SUMS.txt
+          if-no-files-found: error

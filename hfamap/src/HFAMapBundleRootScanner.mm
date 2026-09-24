@@ -4,6 +4,7 @@
 #import "HFAMapStaticCatalog.h"
 #import "HFAMapImportedDylibEvidenceAnalyzer.h"
 #import "HFAMapLoadedDylibEvidenceResolver.h"
+#import "HFAMapRuntimeRootGraphResolver.h"
 #import "HFAMapDiagnostics.h"
 
 static const NSUInteger kHFABundleScanMaxDepth = 12;
@@ -52,21 +53,19 @@ static NSArray *HFADeepBundleDylibInventory(void) {
     return r;
 }
 
-static void HFAPresentResult(NSDictionary *catalog, NSDictionary *evidence, NSDictionary *loadedEvidence, NSError *error) {
+static void HFAPresentResult(NSDictionary *evidence, NSDictionary *loadedEvidence, NSDictionary *rootGraph, NSError *error) {
     UIViewController *c = HFABundleTopController(); if (!c) return;
     NSString *msg = nil;
     if (evidence) {
-        BOOL loaded = [loadedEvidence[@"loaded"] boolValue];
-        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nEvidence JSON saved",
+        BOOL loaded = [loadedEvidence[@"loaded"] boolValue]; NSDictionary *graph = rootGraph[@"graph"] ?: @{};
+        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nroots %@ · nodes %@ · descriptors %@\nEvidence JSON saved",
             evidence[@"source"][@"fileName"]?:@"dylib",
-            @([evidence[@"featureEvidence"] count]), @([evidence[@"patchEvidence"] count]), @([evidence[@"offsetEvidence"] count]),
-            loaded ? @"YES ✅" : @"NO",
-            loadedEvidence[@"classCount"] ?: @0,
-            loadedEvidence[@"methodInImageCount"] ?: @0,
-            @([loadedEvidence[@"structuralFields"] count])];
+            @([evidence[@"featureEvidence"] count]), @([evidence[@"patchEvidence"] count]), @([evidence[@"offsetEvidence"] count]), loaded ? @"YES ✅" : @"NO",
+            loadedEvidence[@"classCount"] ?: @0, loadedEvidence[@"methodInImageCount"] ?: @0, @([loadedEvidence[@"structuralFields"] count]),
+            graph[@"rootCount"] ?: @0, graph[@"nodeCount"] ?: @0, graph[@"descriptorCandidateCount"] ?: @0];
         if (!loaded && error) msg = [msg stringByAppendingFormat:@"\nloaded resolver: %@", error.localizedDescription ?: @"not-loaded"];
     } else msg = [NSString stringWithFormat:@"Analysis failed\n%@", error.localizedDescription?:@"unknown error"];
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.8" message:msg preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.9" message:msg preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]]; [c presentViewController:a animated:YES completion:nil];
 }
 
@@ -74,24 +73,19 @@ static void HFAAnalyzeImportedPath(NSString *path) {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         NSError *catalogError=nil; NSDictionary *catalog=HFAMapStaticCatalogAnalyzeFile(path,&catalogError);
         NSError *catalogPersistError=nil; if (catalog) HFAMapStaticCatalogRegisterAndPersist(catalog,&catalogPersistError);
-
         NSError *evidenceError=nil; NSDictionary *evidence=HFAMapAnalyzeImportedDylibEvidence(path,catalog?:@{},&evidenceError);
         NSError *evidencePersistError=nil; BOOL saved=evidence && HFAMapPersistImportedDylibEvidence(evidence,&evidencePersistError);
-
         NSError *loadedError=nil; NSDictionary *loadedEvidence = saved ? HFAMapResolveLoadedDylibEvidence(path,evidence,&loadedError) : nil;
         NSError *loadedPersistError=nil; BOOL loadedSaved = loadedEvidence && HFAMapPersistLoadedDylibEvidence(loadedEvidence,&loadedPersistError);
-
-        NSError *finalError=evidenceError?:evidencePersistError?:loadedError?:loadedPersistError?:catalogError?:catalogPersistError;
+        NSError *rootGraphError=nil; NSDictionary *rootGraph = loadedEvidence ? HFAMapResolveRuntimeRootGraph(path,loadedEvidence,&rootGraphError) : nil;
+        NSError *rootGraphPersistError=nil; BOOL rootGraphSaved = rootGraph && HFAMapPersistRuntimeRootGraph(rootGraph,&rootGraphPersistError);
+        NSError *finalError=evidenceError?:evidencePersistError?:loadedError?:loadedPersistError?:rootGraphError?:rootGraphPersistError?:catalogError?:catalogPersistError;
+        NSDictionary *graph=rootGraph[@"graph"]?:@{};
         HFADiagnosticsLog(@"imported-dylib-evidence", saved?@"ui-ready":@"ui-failed", @{
-            @"file":path.lastPathComponent?:@"",
-            @"saved":@(saved),
-            @"loadedRuntimeEvidence": @(loadedEvidence != nil),
-            @"loadedRuntimeEvidenceSaved": @(loadedSaved),
-            @"loadedClassCount": loadedEvidence[@"classCount"] ?: @0,
-            @"loadedMethodInImageCount": loadedEvidence[@"methodInImageCount"] ?: @0,
-            @"loadedStructuralFieldCount": @([loadedEvidence[@"structuralFields"] count])
-        });
-        dispatch_async(dispatch_get_main_queue(), ^{ HFAPresentResult(catalog,saved?evidence:nil,loadedEvidence,finalError); });
+            @"file":path.lastPathComponent?:@"", @"saved":@(saved), @"loadedRuntimeEvidence":@(loadedEvidence!=nil), @"loadedRuntimeEvidenceSaved":@(loadedSaved),
+            @"loadedClassCount":loadedEvidence[@"classCount"]?:@0, @"loadedMethodInImageCount":loadedEvidence[@"methodInImageCount"]?:@0, @"loadedStructuralFieldCount":@([loadedEvidence[@"structuralFields"] count]),
+            @"runtimeRootGraph":@(rootGraph!=nil), @"runtimeRootGraphSaved":@(rootGraphSaved), @"runtimeRootCount":graph[@"rootCount"]?:@0, @"runtimeNodeCount":graph[@"nodeCount"]?:@0, @"runtimeDescriptorCandidateCount":graph[@"descriptorCandidateCount"]?:@0 });
+        dispatch_async(dispatch_get_main_queue(), ^{ HFAPresentResult(saved?evidence:nil,loadedEvidence,rootGraph,finalError); });
     });
 }
 
@@ -112,6 +106,6 @@ static void HFAInstallBundleRootScannerOverride(void) {
     Class cls=NSClassFromString(@"HFAMapFloatingTarget");
     if(!cls){dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});return;}
     Method m=class_getInstanceMethod(cls,@selector(staticAnalyze)); if(!m)return; method_setImplementation(m,(IMP)HFAStaticAnalyzeBundleRootReplacement);
-    NSLog(@"[HFAMap] v2.5.8 UNIVERSAL static + loaded dylib evidence scanner installed");
+    NSLog(@"[HFAMap] v2.5.9 UNIVERSAL static + loaded dylib + runtime root graph scanner installed");
 }
 __attribute__((constructor)) static void HFABundleRootScannerConstructor(void){dispatch_async(dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});}
