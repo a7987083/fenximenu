@@ -141,7 +141,7 @@ static NSDictionary *HFAObjectValueSummary(id value, NSString *role, NSArray *im
     NSMutableDictionary *r=[@{@"kind":@"object",@"token":[NSString stringWithFormat:@"%p",value],@"class":NSStringFromClass(object_getClass(value))?:@"",@"classImage":HFAImageForObject(value)} mutableCopy];
     if([value isKindOfClass:NSString.class]){NSString *s=value; r[@"string"]=s.length<=512?s:[s substringToIndex:512];}
     else if([value isKindOfClass:NSNumber.class]){r[@"number"]=value; if([role isEqualToString:@"address-field"])r[@"rvaCandidates"]=HFARVACandidates([(NSNumber *)value unsignedLongLongValue],images);}
-    else if([value isKindOfClass:NSData.class]){NSData *d=value; NSUInteger n=MIN((NSUInteger)d.length,(NSUInteger)64); const uint8_t *b=d.bytes; NSMutableString *hex=[NSMutableString stringWithCapacity:n*2]; for(NSUInteger i=0;b&&i<n;i++)[hex appendFormat:@"%02X",b[i]]; r[@"dataLength"]=@(d.length); r[@"dataPrefixHex"]=hex;}
+    else if([value isKindOfClass:NSData.class]){NSData *d=value; NSUInteger n=MIN((NSUInteger)d.length,(NSUInteger)64); const uint8_t *b=(const uint8_t *)d.bytes; NSMutableString *hex=[NSMutableString stringWithCapacity:n*2]; for(NSUInteger i=0;b&&i<n;i++)[hex appendFormat:@"%02X",b[i]]; r[@"dataLength"]=@(d.length); r[@"dataPrefixHex"]=hex;}
     else if([value isKindOfClass:NSArray.class]||[value isKindOfClass:NSDictionary.class]||[value isKindOfClass:NSSet.class]){r[@"container"]=@YES; r[@"count"]=@([(id)value count]);}
     return [r autorelease];
 }
