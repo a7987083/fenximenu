@@ -41,7 +41,8 @@ class SecretWrapperEvidenceSourceTests(unittest.TestCase):
 
     def test_version_marker_is_wired(self):
         self.assertIn("HFAMapVersion2511.mm", MAKEFILE)
-        self.assertIn("HFAMap v2.5.11", BUNDLE)
+        self.assertIn("HFAMapSecretWrapperEvidenceResolver", BUNDLE)
+        self.assertIn("HFAMapResolveSecretWrapperEvidence", BUNDLE)
 
 
 if __name__ == "__main__":
