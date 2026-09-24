@@ -36,7 +36,8 @@ NSString *HFADiagnosticsBeginSession(void) {
     NSString *session = gHFASessionID;
     pthread_mutex_unlock(&gHFADiagnosticsLock);
     HFADiagnosticsLog(@"session", @"start", @{
-        @"version": @"2.5.7-dev-crash-safe-runtime-probe",
+        @"version": @"2.5.8-dev-universal-imported-dylib-evidence",
+        @"policy": @"UNIVERSAL-ONLY",
         @"hostAppName": HFAHostAppName(),
         @"process": NSProcessInfo.processInfo.processName ?: @"?",
         @"os": UIDevice.currentDevice.systemVersion ?: @"?"
@@ -66,16 +67,12 @@ void HFADiagnosticsLog(NSString *stage, NSString *status, NSDictionary *details)
         @"thread": NSThread.isMainThread ? @"main" : @"worker"
     } mutableCopy];
     if (details) [record addEntriesFromDictionary:details];
-
     NSString *json = [HFAJSONString(record) stringByAppendingString:@"\n"];
     NSString *plain = [NSString stringWithFormat:@"[%@] [+%.1fms] [%@/%@] %@\n",
-                       session, elapsed, stage ?: @"?", status ?: @"?",
-                       HFAJSONString(details ?: @{})];
+                       session, elapsed, stage ?: @"?", status ?: @"?", HFAJSONString(details ?: @{})];
     NSString *documents = HFADocumentsPath();
-    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.jsonl")],
-              [json dataUsingEncoding:NSUTF8StringEncoding]);
-    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")],
-              [plain dataUsingEncoding:NSUTF8StringEncoding]);
+    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.jsonl")], [json dataUsingEncoding:NSUTF8StringEncoding]);
+    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")], [plain dataUsingEncoding:NSUTF8StringEncoding]);
     pthread_mutex_unlock(&gHFADiagnosticsLock);
 }
 
