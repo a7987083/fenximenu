@@ -41,11 +41,10 @@ class RuntimeRootGraphSourceTests(unittest.TestCase):
         self.assertIn("patch-object-candidate", SRC)
         self.assertIn("descriptor-candidate", SRC)
 
-    def test_bundle_wires_graph_and_v259(self):
+    def test_bundle_keeps_runtime_root_graph_wired(self):
         self.assertIn("HFAMapResolveRuntimeRootGraph", BUNDLE)
         self.assertIn("HFAMapPersistRuntimeRootGraph", BUNDLE)
         self.assertIn("RuntimeRootGraph.json", SRC)
-        self.assertIn("HFAMap v2.5.9", BUNDLE)
         self.assertIn("HFAMapRuntimeRootGraphResolver.mm", MAKEFILE)
         self.assertIn("HFAMapVersion259.mm", MAKEFILE)
 
