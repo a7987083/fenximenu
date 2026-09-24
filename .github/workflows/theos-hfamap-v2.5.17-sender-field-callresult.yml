@@ -1,0 +1,64 @@
+name: HFAMap v2.5.17 Sender Field Call Result
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.17-sender-field-callresult
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.17-sender-field-callresult.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Generate and check v2.5.17 invariants
+        run: |
+          set -euo pipefail
+          python3 hfamap/tools/generate_v2517_sender_resolver.py
+          test -f hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          grep -q '2.5.17-dev' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          grep -q 'rn==31' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          grep -q 'stack reload handled by the unified LDR branch' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          grep -q 'regs\[19\].root' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          grep -q 'READ-ONLY-SENDER-FIELD-STACK-CALLRESULT-BRANCH-PROVENANCE' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          ! grep -q '0x3929C0' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          ! grep -q '0xB96A54' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+          ! grep -q '0xB96B2C' hfamap/src/HFAMapSenderDerivedProvenanceResolver2517.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.17-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.17-dev/HFAMapUniversal-v2.5.17-dev.dylib
+          out=hfamap/dist/v2.5.17-dev/HFAMapUniversal-v2.5.17-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2517.strings"
+          file "$out" | grep -q arm64
+          grep -q '2.5.17-dev-sender-field-callresult' "$RUNNER_TEMP/hfamap2517.strings"
+          grep -q 'READ-ONLY-SENDER-FIELD-STACK-CALLRESULT-BRANCH-PROVENANCE' "$RUNNER_TEMP/hfamap2517.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.17-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.17-SenderFieldCallResult
+          path: |
+            hfamap/dist/v2.5.17-dev/HFAMapUniversal-v2.5.17-dev.dylib
+            hfamap/dist/v2.5.17-dev/SHA256SUMS.txt
+          if-no-files-found: error
