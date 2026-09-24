@@ -3,8 +3,10 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // UNIVERSAL / 通用 ONLY.
-// Read-only runtime inventory for an already loaded dylib. No dlopen, no selector invocation,
-// no IMP replacement, no memory writes, no game-specific names/UUIDs/offsets/patch bytes.
+// Read-only runtime evidence for an already loaded dylib. Inventories ObjC metadata and bounded
+// initialized state from readable data sections/global roots, and reads accepted instance ivars
+// by runtime-provided offsets. No dlopen, no unknown selector/IMP invocation, no hook replacement,
+// no memory writes, and no game-specific names/UUIDs/offsets/patch bytes.
 FOUNDATION_EXPORT NSDictionary * _Nullable HFAMapResolveLoadedDylibEvidence(NSString *importedPath,
                                                                             NSDictionary *staticEvidence,
                                                                             NSError **error);
