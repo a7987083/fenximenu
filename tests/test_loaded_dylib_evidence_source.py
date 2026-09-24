@@ -36,7 +36,26 @@ class LoadedDylibEvidenceSourceTests(unittest.TestCase):
             self.assertNotIn(forbidden, SRC)
         self.assertIn('@"memoryWritten": @NO', SRC)
         self.assertIn('@"selectorInvoked": @NO', SRC)
-        self.assertIn('@"objectInstanceDereferenced": @NO', SRC)
+        self.assertIn('@"unknownFunctionInvoked": @NO', SRC)
+
+    def test_initialized_runtime_state_is_scanned_from_loaded_dylib_only(self):
+        for token in (
+            'HFADataSectionsForLoadedImage', 'mach_vm_read_overwrite', 'HFAScanInitializedRuntimeState',
+            'kHFALoadedMaxGlobalSlots', 'kHFALoadedMaxInstances', 'kHFALoadedMaxInstanceFields',
+            'globalRelations', 'instances', 'recordCandidates', 'metadata-record-candidate',
+            'object_getClass', 'class_getInstanceSize', 'HFAReadIvarField', 'instanceFieldsReadByIvarOffset',
+        ):
+            self.assertIn(token, SRC)
+        self.assertIn('com.hfa.loaded-dylib-evidence/v2', SRC)
+        self.assertIn('runtimeStateTruncated', SRC)
+        self.assertNotIn('objc_setAssociatedObject', SRC)
+        self.assertNotIn('class_addIvar', SRC)
+
+    def test_metadata_records_are_candidates_not_claimed_truth(self):
+        self.assertIn('@"classification": @"metadata-record-candidate"', SRC)
+        self.assertIn('@"verified": @NO', SRC)
+        self.assertIn('HFAImageRelation', SRC)
+        self.assertIn('rvaHex', SRC)
 
     def test_picker_runs_static_and_loaded_evidence_together(self):
         self.assertIn('HFAMapAnalyzeImportedDylibEvidence', BUNDLE)
