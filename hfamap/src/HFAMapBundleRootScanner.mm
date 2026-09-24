@@ -8,10 +8,13 @@
 #import "HFAMapDirectedDescriptorResolver.h"
 #import "HFAMapSecretWrapperEvidenceResolver.h"
 #import "HFAMapDiagnostics.h"
+#include <unistd.h>
 
 static const NSUInteger kHFABundleScanMaxDepth = 12;
 static const NSUInteger kHFABundleScanMaxFiles = 512;
 static const NSUInteger kHFABundlePickerMaxItems = 128;
+static const NSUInteger kHFADirectedRetryCount = 3;
+static const useconds_t kHFADirectedRetryDelayUS[] = { 0, 500000, 1500000 };
 
 static UIViewController *HFABundleTopController(void) {
     UIApplication *app = UIApplication.sharedApplication;
@@ -55,6 +58,62 @@ static NSArray *HFADeepBundleDylibInventory(void) {
     return r;
 }
 
+static BOOL HFADirectedResultUsable(NSDictionary *directed) {
+    if (![directed isKindOfClass:NSDictionary.class]) return NO;
+    NSArray *features = directed[@"featureResolutions"];
+    NSDictionary *graph = directed[@"graph"];
+    NSUInteger descriptorCount = [graph[@"descriptorCandidateCount"] unsignedIntegerValue];
+    if (features.count == 0) return NO;
+    for (NSDictionary *feature in features)
+        if ([feature[@"descriptorMatchCount"] unsignedIntegerValue] > 0) return YES;
+    return descriptorCount > 0;
+}
+
+static NSDictionary *HFAResolveDirectedWithRetry(NSString *path, NSDictionary *rootGraph,
+                                                  NSArray **attemptsOut, NSError **errorOut) {
+    NSMutableArray *attempts = [NSMutableArray array];
+    NSDictionary *best = nil;
+    NSError *lastError = nil;
+    for (NSUInteger attempt = 0; attempt < kHFADirectedRetryCount; ++attempt) {
+        useconds_t delay = kHFADirectedRetryDelayUS[attempt];
+        if (delay) usleep(delay);
+        NSError *attemptError = nil;
+        NSDictionary *current = HFAMapResolveDirectedDescriptors(path, rootGraph ?: @{}, &attemptError);
+        NSArray *features = current[@"featureResolutions"] ?: @[];
+        NSDictionary *graph = current[@"graph"] ?: @{};
+        NSUInteger resolved = 0;
+        for (NSDictionary *feature in features)
+            if ([feature[@"descriptorMatchCount"] unsignedIntegerValue] > 0) ++resolved;
+        NSDictionary *summary = @{
+            @"attempt": @(attempt + 1),
+            @"delayMilliseconds": @(delay / 1000),
+            @"featureCount": @(features.count),
+            @"resolvedFeatureCount": @(resolved),
+            @"descriptorCandidateCount": graph[@"descriptorCandidateCount"] ?: @0,
+            @"nodeCount": graph[@"nodeCount"] ?: @0,
+            @"usable": @(HFADirectedResultUsable(current)),
+            @"error": attemptError.localizedDescription ?: @""
+        };
+        [attempts addObject:summary];
+        HFADiagnosticsLog(@"directed-retry", @"attempt", summary);
+        if (current) best = current;
+        if (attemptError) lastError = attemptError;
+        if (HFADirectedResultUsable(current)) break;
+    }
+    if (attemptsOut) *attemptsOut = attempts;
+    if (errorOut && lastError && !best) *errorOut = lastError;
+    if (!best) return nil;
+    NSMutableDictionary *annotated = [[best mutableCopy] autorelease];
+    annotated[@"stabilization"] = @{
+        @"policy": @"BOUNDED-LIVE-UI-RETRY",
+        @"maxAttempts": @(kHFADirectedRetryCount),
+        @"attemptCount": @(attempts.count),
+        @"attempts": attempts,
+        @"finalUsable": @(HFADirectedResultUsable(best))
+    };
+    return annotated;
+}
+
 static void HFAPresentResult(NSDictionary *evidence, NSDictionary *loadedEvidence, NSDictionary *rootGraph, NSDictionary *directed, NSDictionary *secretEvidence, NSError *error) {
     UIViewController *c = HFABundleTopController(); if (!c) return;
     NSString *msg = nil;
@@ -63,18 +122,19 @@ static void HFAPresentResult(NSDictionary *evidence, NSDictionary *loadedEvidenc
         NSDictionary *graph = rootGraph[@"graph"] ?: @{};
         NSDictionary *dgraph = directed[@"graph"] ?: @{};
         NSArray *features = directed[@"featureResolutions"] ?: @[];
+        NSDictionary *stabilization = directed[@"stabilization"] ?: @{};
         NSUInteger resolved = 0;
         for (NSDictionary *feature in features) if ([feature[@"descriptorMatchCount"] unsignedIntegerValue] > 0) ++resolved;
-        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nroots %@ · nodes %@ · descriptors %@\ndirected: features %lu · resolved %lu · candidates %@\nsecret wrappers: %@\nEvidence JSON saved",
+        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nroots %@ · nodes %@ · descriptors %@\ndirected: features %lu · resolved %lu · candidates %@ · attempts %@\nsecret wrappers: %@\nEvidence JSON saved",
             evidence[@"source"][@"fileName"]?:@"dylib",
             @([evidence[@"featureEvidence"] count]), @([evidence[@"patchEvidence"] count]), @([evidence[@"offsetEvidence"] count]), loaded ? @"YES ✅" : @"NO",
             loadedEvidence[@"classCount"] ?: @0, loadedEvidence[@"methodInImageCount"] ?: @0, @([loadedEvidence[@"structuralFields"] count]),
             graph[@"rootCount"] ?: @0, graph[@"nodeCount"] ?: @0, graph[@"descriptorCandidateCount"] ?: @0,
             (unsigned long)features.count, (unsigned long)resolved, dgraph[@"descriptorCandidateCount"] ?: @0,
-            secretEvidence[@"wrapperEvidenceCount"] ?: @0];
+            stabilization[@"attemptCount"] ?: @1, secretEvidence[@"wrapperEvidenceCount"] ?: @0];
         if (!loaded && error) msg = [msg stringByAppendingFormat:@"\nloaded resolver: %@", error.localizedDescription ?: @"not-loaded"];
     } else msg = [NSString stringWithFormat:@"Analysis failed\n%@", error.localizedDescription?:@"unknown error"];
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.11" message:msg preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.12" message:msg preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]]; [c presentViewController:a animated:YES completion:nil];
 }
 
@@ -88,7 +148,8 @@ static void HFAAnalyzeImportedPath(NSString *path) {
         NSError *loadedPersistError=nil; BOOL loadedSaved = loadedEvidence && HFAMapPersistLoadedDylibEvidence(loadedEvidence,&loadedPersistError);
         NSError *rootGraphError=nil; NSDictionary *rootGraph = loadedEvidence ? HFAMapResolveRuntimeRootGraph(path,loadedEvidence,&rootGraphError) : nil;
         NSError *rootGraphPersistError=nil; BOOL rootGraphSaved = rootGraph && HFAMapPersistRuntimeRootGraph(rootGraph,&rootGraphPersistError);
-        NSError *directedError=nil; NSDictionary *directed = rootGraph ? HFAMapResolveDirectedDescriptors(path,rootGraph,&directedError) : nil;
+        NSArray *directedAttempts=nil; NSError *directedError=nil;
+        NSDictionary *directed = rootGraph ? HFAResolveDirectedWithRetry(path,rootGraph,&directedAttempts,&directedError) : nil;
         NSError *directedPersistError=nil; BOOL directedSaved = directed && HFAMapPersistDirectedDescriptors(directed,&directedPersistError);
         NSError *secretError=nil; NSDictionary *secretEvidence = directed ? HFAMapResolveSecretWrapperEvidence(path,directed,&secretError) : nil;
         NSError *secretPersistError=nil; BOOL secretSaved = secretEvidence && HFAMapPersistSecretWrapperEvidence(secretEvidence,&secretPersistError);
@@ -100,6 +161,7 @@ static void HFAAnalyzeImportedPath(NSString *path) {
             @"loadedClassCount":loadedEvidence[@"classCount"]?:@0, @"loadedMethodInImageCount":loadedEvidence[@"methodInImageCount"]?:@0, @"loadedStructuralFieldCount":@([loadedEvidence[@"structuralFields"] count]),
             @"runtimeRootGraph":@(rootGraph!=nil), @"runtimeRootGraphSaved":@(rootGraphSaved), @"runtimeRootCount":graph[@"rootCount"]?:@0, @"runtimeNodeCount":graph[@"nodeCount"]?:@0, @"runtimeDescriptorCandidateCount":graph[@"descriptorCandidateCount"]?:@0,
             @"directedDescriptors":@(directed!=nil), @"directedDescriptorsSaved":@(directedSaved), @"directedFeatureCount":@(features.count), @"directedResolvedFeatureCount":@(resolved), @"directedDescriptorCandidateCount":dgraph[@"descriptorCandidateCount"]?:@0,
+            @"directedRetryAttemptCount":@(directedAttempts.count), @"directedRetryAttempts":directedAttempts?:@[],
             @"secretWrapperEvidence":@(secretEvidence!=nil), @"secretWrapperEvidenceSaved":@(secretSaved), @"secretWrapperEvidenceCount":secretEvidence[@"wrapperEvidenceCount"]?:@0 });
         dispatch_async(dispatch_get_main_queue(), ^{ HFAPresentResult(saved?evidence:nil,loadedEvidence,rootGraph,directed,secretEvidence,finalError); });
     });
@@ -122,6 +184,6 @@ static void HFAInstallBundleRootScannerOverride(void) {
     Class cls=NSClassFromString(@"HFAMapFloatingTarget");
     if(!cls){dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});return;}
     Method m=class_getInstanceMethod(cls,@selector(staticAnalyze)); if(!m)return; method_setImplementation(m,(IMP)HFAStaticAnalyzeBundleRootReplacement);
-    NSLog(@"[HFAMap] v2.5.11 UNIVERSAL secret wrapper evidence scanner installed");
+    NSLog(@"[HFAMap] v2.5.12 UNIVERSAL directed retry stabilization installed");
 }
 __attribute__((constructor)) static void HFABundleRootScannerConstructor(void){dispatch_async(dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});}
