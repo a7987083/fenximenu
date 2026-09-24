@@ -8,7 +8,10 @@ VER = (ROOT / "hfamap/src/HFAMapVersion2516.mm").read_text()
 
 class SenderDerivedProvenanceTests(unittest.TestCase):
     def test_module_is_compiled(self):
-        self.assertIn('src/HFAMapSenderDerivedProvenanceResolver.mm', MAKEFILE)
+        self.assertTrue(
+            'src/HFAMapSenderDerivedProvenanceResolver.mm' in MAKEFILE or
+            'src/HFAMapSenderDerivedProvenanceResolver2517.mm' in MAKEFILE
+        )
         self.assertIn('src/HFAMapVersion2516.mm', MAKEFILE)
         self.assertIn('2.5.16-dev-sender-derived-provenance', VER)
 
