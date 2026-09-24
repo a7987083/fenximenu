@@ -1,0 +1,64 @@
+name: HFAMap v2.5.14 Feature Ownership Correlator
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.14-feature-ownership-correlator
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.14-feature-ownership.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Check v2.5.14 invariants
+        run: |
+          set -euo pipefail
+          grep -q 'src/HFAMapFeatureOwnershipCorrelator.mm' hfamap/Makefile
+          grep -q 'src/HFAMapVersion2514.mm' hfamap/Makefile
+          grep -q 'EXACT-OBJECT-EDGE-ONLY-NO-NEARBY-BLOCK-PROPAGATION' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          grep -q 'HFAMapAnalyzeStrippedActionIMP' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          grep -q 'FeatureOwnership.json' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          ! grep -q '0x3929C0' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          ! grep -q '0x31AFD14' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          ! grep -q 'DobbyHook' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          ! grep -q 'MSHookFunction' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+          ! grep -q 'vm_write' hfamap/src/HFAMapFeatureOwnershipCorrelator.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.14-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.14-dev/HFAMapUniversal-v2.5.14-dev.dylib
+          out=hfamap/dist/v2.5.14-dev/HFAMapUniversal-v2.5.14-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2514.strings"
+          file "$out" | grep -q arm64
+          grep -q '2.5.14-dev-feature-ownership-correlator' "$RUNNER_TEMP/hfamap2514.strings"
+          grep -q 'EXACT-OBJECT-EDGE-ONLY-NO-NEARBY-BLOCK-PROPAGATION' "$RUNNER_TEMP/hfamap2514.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.14-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.14-FeatureOwnershipCorrelator
+          path: |
+            hfamap/dist/v2.5.14-dev/HFAMapUniversal-v2.5.14-dev.dylib
+            hfamap/dist/v2.5.14-dev/SHA256SUMS.txt
+          if-no-files-found: error
