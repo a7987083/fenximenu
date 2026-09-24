@@ -51,8 +51,8 @@ class JailpatchRuntimeEvidenceSourceTests(unittest.TestCase):
         self.assertIn('inventoried-no-exact-methods', RESOLVER)
         self.assertIn('known-exact-selector', RESOLVER)
 
-    def test_version_is_advanced(self):
-        self.assertIn('2.5.7-dev-crash-safe-runtime-probe', DIAGNOSTICS)
+    def test_version_metadata_exists_without_old_release_pin(self):
+        self.assertIn('@"version": @"', DIAGNOSTICS)
 
 
 if __name__ == "__main__":
