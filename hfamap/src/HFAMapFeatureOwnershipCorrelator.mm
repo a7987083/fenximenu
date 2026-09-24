@@ -160,3 +160,46 @@ BOOL HFAMapPersistFeatureOwnership(NSDictionary *result, NSError **error) {
     NSString *path = [documents stringByAppendingPathComponent:HFAOutputFileName(@"FeatureOwnership.json")];
     return [data writeToFile:path options:NSDataWritingAtomic error:error];
 }
+
+static void HFAOwnershipProcessPersistedInventory(void) {
+    static NSString *lastDigest;
+    NSString *documents = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *inventoryPath = [documents stringByAppendingPathComponent:HFAOutputFileName(@"LoadedMenuFeatureInventory.json")];
+    NSData *data = [NSData dataWithContentsOfFile:inventoryPath];
+    if (!data.length) return;
+    NSString *digest = [NSString stringWithFormat:@"%lu:%@", (unsigned long)data.length,
+                         [[[NSFileManager defaultManager] attributesOfItemAtPath:inventoryPath error:nil] fileModificationDate] ?: @""];
+    if ([digest isEqualToString:lastDigest]) return;
+    NSDictionary *inventory = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![inventory isKindOfClass:NSDictionary.class]) return;
+    NSString *menuPath = inventory[@"menuPath"] ?: @"";
+    if (!menuPath.length) return;
+    NSError *error = nil;
+    NSDictionary *ownership = HFAMapCorrelateFeatureOwnership(menuPath, inventory, &error);
+    if (!ownership) {
+        HFADiagnosticsLog(@"feature-ownership-correlator", @"failed", @{ @"error": error.localizedDescription ?: @"unknown" });
+        return;
+    }
+    if (HFAMapPersistFeatureOwnership(ownership, &error)) {
+        [lastDigest release];
+        lastDigest = [digest copy];
+        HFADiagnosticsLog(@"feature-ownership-correlator", @"persisted", ownership[@"summary"] ?: @{});
+    }
+}
+
+static void HFAOwnershipSchedulePoll(void) {
+    static dispatch_source_t timer;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        dispatch_queue_t queue = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
+        timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+        dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
+                                  (uint64_t)(1.0 * NSEC_PER_SEC), (uint64_t)(0.1 * NSEC_PER_SEC));
+        dispatch_source_set_event_handler(timer, ^{ HFAOwnershipProcessPersistedInventory(); });
+        dispatch_resume(timer);
+    });
+}
+
+__attribute__((constructor)) static void HFAFeatureOwnershipConstructor(void) {
+    HFAOwnershipSchedulePoll();
+}
