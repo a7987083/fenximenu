@@ -5,6 +5,7 @@
 #import "HFAMapImportedDylibEvidenceAnalyzer.h"
 #import "HFAMapLoadedDylibEvidenceResolver.h"
 #import "HFAMapRuntimeRootGraphResolver.h"
+#import "HFAMapDirectedDescriptorResolver.h"
 #import "HFAMapDiagnostics.h"
 
 static const NSUInteger kHFABundleScanMaxDepth = 12;
@@ -53,19 +54,25 @@ static NSArray *HFADeepBundleDylibInventory(void) {
     return r;
 }
 
-static void HFAPresentResult(NSDictionary *evidence, NSDictionary *loadedEvidence, NSDictionary *rootGraph, NSError *error) {
+static void HFAPresentResult(NSDictionary *evidence, NSDictionary *loadedEvidence, NSDictionary *rootGraph, NSDictionary *directed, NSError *error) {
     UIViewController *c = HFABundleTopController(); if (!c) return;
     NSString *msg = nil;
     if (evidence) {
-        BOOL loaded = [loadedEvidence[@"loaded"] boolValue]; NSDictionary *graph = rootGraph[@"graph"] ?: @{};
-        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nroots %@ · nodes %@ · descriptors %@\nEvidence JSON saved",
+        BOOL loaded = [loadedEvidence[@"loaded"] boolValue];
+        NSDictionary *graph = rootGraph[@"graph"] ?: @{};
+        NSDictionary *dgraph = directed[@"graph"] ?: @{};
+        NSArray *features = directed[@"featureResolutions"] ?: @[];
+        NSUInteger resolved = 0;
+        for (NSDictionary *feature in features) if ([feature[@"descriptorMatchCount"] unsignedIntegerValue] > 0) ++resolved;
+        msg = [NSString stringWithFormat:@"Universal Evidence READY ✅\n%@\nstatic: features %@ · patches %@ · offsets %@\nruntime-loaded: %@\nclasses %@ · methods %@ · fields %@\nroots %@ · nodes %@ · descriptors %@\ndirected: features %lu · resolved %lu · candidates %@\nEvidence JSON saved",
             evidence[@"source"][@"fileName"]?:@"dylib",
             @([evidence[@"featureEvidence"] count]), @([evidence[@"patchEvidence"] count]), @([evidence[@"offsetEvidence"] count]), loaded ? @"YES ✅" : @"NO",
             loadedEvidence[@"classCount"] ?: @0, loadedEvidence[@"methodInImageCount"] ?: @0, @([loadedEvidence[@"structuralFields"] count]),
-            graph[@"rootCount"] ?: @0, graph[@"nodeCount"] ?: @0, graph[@"descriptorCandidateCount"] ?: @0];
+            graph[@"rootCount"] ?: @0, graph[@"nodeCount"] ?: @0, graph[@"descriptorCandidateCount"] ?: @0,
+            (unsigned long)features.count, (unsigned long)resolved, dgraph[@"descriptorCandidateCount"] ?: @0];
         if (!loaded && error) msg = [msg stringByAppendingFormat:@"\nloaded resolver: %@", error.localizedDescription ?: @"not-loaded"];
     } else msg = [NSString stringWithFormat:@"Analysis failed\n%@", error.localizedDescription?:@"unknown error"];
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.9" message:msg preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"HFAMap v2.5.10" message:msg preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]]; [c presentViewController:a animated:YES completion:nil];
 }
 
@@ -79,20 +86,24 @@ static void HFAAnalyzeImportedPath(NSString *path) {
         NSError *loadedPersistError=nil; BOOL loadedSaved = loadedEvidence && HFAMapPersistLoadedDylibEvidence(loadedEvidence,&loadedPersistError);
         NSError *rootGraphError=nil; NSDictionary *rootGraph = loadedEvidence ? HFAMapResolveRuntimeRootGraph(path,loadedEvidence,&rootGraphError) : nil;
         NSError *rootGraphPersistError=nil; BOOL rootGraphSaved = rootGraph && HFAMapPersistRuntimeRootGraph(rootGraph,&rootGraphPersistError);
-        NSError *finalError=evidenceError?:evidencePersistError?:loadedError?:loadedPersistError?:rootGraphError?:rootGraphPersistError?:catalogError?:catalogPersistError;
-        NSDictionary *graph=rootGraph[@"graph"]?:@{};
+        NSError *directedError=nil; NSDictionary *directed = rootGraph ? HFAMapResolveDirectedDescriptors(path,rootGraph,&directedError) : nil;
+        NSError *directedPersistError=nil; BOOL directedSaved = directed && HFAMapPersistDirectedDescriptors(directed,&directedPersistError);
+        NSError *finalError=evidenceError?:evidencePersistError?:loadedError?:loadedPersistError?:rootGraphError?:rootGraphPersistError?:directedError?:directedPersistError?:catalogError?:catalogPersistError;
+        NSDictionary *graph=rootGraph[@"graph"]?:@{}; NSDictionary *dgraph=directed[@"graph"]?:@{}; NSArray *features=directed[@"featureResolutions"]?:@[];
+        NSUInteger resolved=0; for(NSDictionary *feature in features) if([feature[@"descriptorMatchCount"] unsignedIntegerValue]>0) ++resolved;
         HFADiagnosticsLog(@"imported-dylib-evidence", saved?@"ui-ready":@"ui-failed", @{
             @"file":path.lastPathComponent?:@"", @"saved":@(saved), @"loadedRuntimeEvidence":@(loadedEvidence!=nil), @"loadedRuntimeEvidenceSaved":@(loadedSaved),
             @"loadedClassCount":loadedEvidence[@"classCount"]?:@0, @"loadedMethodInImageCount":loadedEvidence[@"methodInImageCount"]?:@0, @"loadedStructuralFieldCount":@([loadedEvidence[@"structuralFields"] count]),
-            @"runtimeRootGraph":@(rootGraph!=nil), @"runtimeRootGraphSaved":@(rootGraphSaved), @"runtimeRootCount":graph[@"rootCount"]?:@0, @"runtimeNodeCount":graph[@"nodeCount"]?:@0, @"runtimeDescriptorCandidateCount":graph[@"descriptorCandidateCount"]?:@0 });
-        dispatch_async(dispatch_get_main_queue(), ^{ HFAPresentResult(saved?evidence:nil,loadedEvidence,rootGraph,finalError); });
+            @"runtimeRootGraph":@(rootGraph!=nil), @"runtimeRootGraphSaved":@(rootGraphSaved), @"runtimeRootCount":graph[@"rootCount"]?:@0, @"runtimeNodeCount":graph[@"nodeCount"]?:@0, @"runtimeDescriptorCandidateCount":graph[@"descriptorCandidateCount"]?:@0,
+            @"directedDescriptors":@(directed!=nil), @"directedDescriptorsSaved":@(directedSaved), @"directedFeatureCount":@(features.count), @"directedResolvedFeatureCount":@(resolved), @"directedDescriptorCandidateCount":dgraph[@"descriptorCandidateCount"]?:@0 });
+        dispatch_async(dispatch_get_main_queue(), ^{ HFAPresentResult(saved?evidence:nil,loadedEvidence,rootGraph,directed,finalError); });
     });
 }
 
 static void HFAStaticAnalyzeBundleRootReplacement(__unused id self, __unused SEL _cmd) {
     UIViewController *controller=HFABundleTopController(); if (!controller) return;
     NSArray *files=HFADeepBundleDylibInventory();
-    if (!files.count) { HFAPresentResult(nil,nil,nil,[NSError errorWithDomain:@"com.hfa.import" code:1 userInfo:@{NSLocalizedDescriptionKey:@"No .dylib found under APP Bundle or DATA container"}]); return; }
+    if (!files.count) { HFAPresentResult(nil,nil,nil,nil,[NSError errorWithDomain:@"com.hfa.import" code:1 userInfo:@{NSLocalizedDescriptionKey:@"No .dylib found under APP Bundle or DATA container"}]); return; }
     UIAlertController *picker=[UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     NSUInteger limit=MIN(files.count,kHFABundlePickerMaxItems);
     for(NSUInteger i=0;i<limit;i++) { NSDictionary *entry=files[i]; NSString *title=[NSString stringWithFormat:@"[%@] %@",entry[@"rootLabel"]?:@"?",entry[@"relativePath"]?:entry[@"name"]?:@"dylib"];
@@ -106,6 +117,6 @@ static void HFAInstallBundleRootScannerOverride(void) {
     Class cls=NSClassFromString(@"HFAMapFloatingTarget");
     if(!cls){dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});return;}
     Method m=class_getInstanceMethod(cls,@selector(staticAnalyze)); if(!m)return; method_setImplementation(m,(IMP)HFAStaticAnalyzeBundleRootReplacement);
-    NSLog(@"[HFAMap] v2.5.9 UNIVERSAL static + loaded dylib + runtime root graph scanner installed");
+    NSLog(@"[HFAMap] v2.5.10 UNIVERSAL runtime-directed descriptor scanner installed");
 }
 __attribute__((constructor)) static void HFABundleRootScannerConstructor(void){dispatch_async(dispatch_get_main_queue(),^{HFAInstallBundleRootScannerOverride();});}
