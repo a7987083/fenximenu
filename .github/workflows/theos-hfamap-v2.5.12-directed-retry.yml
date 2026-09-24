@@ -1,0 +1,64 @@
+name: HFAMap v2.5.12 Directed Retry Stabilization
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.12-directed-retry-stabilization
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.12-directed-retry.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Check v2.5.12 invariants
+        run: |
+          set -euo pipefail
+          grep -q 'src/HFAMapVersion2512.mm' hfamap/Makefile
+          grep -q 'kHFADirectedRetryCount = 3' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'BOUNDED-LIVE-UI-RETRY' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'HFAResolveDirectedWithRetry' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'directedRetryAttempts' hfamap/src/HFAMapBundleRootScanner.mm
+          grep -q 'HFAMapResolveSecretWrapperEvidence(path,directed' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q 'DobbyHook' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q 'MSHookFunction' hfamap/src/HFAMapBundleRootScanner.mm
+          ! grep -q 'vm_write' hfamap/src/HFAMapBundleRootScanner.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.12-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.12-dev/HFAMapUniversal-v2.5.12-dev.dylib
+          out=hfamap/dist/v2.5.12-dev/HFAMapUniversal-v2.5.12-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2512.strings"
+          file "$out" | grep -q arm64
+          grep -q '2.5.12-dev-directed-retry-stabilization' "$RUNNER_TEMP/hfamap2512.strings"
+          grep -q 'BOUNDED-LIVE-UI-RETRY' "$RUNNER_TEMP/hfamap2512.strings"
+          grep -q 'com.hfa.secret-wrapper-evidence/v1' "$RUNNER_TEMP/hfamap2512.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.12-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.12-DirectedRetryStabilization
+          path: |
+            hfamap/dist/v2.5.12-dev/HFAMapUniversal-v2.5.12-dev.dylib
+            hfamap/dist/v2.5.12-dev/SHA256SUMS.txt
+          if-no-files-found: error
