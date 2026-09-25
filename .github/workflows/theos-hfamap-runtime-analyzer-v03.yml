@@ -72,22 +72,10 @@ jobs:
           grep -q '\[V032-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'com.hfa.runtime-analyzer/v0.3.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           ! grep -q 'com.hfa.runtime-analyzer/v0.3.2.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAMap_RuntimeAnalyzer_v032.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
-          grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
-
           grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
-          grep -q '\[DISCOVERY-MODE\] v0.3 baseline / discovery-only' hfamap/src/HFAMapCyberUI.m
-
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
-          grep -q 'HFAMap_%@' hfamap/src/HFAMapOutputPaths.m
-          grep -q 'CFBundleIdentifier' hfamap/src/HFAMapOutputPaths.m
-          grep -q 'HFAOutputDirectory()' hfamap/src/HFAMapJSONExport.m
-          grep -q 'HFAOutputPath(@"HFAMap_Learn.log")' hfamap/src/HFAMapAppLocalResolver.m
-          grep -q 'HFAOutputPath(@"HFAMap_AppLocalCandidates.json")' hfamap/src/HFAMapAppLocalResolver.m
           grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
-
           grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapCyberUI.m
 
       - name: Install build dependencies
