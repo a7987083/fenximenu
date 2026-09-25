@@ -22,7 +22,8 @@ class MenuImplementationInventory2520Tests(unittest.TestCase):
         self.assertIn('src/HFAMapVersion2520.mm', MAKE)
         self.assertTrue('src/HFAMapMenuImplementationInventory.mm' in MAKE or
                         'src/HFAMapMenuImplementationInventory25201.mm' in MAKE)
-        self.assertIn('src/HFAMapBundleRootScanner2520.mm', MAKE)
+        self.assertTrue('src/HFAMapBundleRootScanner2520.mm' in MAKE or
+                        'src/HFAMapBundleRootScanner2521.mm' in MAKE)
         self.assertIn('src/HFAMapStaticCatalog2520.mm', MAKE)
         self.assertIn('generate_v2520_integration.py', MAKE)
 
