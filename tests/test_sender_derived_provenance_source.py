@@ -10,7 +10,8 @@ class SenderDerivedProvenanceTests(unittest.TestCase):
     def test_module_is_compiled(self):
         self.assertTrue(
             'src/HFAMapSenderDerivedProvenanceResolver.mm' in MAKEFILE or
-            'src/HFAMapSenderDerivedProvenanceResolver2517.mm' in MAKEFILE
+            'src/HFAMapSenderDerivedProvenanceResolver2517.mm' in MAKEFILE or
+            'src/HFAMapSenderDerivedProvenanceResolver2518.mm' in MAKEFILE
         )
         self.assertIn('src/HFAMapVersion2516.mm', MAKEFILE)
         self.assertIn('2.5.16-dev-sender-derived-provenance', VER)
