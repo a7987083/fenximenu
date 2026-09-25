@@ -44,6 +44,7 @@ jobs:
           python3 .github/scripts/hfamap_v193710_unified_feature_model.py
           python3 .github/scripts/hfamap_v193710_earntodie_verified_profile.py
           python3 .github/scripts/hfamap_runtime_analyzer_v02.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v02_fix1.py
           git diff --check
 
       - name: Verify v0.2 generated sources
