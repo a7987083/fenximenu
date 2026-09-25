@@ -58,6 +58,11 @@ jobs:
           s=s.replace('static NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 'static __attribute__((unused)) NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 1)
           s=s.replace('com.hfa.runtime-analyzer/v0.3.2.2', 'com.hfa.runtime-analyzer/v0.3.2')
           p.write_text(s)
+
+          app=Path('hfamap/src/HFAMapAppLocalResolver.m')
+          a=app.read_text()
+          a=a.replace('static NSString *HFAAppLocalResolveInstallName(', 'static __attribute__((unused)) NSString *HFAAppLocalResolveInstallName(', 1)
+          app.write_text(a)
           PY
           git diff --check
 
@@ -77,6 +82,7 @@ jobs:
           grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
           grep -q 'HFAAnalyzerV02ScanSelectedImage()' hfamap/src/HFAMapCyberUI.m
           grep -q 'mode=disabled reason=discovery-only' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q '__attribute__((unused)) NSString \*HFAAppLocalResolveInstallName' hfamap/src/HFAMapAppLocalResolver.m
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
           grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
