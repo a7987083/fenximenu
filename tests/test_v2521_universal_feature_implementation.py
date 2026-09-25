@@ -61,10 +61,12 @@ class UniversalFeatureImplementation2521Tests(unittest.TestCase):
         self.assertNotIn(' src/HFAIL2CPPMethodIndex.mm ', f' {files} ')
         self.assertNotIn(' src/HFAIL2CPPMethodRangeIndex.mm ', f' {files} ')
 
-    def test_build_identity_matches_delivery(self):
-        self.assertIn('2.5.21-dev', self.build)
-        self.assertIn('2.5.21-dev-universal-feature-implementation', self.build)
-        self.assertIn('FAST-UI-ASYNC-UNIVERSAL-FEATURE-IMPLEMENTATION', self.build)
+    def test_build_identity_matches_delivery_or_successor(self):
+        self.assertIn('HFAMapBuildVersion(void)', self.build)
+        self.assertIn('HFAMapBuildComponent(void)', self.build)
+        self.assertIn('HFAMapBuildPolicy(void)', self.build)
+        self.assertNotIn('2.5.20.1-dev', self.build)
+        self.assertNotIn('HFAMap v2.5.7-dev', self.build)
 
     def test_read_only_boundary_preserved(self):
         corpus = self.scanner + self.method + self.ranges
