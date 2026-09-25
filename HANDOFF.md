@@ -1,6 +1,65 @@
 # HFAMap Handoff
 
-## Active work
+## Active work — HFARuntimeAnalyzer v0.3.3 StaticParity
+
+- repository: `a7987083/fenximenu`;
+- branch: `feature/hfaruntime-v0.3.3-static-parity-autobackend`;
+- base v0.3.2 commit: `cb04586dba45e1f57df4d1a2a76a54385d864066`;
+- successful build commit: `806957d0ebe3ef13559d72809295bb6eeb69de09`;
+- GitHub Actions run: `36161672792` — success;
+- artifact ID: `10876640401`;
+- binary: `HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib`;
+- size: `264992` bytes;
+- SHA256: `ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`;
+- artifact ZIP digest: `3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371`.
+
+### What v0.3.3 changes
+
+v0.3.2 mixed structural descriptor discovery with plaintext/decrypt success. The offline simulator first discovers descriptors from current Mach-O bytes, while the device analyzer previously returned early when decrypt resolution failed and discarded records when decrypt/plaintext validation failed.
+
+v0.3.3 changes that order:
+
+1. select the menu dylib;
+2. retain structurally valid descriptor records (`length/flags/family`) using the simulator-compatible 8-byte alignment;
+3. resolve decrypt with the existing runtime resolver, then a unique static fingerprint fallback;
+4. attach plaintext/decrypt status as evidence instead of using it as a prerequisite for descriptor existence;
+5. build AutoBackend from the retained structural records;
+6. export `HFAMap_RuntimeAnalyzer_v033.json`.
+
+The second button remains the single universal entry: family parser -> `HFAAnalyzerV02ScanSelectedImage()` AutoBackend. This must be exercised for every selected sample.
+
+### Output-directory contract
+
+All analyzer outputs continue through `HFAOutputDirectory()` / `HFAOutputPath()` and therefore live under:
+
+`Documents/HFAMap_<CFBundleIdentifier>/`
+
+CI rejects direct `Documents/HFAMap_*` output paths. Do not regress this to shared Documents-root files.
+
+### Runtime State boundary
+
+Known v0.3.2 results:
+
+- Earn to Die Rogue: 19 Backend = 18 Static + 1 Runtime State, with 2 field-dataflow derived patches;
+- RogueLegend: 3 Backend = 2 Static + 1 Runtime State, no field offsets / no derived patch;
+- MeChat: 8 Backend = 7 Static + 1 Runtime State, no field offsets / no derived patch.
+
+v0.3.3 adds read-only `hookReturnEvidence` and optional `staticOverrideCandidates` to distinguish constant-return hooks from other stateful semantics. These records are `diagnostic-only`; they are not canonical patches until target semantics, uniqueness and original bytes are proven.
+
+### Next device validation
+
+Priority set:
+
+1. Duck Survival;
+2. Path of Kings;
+3. Random Dice 2;
+4. Heavenfall;
+5. PopIsland;
+6. WhisperCastle.
+
+For every one, require `[V033-DECRYPT]`, `[V033-SCAN-END]` and `HFAMap_RuntimeAnalyzer_v033.json` in its per-bundle folder. Then test RogueLegend and MeChat and inspect `hookReturnEvidence` / `staticOverrideCandidates`. Finally regress Earn / Rise / Zombie / HelloKitty / Legend against their known-good v0.3.2 counts.
+
+## Previous active work — v1.9.37.10
 
 - repository: `a7987083/fenximenu`;
 - branch: `feature/hfamap-v193710-unified-feature-model`;
@@ -64,102 +123,8 @@ The pre-existing package also has an unresolved overlap at
 `20008052C0035FD6`. Resolve or explicitly arbitrate that conflict before calling
 the full 14-button package conflict-free.
 
-## Current branch
+## Legacy parser/exporter checkpoint
 
-`feature/hfamap-v19361-json-export`
+The frozen parser baseline remains v1.9.36 ArchitectureTruth commit `75f94da37221343b6839465ad365ddec2679e63a`. WayOfKings/iGMM device validation passed on v1.9.36.4. v1.9.37/v1.9.37.1 playback/Dobby merged experiments are retired after device startup crashes.
 
-## Current direction
-
-HFAMapUniversal is a **parser/exporter only**:
-
-`original menu -> parser -> evidence -> normalized JSON`
-
-The runtime-consumer/Dobby merge from v1.9.37 and v1.9.37.1 is retired after both builds crashed on device injection. The frozen parser baseline is v1.9.36 ArchitectureTruth commit `75f94da37221343b6839465ad365ddec2679e63a`. JSONExport versions must preserve the v1.9.36 constructor, `run_full_scan()` and resolver core.
-
-## Current build: v1.9.36.4 JSONExport
-
-- Build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`.
-- GitHub Actions run: `34907671999` — success.
-- Artifact: `HFAMapUniversal-v1.9.36.4-JSONExport` (ID `10372928333`).
-- Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`.
-- Binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`.
-- Architecture: arm64 Mach-O dylib, NOUNDEFS.
-- Size: `192432` bytes.
-- SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`.
-
-## WayOfKings / iGMM device validation: PASSED
-
-Device archive `归档 6(1).zip` confirms v1.9.36.4 itself on device:
-
-- injection stayed stable; no startup crash;
-- Full Scan reached completion;
-- `com.hfa.igmm.runtime/v1` regenerated;
-- `com.hfa.menu.analysis/v1` regenerated;
-- `IGMM-RUNTIME-EXPORT` reported `features=4`;
-- `JSON-EXPORT` reported `status=pass features=4 sources=1 targetIdentities=2`.
-
-Normalized controls:
-
-- `Damage Multiplier`: `number`, default `1`;
-- `Defence Multiplier`: `number`, default `1`;
-- `God Mode`: `toggle`;
-- `Debug Menu`: source `kTypeButton` -> normalized `button`.
-
-Evidence-preserving primitive/reason handling is now device-confirmed:
-
-- Debug Menu raw `executionPrimitive = nativeHook` remains visible;
-- Debug Menu `normalizedExecutionPrimitive = runtimeAction`;
-- Debug Menu raw `canonicalReason = runtime-hook-requires-portable-equivalent` remains visible;
-- Debug Menu `normalizedCanonicalReason = runtime-action-not-static-bytes`.
-
-Other normalized reasons also remain consistent:
-
-- Damage / Defence -> `dynamic-numeric-state-not-static-bytes`;
-- God Mode -> `runtime-hook-requires-portable-equivalent`.
-
-Target identities remain correct on device:
-
-- `libpathofkings.dylib`: UUID `4C4C448B-5555-3144-A14F-4905D9ED4E59`, arm64, filetype `6`, preferred `__TEXT` VM `0x0`, cryptid `0`;
-- `UnityFramework`: UUID `E0039512-CCB0-33E3-A69A-3DBEBFF3641B`, arm64, filetype `6`, preferred `__TEXT` VM `0x0`, cryptid `0`.
-
-Observed implementation evidence remains diagnostic only:
-
-- Damage/Defence/God share handler evidence around `libpathofkings.dylib + 0x4128`, with trampoline evidence toward `UnityFramework + 0x3BF6D94`;
-- Debug Menu has `buttonBlock` evidence at `libpathofkings.dylib + 0x66B0`, nested handler `+0x66C4`, resolving to `UnityFramework + 0x3DEC9A0`.
-
-## Output contract
-
-Normal scan outputs may include:
-
-- `HFAMap_Learn.log`
-- `HFAMap_MenuMap.jsonl`
-- `HFAMap_JailpatchMap.jsonl`
-- canonical `*.hfapatch.json` only when true static byte patches are proven
-- `*.hfapatch.identity.json` for canonical identity when available
-- `*.hfamap.igmm.json` for iGMM runtime diagnostics
-- `*.hfamap.analysis.json` for normalized analysis-only descriptions
-
-The normalized schema remains `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
-
-## Next validation
-
-WayOfKings tuning is complete for this parser line. Do not keep changing the iGMM normalizer without new contradictory evidence.
-
-Next use the **same v1.9.36.4 dylib** for cross-family regression:
-
-1. runtime-record/static 5 MB family: require correct canonical `com.hfa.patch/v1`, target identity, preferred VM offsets, and original-byte truth;
-2. legacy ~15 MB family: require the historical static patch path to remain functional;
-3. compare normalized analysis output across all three families.
-
-## Verification discipline
-
-- v1.9.36 parser baseline: frozen/reference.
-- v1.9.36.1 WayOfKings startup/scan/export: passed.
-- v1.9.36.3 WayOfKings controls/target identities: device passed.
-- v1.9.36.4 compile/link/sign: passed.
-- v1.9.36.4 CI: passed on run `34907671999`.
-- v1.9.36.4 artifact re-hash: passed.
-- v1.9.36.4 WayOfKings device validation: **passed**.
-- runtime-record/static 5 MB current-line regression: pending.
-- legacy ~15 MB current-line regression: pending.
-- v1.9.37/v1.9.37.1 runtime merge: failed on device / retired.
+The normalized schemas remain evidence-preserving; runtime-only behavior must not be fabricated into canonical static bytes.
