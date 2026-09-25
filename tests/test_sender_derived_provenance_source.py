@@ -11,7 +11,8 @@ class SenderDerivedProvenanceTests(unittest.TestCase):
         self.assertTrue(
             'src/HFAMapSenderDerivedProvenanceResolver.mm' in MAKEFILE or
             'src/HFAMapSenderDerivedProvenanceResolver2517.mm' in MAKEFILE or
-            'src/HFAMapSenderDerivedProvenanceResolver2518.mm' in MAKEFILE
+            'src/HFAMapSenderDerivedProvenanceResolver2518.mm' in MAKEFILE or
+            'src/HFAMapSenderDerivedProvenanceResolver2519.mm' in MAKEFILE
         )
         self.assertIn('src/HFAMapVersion2516.mm', MAKEFILE)
         self.assertIn('2.5.16-dev-sender-derived-provenance', VER)
