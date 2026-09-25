@@ -89,9 +89,9 @@ jobs:
           shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.1-ManualCapture8s.txt
           strings "$out" > dist/strings_v031.txt
           grep -q 'V03-SCAN-END' dist/strings_v031.txt
-          grep -q '8秒手动捕获' dist/strings_v031.txt
           grep -q 'CAPTURE-BEGIN' dist/strings_v031.txt
           grep -q 'CAPTURE-ACTION' dist/strings_v031.txt
+          grep -q 'CAPTURE-DELTA' dist/strings_v031.txt
           grep -q 'CAPTURE-END' dist/strings_v031.txt
           grep -q 'HFAMap_ManualCapture.latest.json' dist/strings_v031.txt
 
