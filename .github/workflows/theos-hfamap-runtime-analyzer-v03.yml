@@ -49,6 +49,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_auto_backend.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_output_layout.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v032_generic_output_fix.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_safe_discovery_paths.py
           python3 - <<'PY'
           from pathlib import Path
@@ -74,6 +75,7 @@ jobs:
           grep -q 'com.hfa.runtime-analyzer/v0.3.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           ! grep -q 'com.hfa.runtime-analyzer/v0.3.2.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
+          grep -q 'HFAAnalyzerV02ScanSelectedImage()' hfamap/src/HFAMapCyberUI.m
           grep -q 'mode=disabled reason=discovery-only' hfamap/src/HFAMapAppLocalResolver.m
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
@@ -111,6 +113,7 @@ jobs:
           grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' dist/strings_v032.txt
           grep -q 'HFAMap_%@' dist/strings_v032.txt
           grep -q 'mode=disabled reason=discovery-only' dist/strings_v032.txt
+          grep -q 'AUTOBACKEND-END' dist/strings_v032.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
