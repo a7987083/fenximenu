@@ -7,6 +7,8 @@ APP = SRC / 'HFAMapAppLocalResolver.m'
 GENERIC = SRC / 'HFAMapGenericMenuResolver.m'
 SECRET = SRC / 'HFAMapSecretCallGraphProbe.m'
 LEGACY = SRC / 'HFAMapLegacy.m'
+TRACE = SRC / 'HFAMapPatchExecutionTrace.m'
+CYBER = SRC / 'HFAMapCyberUI.m'
 HEADER = SRC / 'HFAMapOutputPaths.h'
 IMPL = SRC / 'HFAMapOutputPaths.m'
 
@@ -45,6 +47,32 @@ def replace_fn(text, name, replacement):
     return text[:a] + replacement + text[b:]
 
 
+def method_span(text, signature):
+    i = text.find(signature)
+    if i < 0:
+        raise SystemExit(f'{signature}: method not found')
+    start = text.rfind('\n', 0, i) + 1
+    brace = text.find('{', i)
+    if brace < 0:
+        raise SystemExit(f'{signature}: opening brace missing')
+    depth = 0
+    in_str = False
+    esc = False
+    for j in range(brace, len(text)):
+        ch = text[j]
+        if in_str:
+            if esc: esc = False
+            elif ch == '\\': esc = True
+            elif ch == '"': in_str = False
+            continue
+        if ch == '"': in_str = True; continue
+        if ch == '{': depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0: return start, j + 1
+    raise SystemExit(f'{signature}: closing brace missing')
+
+
 def ensure_import(text):
     if '#import "HFAMapOutputPaths.h"' in text:
         return text
@@ -55,10 +83,10 @@ def ensure_import(text):
     lines.insert(insert, '#import "HFAMapOutputPaths.h"\n')
     return ''.join(lines)
 
-# 1) Discovery-only: the first scan only needs app-local disk + direct dyld
-# discovery. Disable recursive dependency load-command expansion, which is not
-# required to identify the menu dylib and was the last recorded stage in the
-# ProDragon scan-crash log.
+# 1) Discovery-only. Direct dependency load-command walking is not needed for
+# locating the menu dylib and was the last completed stage in the ProDragon
+# scan-crash log. Keep recursive app-local/dyld discovery, but disable this
+# extra dependency expansion in the first button.
 app = APP.read_text()
 app = replace_fn(app, 'HFAAppLocalDependencyRecords', r'''static NSArray<NSDictionary *> *HFAAppLocalDependencyRecords(void) {
     HFAAppLocalLog(@"[DEPENDENCY-OWNERS] mode=disabled reason=discovery-only");
@@ -66,7 +94,46 @@ app = replace_fn(app, 'HFAAppLocalDependencyRecords', r'''static NSArray<NSDicti
 }''')
 APP.write_text(app)
 
-# 2) Route multiline Foundation path constructions missed by the first pass.
+# 2) Every selected menu dylib must reach AutoBackend when the user explicitly
+# presses Parse/Export. Previously the analyzer was attached to a legacy patch
+# package branch, so runtime-only games such as Duck/Path never emitted V032.
+trace = TRACE.read_text()
+trace, removed = re.subn(
+    r'\s*unsigned\s+v03Native\s*=\s*HFAAnalyzerV02ScanSelectedImage\(\);\s*HFALog\("\[V03-OWNERSHIP-FINALIZE\][^;]*;\s*',
+    '\n', trace, count=1, flags=re.S)
+if removed == 0:
+    # tolerate the v02 spelling in case the generator chain changes order
+    trace, removed = re.subn(
+        r'\s*unsigned\s+v02Native\s*=\s*HFAAnalyzerV02ScanSelectedImage\(\);\s*HFALog\("\[V02-OWNERSHIP-FINALIZE\][^;]*;\s*',
+        '\n', trace, count=1, flags=re.S)
+TRACE.write_text(trace)
+
+cyber = CYBER.read_text()
+if 'extern unsigned HFAAnalyzerV02ScanSelectedImage(void);' not in cyber:
+    anchor = 'extern unsigned HFAAppLocalExecuteParser(void);\n'
+    if anchor not in cyber:
+        raise SystemExit('CyberUI parser extern anchor missing')
+    cyber = cyber.replace(anchor, anchor + 'extern unsigned HFAAnalyzerV02ScanSelectedImage(void);\n', 1)
+
+new_export = r'''- (void)actionCyberExport:(UIButton *)sender {
+    sender.enabled = NO;
+    HFACyberUIAppendLog(@"\n[COMMAND] 解析并导出");
+    HFACyberUIAppendLog(@"[RESOLVE] family parser starting ...");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        unsigned valid = HFAAppLocalExecuteParser();
+        HFACyberUIAppendLog([NSString stringWithFormat:@"[FAMILY-EXPORT-END] validMappings=%u", valid]);
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            unsigned backends = HFAAnalyzerV02ScanSelectedImage();
+            HFACyberUIAppendLog([NSString stringWithFormat:@"[AUTOBACKEND-END] backends=%u", backends]);
+            dispatch_async(dispatch_get_main_queue(), ^{ sender.enabled = YES; });
+        });
+    });
+}'''
+a, b = method_span(cyber, '- (void)actionCyberExport:')
+cyber = cyber[:a] + new_export + cyber[b:]
+CYBER.write_text(cyber)
+
+# 3) Route multiline Foundation path constructions missed by the first pass.
 for path in (GENERIC, SECRET):
     s = path.read_text()
     s2 = re.sub(
@@ -79,9 +146,8 @@ for path in (GENERIC, SECRET):
         s2 = ensure_import(s2)
         path.write_text(s2)
 
-# 3) HFAMapLegacy is deliberately Foundation-free C-style Objective-C. Expose
-# one C bridge so it uses the same per-bundle output directory without pulling
-# Foundation types into that translation unit.
+# 4) HFAMapLegacy is deliberately Foundation-free C-style Objective-C. Expose
+# one C bridge so it uses the same per-bundle output directory.
 h = HEADER.read_text()
 if 'HFAOutputCopyPath' not in h:
     h += '\nFOUNDATION_EXPORT void HFAOutputCopyPath(char *buffer, unsigned long capacity, const char *filename);\n'
@@ -120,8 +186,17 @@ LEGACY.write_text(legacy)
 app = APP.read_text()
 if '[DEPENDENCY-OWNERS] mode=disabled reason=discovery-only' not in app:
     raise SystemExit('discovery dependency scan was not disabled')
-if 'HFAAppLocalScanCandidates' not in app:
-    raise SystemExit('candidate discovery missing')
+ui = CYBER.read_text()
+scan_a, scan_b = method_span(ui, '- (void)actionCyberScan:')
+scan_body = ui[scan_a:scan_b]
+if 'HFAAppLocalScanCandidates()' not in scan_body:
+    raise SystemExit('baseline candidate discovery missing from first button')
+if 'HFAAnalyzerV02ScanSelectedImage' in scan_body or 'HFAAppLocalExecuteParser' in scan_body:
+    raise SystemExit('deep resolver leaked into first button')
+export_a, export_b = method_span(ui, '- (void)actionCyberExport:')
+export_body = ui[export_a:export_b]
+if 'HFAAppLocalExecuteParser()' not in export_body or 'HFAAnalyzerV02ScanSelectedImage()' not in export_body:
+    raise SystemExit('second button does not run parser + AutoBackend')
 
 leftovers = []
 for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
@@ -133,4 +208,4 @@ for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
 if leftovers:
     raise SystemExit('direct HFAMap output paths remain: ' + ','.join(leftovers))
 
-print('v0.3.2 safe discovery + complete bundle output routing applied')
+print('v0.3.2 safe discovery + universal AutoBackend entry + bundle output routing applied')
