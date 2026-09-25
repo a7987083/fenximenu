@@ -103,16 +103,14 @@ s = cyber.read_text()
 s = ensure_import(s)
 s = re.sub(r'header\.text = @"[^\n"]*HFAMap[^\n"]*";',
            'header.text = @"  HFAMap RuntimeAnalyzer v0.3.2 AutoBackend";', s, count=1)
-if '[DISCOVERY-MODE] v0.3 baseline / discovery-only' not in s:
-    s = s.replace('HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");',
-                  'HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");\n    HFACyberUIAppendLog(@"[DISCOVERY-MODE] v0.3 baseline / discovery-only");', 1)
 s = re.sub(r'HFACyberUIAppendLog\(@"\[System\] HFAMap[^\n"]*ready\."\);',
            'HFACyberUIAppendLog(@"[System] HFAMap RuntimeAnalyzer v0.3.2 AutoBackend ready.");', s, count=1)
 if '[System] output=%@' not in s:
     anchor = 'HFACyberUIAppendLog(@"[System] HFAMap RuntimeAnalyzer v0.3.2 AutoBackend ready.");'
-    s = s.replace(anchor,
-                  anchor + '\n    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] output=%@", HFAOutputDirectory()]);',
-                  1)
+    if anchor in s:
+        s = s.replace(anchor,
+                      anchor + '\n    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] output=%@", HFAOutputDirectory()]);',
+                      1)
 cyber.write_text(s)
 
 app = SRC / 'HFAMapAppLocalResolver.m'
@@ -136,7 +134,8 @@ if 'src/HFAMapOutputPaths.m' not in make:
     make = make.replace(marker, marker + ' src/HFAMapOutputPaths.m', 1)
 MAKEFILE.write_text(make)
 
-# Strong self-checks with explicit failures.
+# Strong self-checks. The first scan button must remain the exact v0.3-style
+# discovery boundary: candidate discovery only, no parser/backend analyzer call.
 ui = cyber.read_text()
 scan_start = ui.find('- (void)actionCyberScan:')
 scan_end = ui.find('- (void)actionCyberExport:', scan_start)
@@ -147,8 +146,6 @@ if 'HFAAppLocalScanCandidates()' not in scan_body:
     raise SystemExit('baseline discovery call missing')
 if 'HFAAppLocalExecuteParser()' in scan_body or 'HFAAnalyzerV02ScanSelectedImage' in scan_body:
     raise SystemExit('deep resolver leaked into discovery button')
-if '[DISCOVERY-MODE] v0.3 baseline / discovery-only' not in scan_body:
-    raise SystemExit('discovery-only marker missing')
 if 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' not in ui:
     raise SystemExit('v0.3.2 UI version missing')
 if 'HFAOutputDirectory()' not in (SRC / 'HFAMapJSONExport.m').read_text():
@@ -171,4 +168,4 @@ for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
 if leftovers:
     raise SystemExit('direct Documents/HFAMap_ paths remain: ' + ','.join(leftovers))
 
-print('v0.3.2 output layout + UI version patch applied; discovery-only boundary verified')
+print('v0.3.2 output layout + UI version patch applied; baseline discovery boundary verified')
