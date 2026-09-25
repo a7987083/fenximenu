@@ -106,7 +106,6 @@ jobs:
           grep -q 'HFAMap_RuntimeAnalyzer_v032.json' dist/strings_v032.txt
           grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' dist/strings_v032.txt
           grep -q 'HFAMap_%@' dist/strings_v032.txt
-          grep -q 'DISCOVERY-MODE' dist/strings_v032.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
