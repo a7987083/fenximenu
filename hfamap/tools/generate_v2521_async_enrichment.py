@@ -5,6 +5,14 @@ SRC = ROOT / "src"
 
 base = (SRC / "HFAMapBundleRootScanner2520.mm").read_text()
 
+if '#import "HFAMapBuildInfo.h"\n' not in base:
+    base = base.replace('#import "HFAMapDiagnostics.h"\n', '#import "HFAMapDiagnostics.h"\n#import "HFAMapBuildInfo.h"\n', 1)
+
+# Every visible UI surface must use the current build identity. Historical
+# component strings remain in their own modules only for provenance.
+base = base.replace('alertControllerWithTitle:@"HFAMap v2.5.13"',
+                    'alertControllerWithTitle:HFAMapDisplayVersion()', 1)
+
 # v2.5.21 keeps the fast, already-proven feature inventory path on the UI critical
 # path, but moves expensive implementation enrichment off that path. The full
 # Runtime Method / Patch / State-Mutation inventory is still produced and saved.
