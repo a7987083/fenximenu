@@ -1,5 +1,37 @@
 # Known Issues
 
+## HFARuntimeAnalyzer v0.3.3 StaticParity
+
+### Device validation pending
+
+Status: open / primary gate.
+
+The v0.3.3 arm64 dylib is CI-built and artifact-rehashed, but has not yet been exercised on device. Do not mark the structural-parity changes device-passed until the new `V033-*` logs and per-bundle JSON are collected.
+
+### Runtime State is not automatically a canonical patch
+
+Status: intentional evidence gate.
+
+RogueLegend and MeChat reach a Runtime State backend but expose no object `fieldOffsets` under the existing callback-field analysis. v0.3.3 exports `hookReturnEvidence` and may emit `staticOverrideCandidates`, but those entries remain `diagnostic-only`. They must not be promoted to final `offset/original/enabled` without a unique target semantic and original-byte proof.
+
+### Static decrypt fallback is unique-match only
+
+Status: intentional fail-closed behavior.
+
+The simulator-compatible static fingerprint is used only when exactly one match exists. Zero or multiple matches are recorded as unresolved. Structural descriptor records are still retained, but plaintext-dependent conclusions remain unavailable.
+
+### Cross-sample AutoBackend coverage must be rechecked on the latest build
+
+Status: open.
+
+Priority samples: Duck Survival, Path of Kings, Random Dice 2, Heavenfall, PopIsland and WhisperCastle. Each selected dylib must now reach `V033-DECRYPT` and `V033-SCAN-END`, regardless of whether plaintext decrypt succeeds.
+
+### Output files must remain isolated per App
+
+Status: permanent regression rule.
+
+All outputs must use `HFAOutputDirectory()` / `HFAOutputPath()` and reside under `Documents/HFAMap_<CFBundleIdentifier>/`. Shared `Documents/HFAMap_*` root outputs are rejected by CI because they allow stale data from one App to contaminate another App's analysis.
+
 ## v1.9.37.10 Earn to Die Rogue profile
 
 ### Device runtime validation pending
@@ -124,12 +156,12 @@ The legacy AP/IGSecret family was previously runtime-confirmed on older parser v
 
 ## Current CI delivery
 
-Authoritative candidate:
+Authoritative v0.3.3 analyzer candidate:
 
-- binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`
-- run: `34907671999`
-- artifact: `10372928333`
-- binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
-- artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
-- WayOfKings/iGMM device validation: passed
-- cross-family regression: pending
+- binary: `HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib`
+- run: `36161672792`
+- artifact: `10876640401`
+- binary SHA256: `ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`
+- artifact ZIP digest: `sha256:3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371`
+- CI compile/link/sign: passed
+- device validation: pending
