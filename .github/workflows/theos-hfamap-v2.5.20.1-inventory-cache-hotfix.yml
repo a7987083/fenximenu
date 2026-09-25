@@ -1,0 +1,63 @@
+name: HFAMap v2.5.20.1 Inventory Cache Hotfix
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.20.1-inventory-cache-hotfix
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.20.1-inventory-cache-hotfix.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Generate and check v2.5.20.1 invariants
+        run: |
+          set -euo pipefail
+          python3 hfamap/tools/generate_v2519_loaded_safe.py
+          python3 hfamap/tools/generate_v2519_sender_safe.py
+          python3 hfamap/tools/generate_v2520_integration.py
+          python3 hfamap/tools/generate_v25201_inventory_cache.py
+          test -f hfamap/src/HFAMapMenuImplementationInventory25201.mm
+          grep -q 'action-cache-hit' hfamap/src/HFAMapMenuImplementationInventory25201.mm
+          grep -q 'action-skipped-budget' hfamap/src/HFAMapMenuImplementationInventory25201.mm
+          grep -q 'analysisTruncated' hfamap/src/HFAMapMenuImplementationInventory25201.mm
+          ! grep -q 'DobbyHook' hfamap/src/HFAMapMenuImplementationInventory25201.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.20.1-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.20.1-dev/HFAMapUniversal-v2.5.20.1-dev.dylib
+          out=hfamap/dist/v2.5.20.1-dev/HFAMapUniversal-v2.5.20.1-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap25201.strings"
+          file "$out" | grep -q arm64
+          grep -q '2.5.20.1-dev-inventory-cache-hotfix' "$RUNNER_TEMP/hfamap25201.strings"
+          grep -q 'READ-ONLY-BOUNDED-SHARED-IMPLEMENTATION-CACHE' "$RUNNER_TEMP/hfamap25201.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.20.1-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.20.1-InventoryCacheHotfix
+          path: |
+            hfamap/dist/v2.5.20.1-dev/HFAMapUniversal-v2.5.20.1-dev.dylib
+            hfamap/dist/v2.5.20.1-dev/SHA256SUMS.txt
+          if-no-files-found: error
