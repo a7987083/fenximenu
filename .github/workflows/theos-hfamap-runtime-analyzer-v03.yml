@@ -53,6 +53,7 @@ jobs:
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
           s=p.read_text()
           s=s.replace('static NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 'static __attribute__((unused)) NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 1)
+          s=s.replace('com.hfa.runtime-analyzer/v0.3.2.2', 'com.hfa.runtime-analyzer/v0.3.2')
           p.write_text(s)
           PY
           git diff --check
@@ -69,6 +70,7 @@ jobs:
           grep -q '\[V032-BACKEND\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q '\[V032-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'com.hfa.runtime-analyzer/v0.3.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          ! grep -q 'com.hfa.runtime-analyzer/v0.3.2.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFAMap_RuntimeAnalyzer_v032.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
@@ -96,7 +98,8 @@ jobs:
           grep -q 'V032-SCAN-END' dist/strings_v032.txt
           grep -q 'V032-BACKEND' dist/strings_v032.txt
           grep -q 'receiver-capture' dist/strings_v032.txt
-          grep -q 'com.hfa.runtime-analyzer/v0.3.2' dist/strings_v032.txt
+          grep -Fxq 'com.hfa.runtime-analyzer/v0.3.2' dist/strings_v032.txt
+          ! grep -Fq 'com.hfa.runtime-analyzer/v0.3.2.2' dist/strings_v032.txt
           grep -q 'HFAMap_RuntimeAnalyzer_v032.json' dist/strings_v032.txt
 
       - name: Upload artifact
