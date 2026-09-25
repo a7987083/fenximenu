@@ -1,73 +1,105 @@
 {
-  "project": "HFAMapUniversal",
-  "version": "1.9.37.10",
-  "phase": "earntodie-verified-profile-ci-and-device-validation",
+  "project": "HFARuntimeAnalyzer",
+  "version": "0.3.3",
+  "phase": "static-parity-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfamap-v193710-unified-feature-model",
-  "baseline_commit": "2306e7121f507b663f157a172cdfb9c4aa5bdc46",
-  "implementation_commit": "13fff6fd49d84348c618cc7845527e0b5c8413fa",
+  "branch": "feature/hfaruntime-v0.3.3-static-parity-autobackend",
+  "baseline": {
+    "version": "0.3.2",
+    "commit": "cb04586dba45e1f57df4d1a2a76a54385d864066",
+    "artifact": "HFARuntimeAnalyzer-v0.3.2-AutoBackend-bundlefolder.dylib"
+  },
+  "implementation": {
+    "static_parity_commit": "160b939232727e3d9c99c4bd29bb57bb61622199",
+    "schema_fix_commit": "e15f3226b48ca09d0fd2bb419e18836aee98bd49",
+    "successful_build_commit": "806957d0ebe3ef13559d72809295bb6eeb69de09"
+  },
   "build": {
-    "local_generation": "passed",
     "ci": "success",
-    "run_id": 35170319783,
-    "build_commit": "5db1f384c49a4a4cd243b722881083f0893692e5",
-    "artifact_id": 10476488771,
-    "artifact": "HFAMapUniversal-v1.9.37.10-UnifiedFeatureModel",
-    "artifact_digest": "sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4",
-    "binary": "HFAMapUniversal_v1.9.37.10_UnifiedFeatureModel.dylib",
+    "run_id": 36161672792,
+    "artifact_id": 10876640401,
+    "artifact": "HFARuntimeAnalyzer-v0.3.3-StaticParity",
+    "artifact_zip_sha256": "3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371",
+    "binary": "HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib",
     "architecture": "arm64",
-    "size_bytes": 247824,
-    "binary_sha256": "afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58"
+    "size_bytes": 264992,
+    "binary_sha256": "ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca"
   },
-  "target_profile": {
-    "id": "earntodie-1.28.251-1",
-    "bundle_identifier": "com.notdoppler.earntodierogue",
-    "short_version": "1.28.251",
-    "build_version": "1",
-    "architecture": "arm64",
-    "image": "UnityFramework",
-    "uuid": "8654D76C-B760-34FC-BEE0-FE70AE8C95C8",
-    "binary_sha256": "7d19c706d3a2768799a4d1dd452ff0aa327e62221e5d59d88e706ed1347f7b57",
-    "metadata_version": 31,
-    "metadata_sha256": "de4eac81ed758381ef929c65d7efddb8592ccaf1dacf9d9f523df8ee1041081b",
-    "offset_semantics": "preferred-mach-o-vmaddr"
+  "static_parity": {
+    "descriptor_discovery": "binary-first-length-flags-family",
+    "record_alignment_bytes": 8,
+    "hard_stop_on_missing_decrypt": false,
+    "decrypt_resolution": [
+      "existing-runtime-resolver",
+      "unique-static-fingerprint-fallback"
+    ],
+    "per_record_decrypt_status": true,
+    "structural_records_survive_decrypt_failure": true
   },
-  "verified_patches": {
-    "Fuel": {
-      "title": "Unlimited Fuel",
-      "offset": "0x2D98AC8",
-      "original": "0038211E",
-      "enabled": "1F2003D5",
-      "status": "static-verified"
+  "runtime_state": {
+    "canonical_policy": "fail-closed",
+    "hook_return_evidence": true,
+    "static_override_candidates": "diagnostic-only",
+    "known_unresolved": {
+      "RogueLegend": {
+        "backends": 3,
+        "static": 2,
+        "runtime_state": 1,
+        "field_offsets": [],
+        "derived_patches": 0
+      },
+      "MeChat": {
+        "backends": 8,
+        "static": 7,
+        "runtime_state": 1,
+        "field_offsets": [],
+        "derived_patches": 0
+      }
     },
-    "Boost": {
-      "title": "Unlimited Boost",
-      "offset": "0x2D9887C",
-      "original": "0038281E",
-      "enabled": "1F2003D5",
-      "status": "static-verified"
+    "known_reference": {
+      "Earn to Die Rogue": {
+        "backends": 19,
+        "static": 18,
+        "runtime_state": 1,
+        "derived_patches": 2,
+        "final_offsets": 20
+      }
     }
   },
-  "verification": {
-    "github_remote_baseline": "passed",
-    "metadata_pair_identical": true,
-    "il2cpp_mapping": "passed",
-    "arm64_data_flow": "passed",
-    "existing_original_bytes": "18/18",
-    "new_original_bytes": "2/2",
-    "python_syntax": "passed",
-    "json_fixture": "passed",
-    "workflow_yaml_parse": "passed",
-    "git_diff_check": "passed",
-    "ios_build_link_sign": "passed",
-    "artifact_rehash": "passed",
-    "compiled_profile_markers": "passed",
-    "device_runtime": "pending"
+  "output_contract": {
+    "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
+    "helper": "HFAOutputDirectory/HFAOutputPath",
+    "v033_output": "HFAMap_RuntimeAnalyzer_v033.json",
+    "direct_documents_root_outputs": "forbidden-by-ci"
   },
-  "known_issues": [
-    "Fuel/Boost stop future depletion but do not refill an already-zero value",
-    "Posters and Prestige overlap at UnityFramework+0x2E25904",
-    "generic observed-action classification remains broader than the available evidence"
+  "verification": {
+    "generator_chain": "passed",
+    "source_markers": "passed",
+    "universal_autobackend_entry": "passed",
+    "bundle_folder_regression_gate": "passed",
+    "direct_output_path_audit": "passed",
+    "ios_compile_link_sign": "passed",
+    "binary_marker_inspection": "passed",
+    "artifact_rehash": "passed",
+    "device_runtime": "pending",
+    "cross_sample_regression": "pending"
+  },
+  "device_validation_priority": [
+    "Duck Survival",
+    "Path of Kings",
+    "Random Dice 2",
+    "Heavenfall",
+    "PopIsland",
+    "WhisperCastle",
+    "RogueLegend",
+    "MeChat"
   ],
-  "next_task": "Run a clean 14-feature/20-patch device regression, verify Fuel/Boost independently, then resolve the Posters/Prestige overlap."
+  "no_regression_samples": [
+    "Earn to Die Rogue",
+    "Rise of Berk",
+    "ZombieCatchers",
+    "HelloKittyMyDreamStore",
+    "Legend of Survivors"
+  ],
+  "next_task": "Inject HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib, collect each App's independent HFAMap_<CFBundleIdentifier> folder, require V033-DECRYPT/V033-SCAN-END, then use RogueLegend/MeChat hookReturnEvidence to determine whether a uniquely provable final patch exists."
 }
