@@ -48,6 +48,13 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v03.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_auto_backend.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
+          s=p.read_text()
+          s=s.replace('static NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 'static __attribute__((unused)) NSArray *HFAV02Hints(uintptr_t function,HFAV02Layout l)', 1)
+          p.write_text(s)
+          PY
           git diff --check
 
       - name: Verify v0.3.2 generated sources
