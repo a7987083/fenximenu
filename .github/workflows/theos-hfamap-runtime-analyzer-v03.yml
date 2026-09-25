@@ -49,6 +49,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v031_wiring.py
           python3 .github/scripts/hfamap_runtime_analyzer_v031_fix1.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v031_fix2.py
           git diff --check
 
       - name: Verify v0.3.1 generated sources
@@ -60,7 +61,8 @@ jobs:
           grep -q 'HFAManualCaptureStart8s' hfamap/src/HFAMapCyberUI.m
           grep -q '8秒手动捕获' hfamap/src/HFAMapCyberUI.m
           grep -q 'HFAMapManualCapture.m' hfamap/Makefile
-          grep -q 'mach/mach_vm.h' hfamap/src/HFAMapManualCapture.m
+          grep -q 'HFACaptureSegmentAllows' hfamap/src/HFAMapManualCapture.m
+          test "$(grep -c 'mach/mach_vm.h' hfamap/src/HFAMapManualCapture.m || true)" = "0"
           grep -q 'com.hfa.manual-capture/v0.3.1' hfamap/src/HFAMapManualCapture.m
           grep -q 'CAPTURE-ACTION' hfamap/src/HFAMapManualCapture.m
           grep -q 'CAPTURE-DELTA' hfamap/src/HFAMapManualCapture.m
