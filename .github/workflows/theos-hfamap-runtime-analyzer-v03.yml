@@ -1,9 +1,9 @@
-name: HFARuntimeAnalyzer v0.3.2 AutoBackend
+name: HFARuntimeAnalyzer v0.3.3 StaticParity
 
 on:
   push:
     branches:
-      - feature/hfaruntime-v0.3.2-auto-backend-fiveclass
+      - feature/hfaruntime-v0.3.3-static-parity-autobackend
     paths:
       - 'hfamap/**'
       - '.github/scripts/**'
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate v1.9.37.10 baseline + RuntimeAnalyzer v0.3.2
+      - name: Generate v1.9.37.10 baseline + RuntimeAnalyzer v0.3.3
         run: |
           set -euo pipefail
           python3 .github/scripts/apply_hfamap_v1936_chain.py
@@ -51,6 +51,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v032_output_layout.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_generic_output_fix.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_safe_discovery_paths.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v033_static_parity.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
@@ -66,27 +67,28 @@ jobs:
           PY
           git diff --check
 
-      - name: Verify v0.3.2 generated sources
+      - name: Verify v0.3.3 generated sources
         run: |
           set -euo pipefail
-          grep -q 'HFAV032TargetFamily' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '0x031201u' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '0x031211u' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'receiver-capture' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'runtime-state' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'derivedPatches' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V032-BACKEND\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V032-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'com.hfa.runtime-analyzer/v0.3.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          ! grep -q 'com.hfa.runtime-analyzer/v0.3.2.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAV033StaticDecryptFingerprint' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAV033HookReturnEvidence' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'decryptStatus' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'structuralParity' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'hookReturnEvidence' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'staticOverrideCandidates' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '\[V033-DECRYPT\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '\[V033-BACKEND\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '\[V033-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'com.hfa.runtime-analyzer/v0.3.3' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAMap_RuntimeAnalyzer_v033.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAOutputPath(@"HFAMap_RuntimeAnalyzer_v033.json")' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
           grep -q 'HFAAnalyzerV02ScanSelectedImage()' hfamap/src/HFAMapCyberUI.m
           grep -q 'mode=disabled reason=discovery-only' hfamap/src/HFAMapAppLocalResolver.m
-          grep -q '__attribute__((unused)) NSString \*HFAAppLocalResolveInstallName' hfamap/src/HFAMapAppLocalResolver.m
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
           grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
-          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapCyberUI.m
+          grep -q 'HFAMap RuntimeAnalyzer v0.3.3 StaticParity' hfamap/src/HFAMapCyberUI.m
           grep -q 'HFAOutputCopyPath' hfamap/src/HFAMapLegacy.m
           ! grep -R -q 'Documents/HFAMap_' hfamap/src --include='*.m' --include='*.mm'
 
@@ -98,34 +100,34 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build v0.3.2
+      - name: Build v0.3.3
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFARuntimeAnalyzer-v0.3.2-AutoBackend.dylib'
+          out='dist/HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.2-AutoBackend.txt
-          strings "$out" > dist/strings_v032.txt
-          grep -q 'V032-SCAN-END' dist/strings_v032.txt
-          grep -q 'V032-BACKEND' dist/strings_v032.txt
-          grep -q 'receiver-capture' dist/strings_v032.txt
-          grep -Fxq 'com.hfa.runtime-analyzer/v0.3.2' dist/strings_v032.txt
-          ! grep -Fq 'com.hfa.runtime-analyzer/v0.3.2.2' dist/strings_v032.txt
-          grep -q 'HFAMap_RuntimeAnalyzer_v032.json' dist/strings_v032.txt
-          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' dist/strings_v032.txt
-          grep -q 'HFAMap_%@' dist/strings_v032.txt
-          grep -q 'mode=disabled reason=discovery-only' dist/strings_v032.txt
-          grep -q 'AUTOBACKEND-END' dist/strings_v032.txt
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.3-StaticParity.txt
+          strings "$out" > dist/strings_v033.txt
+          grep -q 'V033-SCAN-END' dist/strings_v033.txt
+          grep -q 'V033-BACKEND' dist/strings_v033.txt
+          grep -q 'V033-DECRYPT' dist/strings_v033.txt
+          grep -q 'diagnostic-only' dist/strings_v033.txt
+          grep -Fxq 'com.hfa.runtime-analyzer/v0.3.3' dist/strings_v033.txt
+          grep -q 'HFAMap_RuntimeAnalyzer_v033.json' dist/strings_v033.txt
+          grep -q 'HFAMap RuntimeAnalyzer v0.3.3 StaticParity' dist/strings_v033.txt
+          grep -q 'HFAMap_%@' dist/strings_v033.txt
+          grep -q 'mode=disabled reason=discovery-only' dist/strings_v033.txt
+          grep -q 'AUTOBACKEND-END' dist/strings_v033.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFARuntimeAnalyzer-v0.3.2-AutoBackend
+          name: HFARuntimeAnalyzer-v0.3.3-StaticParity
           path: |
-            hfamap/dist/HFARuntimeAnalyzer-v0.3.2-AutoBackend.dylib
-            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.2-AutoBackend.txt
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.3-StaticParity.txt
           if-no-files-found: error
