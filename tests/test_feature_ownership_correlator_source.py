@@ -8,7 +8,8 @@ VERSION = (ROOT / "hfamap/src/HFAMapVersion2514.mm").read_text()
 
 class FeatureOwnershipCorrelatorTests(unittest.TestCase):
     def test_module_is_compiled(self):
-        self.assertIn("HFAMapFeatureOwnershipCorrelator.mm", MAKEFILE)
+        self.assertTrue("HFAMapFeatureOwnershipCorrelator.mm" in MAKEFILE or
+                        "HFAMapFeatureOwnershipCorrelator25201.mm" in MAKEFILE)
         self.assertIn("HFAMapVersion2514.mm", MAKEFILE)
 
     def test_exact_edge_policy(self):
