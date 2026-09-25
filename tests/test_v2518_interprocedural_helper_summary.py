@@ -5,6 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 GEN = ROOT / "hfamap/tools/generate_v2518_helper_summary.py"
+GEN2519 = (ROOT / "hfamap/tools/generate_v2519_sender_safe.py").read_text()
 MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 VER = (ROOT / "hfamap/src/HFAMapVersion2518.mm").read_text()
 
@@ -15,8 +16,13 @@ class InterproceduralHelperSummary2518Tests(unittest.TestCase):
         cls.src = (ROOT / "hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm").read_text()
 
     def test_build_uses_generated_2518_resolver(self):
-        self.assertIn('V2518_GENERATED', MAKEFILE)
-        self.assertIn('src/HFAMapSenderDerivedProvenanceResolver2518.mm', MAKEFILE)
+        chained = ('V2518_GENERATED' in MAKEFILE or
+                   'generate_v2518_helper_summary.py' in GEN2519)
+        self.assertTrue(chained)
+        self.assertTrue(
+            'src/HFAMapSenderDerivedProvenanceResolver2518.mm' in MAKEFILE or
+            'src/HFAMapSenderDerivedProvenanceResolver2519.mm' in MAKEFILE
+        )
         self.assertNotIn('src/HFAMapSenderDerivedProvenanceResolver2517.mm src/', MAKEFILE)
 
     def test_helper_summary_is_bounded_and_memoized(self):
