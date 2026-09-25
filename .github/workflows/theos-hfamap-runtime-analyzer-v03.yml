@@ -70,27 +70,31 @@ jobs:
       - name: Verify v0.3.3 generated sources
         run: |
           set -euo pipefail
-          grep -q 'HFAV033StaticDecryptFingerprint' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAV033HookReturnEvidence' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'decryptStatus' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'structuralParity' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'hookReturnEvidence' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'staticOverrideCandidates' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V033-DECRYPT\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V033-BACKEND\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V033-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'com.hfa.runtime-analyzer/v0.3.3' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAMap_RuntimeAnalyzer_v033.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAOutputPath(@"HFAMap_RuntimeAnalyzer_v033.json")' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
-          grep -q 'HFAAnalyzerV02ScanSelectedImage()' hfamap/src/HFAMapCyberUI.m
-          grep -q 'mode=disabled reason=discovery-only' hfamap/src/HFAMapAppLocalResolver.m
+          check() { file="$1"; needle="$2"; if ! grep -Fq "$needle" "$file"; then echo "MISSING [$needle] in $file"; exit 1; fi; }
+          SRC=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          APP=hfamap/src/HFAMapAppLocalResolver.m
+          check "$SRC" 'HFAV033StaticDecryptFingerprint'
+          check "$SRC" 'HFAV033HookReturnEvidence'
+          check "$SRC" 'decryptStatus'
+          check "$SRC" 'structuralParity'
+          check "$SRC" 'hookReturnEvidence'
+          check "$SRC" 'staticOverrideCandidates'
+          check "$SRC" '[V033-DECRYPT]'
+          check "$SRC" '[V033-BACKEND]'
+          check "$SRC" '[V033-SCAN-END]'
+          check "$SRC" 'com.hfa.runtime-analyzer/v0.3.3'
+          check "$SRC" 'HFAMap_RuntimeAnalyzer_v033.json'
+          check "$SRC" 'HFAOutputPath(@"HFAMap_RuntimeAnalyzer_v033.json")'
+          check "$UI" 'HFAAppLocalScanCandidates()'
+          check "$UI" 'HFAAnalyzerV02ScanSelectedImage()'
+          check "$APP" 'mode=disabled reason=discovery-only'
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
-          grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
-          grep -q 'HFAMap RuntimeAnalyzer v0.3.3 StaticParity' hfamap/src/HFAMapCyberUI.m
-          grep -q 'HFAOutputCopyPath' hfamap/src/HFAMapLegacy.m
-          ! grep -R -q 'Documents/HFAMap_' hfamap/src --include='*.m' --include='*.mm'
+          check hfamap/Makefile 'src/HFAMapOutputPaths.m'
+          check "$UI" 'HFAMap RuntimeAnalyzer v0.3.3 StaticParity'
+          check hfamap/src/HFAMapLegacy.m 'HFAOutputCopyPath'
+          if grep -R -Fq 'Documents/HFAMap_' hfamap/src --include='*.m' --include='*.mm'; then echo 'DIRECT OUTPUT PATH REGRESSION'; grep -R -Fn 'Documents/HFAMap_' hfamap/src --include='*.m' --include='*.mm' || true; exit 1; fi
 
       - name: Install build dependencies
         run: brew install ldid
