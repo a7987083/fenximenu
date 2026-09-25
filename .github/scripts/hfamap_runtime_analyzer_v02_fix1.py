@@ -8,5 +8,9 @@ if proto.strip() not in s:
     if marker not in s:
         raise SystemExit('prototype anchor missing')
     s = s.replace(marker, proto + marker, 1)
+old = 'static uintptr_t HFAResolveSecretDecrypt(IMP getter, Dl_info *getterInfoOut,'
+new = 'static __attribute__((unused)) uintptr_t HFAResolveSecretDecrypt(IMP getter, Dl_info *getterInfoOut,'
+if old in s:
+    s = s.replace(old, new, 1)
 p.write_text(s)
-print('v0.2 fix1: declarations inserted')
+print('v0.2 fix1: declarations inserted; legacy decrypt helper retained as unused')
