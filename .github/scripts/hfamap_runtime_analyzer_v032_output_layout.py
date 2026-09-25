@@ -82,15 +82,12 @@ for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
     text = path.read_text()
     original = text
 
-    # Exact direct path form used by the discovery/parser/analyzer modules.
     text = re.sub(
         r'\[NSHomeDirectory\(\) stringByAppendingPathComponent:@"Documents/(HFAMap_[^"]+)"\]',
         r'HFAOutputPath(@"\1")',
         text,
     )
 
-    # JSON exporter central documents root: all generated analysis JSONs for this
-    # game belong in the same per-bundle folder.
     if path.name == 'HFAMapJSONExport.m':
         text = re.sub(
             r'static NSString \*HFAJSONDocuments\(void\) \{\s*return \[NSHomeDirectory\(\) stringByAppendingPathComponent:@"Documents"\];\s*\}',
@@ -103,24 +100,37 @@ for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
         text = ensure_import(text)
         path.write_text(text)
 
-# Update the visible UI version, make discovery mode explicit, and print the
-# concrete per-game output folder so device logs are easy to collect.
+# Update visible version and make the discovery-only boundary explicit.
 cyber = SRC / 'HFAMapCyberUI.m'
 s = cyber.read_text()
 s = ensure_import(s)
-s = s.replace('header.text = @"  HFAMap AppLocalMenuResolver";',
-              'header.text = @"  HFAMap RuntimeAnalyzer v0.3.2 AutoBackend";')
-s = s.replace('HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");',
-              'HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");\n    HFACyberUIAppendLog(@"[DISCOVERY-MODE] v0.3 baseline / discovery-only");')
-s = s.replace('HFACyberUIAppendLog(@"[System] HFAMap AppLocalMenuResolver ready.");',
-              'HFACyberUIAppendLog(@"[System] HFAMap RuntimeAnalyzer v0.3.2 AutoBackend ready.");\n    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] output=%@", HFAOutputDirectory()]);')
+s = re.sub(r'header\.text = @"[^\n"]*HFAMap[^\n"]*";',
+           'header.text = @"  HFAMap RuntimeAnalyzer v0.3.2 AutoBackend";', s, count=1)
+if '[DISCOVERY-MODE] v0.3 baseline / discovery-only' not in s:
+    s = s.replace('HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");',
+                  'HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");\n    HFACyberUIAppendLog(@"[DISCOVERY-MODE] v0.3 baseline / discovery-only");', 1)
+s = re.sub(r'HFACyberUIAppendLog\(@"\[System\] HFAMap[^\n"]*ready\."\);',
+           'HFACyberUIAppendLog(@"[System] HFAMap RuntimeAnalyzer v0.3.2 AutoBackend ready.");', s, count=1)
+if '[System] output=%@' not in s:
+    anchor = 'HFACyberUIAppendLog(@"[System] HFAMap RuntimeAnalyzer v0.3.2 AutoBackend ready.");'
+    s = s.replace(anchor,
+                  anchor + '\n    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] output=%@", HFAOutputDirectory()]);',
+                  1)
 cyber.write_text(s)
 
-# Keep the discovery index metadata aligned with the binary/UI version.
+# Keep candidate index metadata aligned with the UI/binary version regardless
+# of which legacy generator supplied the previous version literal.
 app = SRC / 'HFAMapAppLocalResolver.m'
 s = app.read_text()
-s = s.replace('@"HFAMapUniversal v1.9.36.7 AppLocalMenuResolver"',
-              '@"HFAMap RuntimeAnalyzer v0.3.2 AutoBackend"')
+s, count = re.subn(
+    r'@"HFAMap(?:Universal)?[^\n"]*AppLocalMenuResolver"',
+    '@"HFAMap RuntimeAnalyzer v0.3.2 AutoBackend"',
+    s,
+    count=1,
+)
+if count == 0 and '@"analyzer"' in s:
+    s = re.sub(r'(@"analyzer"\s*:\s*)@"[^"]*"',
+               r'\1@"HFAMap RuntimeAnalyzer v0.3.2 AutoBackend"', s, count=1)
 app.write_text(s)
 
 # Build the shared path helper.
@@ -132,7 +142,7 @@ if 'src/HFAMapOutputPaths.m' not in make:
     make = make.replace(marker, marker + ' src/HFAMapOutputPaths.m', 1)
 MAKEFILE.write_text(make)
 
-# Safety assertions: scan button remains the baseline discovery call only.
+# Safety assertions: first button remains baseline discovery-only.
 ui = cyber.read_text()
 scan_start = ui.find('- (void)actionCyberScan:')
 scan_end = ui.find('- (void)actionCyberExport:', scan_start)
