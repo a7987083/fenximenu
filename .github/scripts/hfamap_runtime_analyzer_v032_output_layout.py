@@ -74,8 +74,6 @@ def ensure_import(text: str) -> str:
     return ''.join(lines)
 
 
-# Route the common learning log and named HFAMap artifacts into
-# Documents/HFAMap_<CFBundleIdentifier>/ without changing filenames.
 for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
     if path.name == 'HFAMapOutputPaths.m':
         continue
@@ -100,7 +98,6 @@ for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
         text = ensure_import(text)
         path.write_text(text)
 
-# Update visible version and make the discovery-only boundary explicit.
 cyber = SRC / 'HFAMapCyberUI.m'
 s = cyber.read_text()
 s = ensure_import(s)
@@ -118,8 +115,6 @@ if '[System] output=%@' not in s:
                   1)
 cyber.write_text(s)
 
-# Keep candidate index metadata aligned with the UI/binary version regardless
-# of which legacy generator supplied the previous version literal.
 app = SRC / 'HFAMapAppLocalResolver.m'
 s = app.read_text()
 s, count = re.subn(
@@ -133,7 +128,6 @@ if count == 0 and '@"analyzer"' in s:
                r'\1@"HFAMap RuntimeAnalyzer v0.3.2 AutoBackend"', s, count=1)
 app.write_text(s)
 
-# Build the shared path helper.
 make = MAKEFILE.read_text()
 if 'src/HFAMapOutputPaths.m' not in make:
     marker = 'src/HFAMapCyberUI.m'
@@ -142,7 +136,7 @@ if 'src/HFAMapOutputPaths.m' not in make:
     make = make.replace(marker, marker + ' src/HFAMapOutputPaths.m', 1)
 MAKEFILE.write_text(make)
 
-# Safety assertions: first button remains baseline discovery-only.
+# Strong self-checks with explicit failures.
 ui = cyber.read_text()
 scan_start = ui.find('- (void)actionCyberScan:')
 scan_end = ui.find('- (void)actionCyberExport:', scan_start)
@@ -153,5 +147,28 @@ if 'HFAAppLocalScanCandidates()' not in scan_body:
     raise SystemExit('baseline discovery call missing')
 if 'HFAAppLocalExecuteParser()' in scan_body or 'HFAAnalyzerV02ScanSelectedImage' in scan_body:
     raise SystemExit('deep resolver leaked into discovery button')
+if '[DISCOVERY-MODE] v0.3 baseline / discovery-only' not in scan_body:
+    raise SystemExit('discovery-only marker missing')
+if 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' not in ui:
+    raise SystemExit('v0.3.2 UI version missing')
+if 'HFAOutputDirectory()' not in (SRC / 'HFAMapJSONExport.m').read_text():
+    raise SystemExit('JSON exporter is not routed to bundle output directory')
+app_text = app.read_text()
+if 'HFAOutputPath(@"HFAMap_Learn.log")' not in app_text:
+    raise SystemExit('AppLocal learning log is not routed to bundle output directory')
+if 'HFAOutputPath(@"HFAMap_AppLocalCandidates.json")' not in app_text:
+    raise SystemExit('AppLocal candidate index is not routed to bundle output directory')
+if 'src/HFAMapOutputPaths.m' not in MAKEFILE.read_text():
+    raise SystemExit('output path helper missing from Makefile')
 
-print('v0.3.2 output layout + UI version patch applied')
+leftovers = []
+for path in list(SRC.glob('*.m')) + list(SRC.glob('*.mm')):
+    if path.name == 'HFAMapOutputPaths.m':
+        continue
+    text = path.read_text()
+    if 'Documents/HFAMap_' in text:
+        leftovers.append(path.name)
+if leftovers:
+    raise SystemExit('direct Documents/HFAMap_ paths remain: ' + ','.join(leftovers))
+
+print('v0.3.2 output layout + UI version patch applied; discovery-only boundary verified')
