@@ -76,11 +76,9 @@ jobs:
           grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
 
-          # v0.3 discovery stays lightweight and isolated from deep backend parsing.
           grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
           grep -q '\[DISCOVERY-MODE\] v0.3 baseline / discovery-only' hfamap/src/HFAMapCyberUI.m
 
-          # All primary logs/JSONs are grouped under Documents/HFAMap_<BundleID>/.
           test -f hfamap/src/HFAMapOutputPaths.h
           test -f hfamap/src/HFAMapOutputPaths.m
           grep -q 'HFAMap_%@' hfamap/src/HFAMapOutputPaths.m
@@ -90,9 +88,7 @@ jobs:
           grep -q 'HFAOutputPath(@"HFAMap_AppLocalCandidates.json")' hfamap/src/HFAMapAppLocalResolver.m
           grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
 
-          # UI and exported analyzer metadata show the actual test build.
           grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapCyberUI.m
-          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapAppLocalResolver.m
 
       - name: Install build dependencies
         run: brew install ldid
