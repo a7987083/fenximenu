@@ -16,7 +16,9 @@ class BuildIdentity25201Tests(unittest.TestCase):
         cls.diag = (HFAMAP / "src/HFAMapDiagnostics25201.mm").read_text()
 
     def test_single_build_identity(self):
-        self.assertIn('2.5.20.1-dev', BUILD)
+        self.assertIn('HFAMapBuildVersion(void)', BUILD)
+        self.assertIn('HFAMapBuildComponent(void)', BUILD)
+        self.assertIn('HFAMapBuildPolicy(void)', BUILD)
         self.assertIn('HFAMapDisplayVersion()', self.entry)
         self.assertIn('HFAMapBuildVersion()', self.entry)
         self.assertNotIn('HFAMap v2.5.7-dev', self.entry)
@@ -38,8 +40,6 @@ class BuildIdentity25201Tests(unittest.TestCase):
         self.assertNotIn(' src/HFAMapDiagnostics.mm ', f' {files} ')
 
     def test_component_versions_remain_historical_evidence(self):
-        # Current build identity is centralized; historical module markers remain
-        # intentionally available for provenance and are not rewritten globally.
         self.assertIn('componentVersion', BUILD)
 
 if __name__ == '__main__':
