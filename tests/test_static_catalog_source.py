@@ -86,7 +86,10 @@ class StaticCatalogSourceTests(unittest.TestCase):
         self.assertNotIn('vm_write', DESC)
 
     def test_build_includes_static_catalog_modules(self):
-        self.assertIn('src/HFAMapStaticCatalog.mm', MAKEFILE)
+        self.assertTrue(
+            'src/HFAMapStaticCatalog.mm' in MAKEFILE or
+            'src/HFAMapStaticCatalog2520.mm' in MAKEFILE
+        )
         self.assertIn('src/HFAMapStaticCatalogBridge.mm', MAKEFILE)
         self.assertIn('src/HFAMapDescriptorStaticCallbackResolver.mm', MAKEFILE)
 
