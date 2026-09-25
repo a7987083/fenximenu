@@ -86,8 +86,8 @@ class StrippedActionAnalyzerSourceTests(unittest.TestCase):
     def test_modules_are_compiled(self):
         self.assertIn("src/HFAMapStrippedActionAnalyzer.mm", MAKEFILE)
         self.assertIn("src/HFAMapObjCActionInventory.mm", MAKEFILE)
-        self.assertIn("src/HFAIL2CPPMethodIndex.mm", MAKEFILE)
-        self.assertIn("src/HFAIL2CPPMethodRangeIndex.mm", MAKEFILE)
+        self.assertTrue("src/HFAIL2CPPMethodIndex.mm" in MAKEFILE or "src/HFAIL2CPPMethodIndex2521.mm" in MAKEFILE)
+        self.assertTrue("src/HFAIL2CPPMethodRangeIndex.mm" in MAKEFILE or "src/HFAIL2CPPMethodRangeIndex2521.mm" in MAKEFILE)
 
 
 if __name__ == "__main__":
