@@ -47,7 +47,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v02_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
-          python3 .github/scripts/hfamap_runtime_analyzer_v031_manual_capture.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v031_wiring.py
           git diff --check
 
       - name: Verify v0.3.1 generated sources
