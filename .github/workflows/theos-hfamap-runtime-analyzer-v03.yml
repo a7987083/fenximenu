@@ -1,9 +1,9 @@
-name: HFARuntimeAnalyzer v0.3
+name: HFARuntimeAnalyzer v0.3.2 AutoBackend
 
 on:
   push:
     branches:
-      - feature/hfamap-runtime-analyzer-v1
+      - feature/hfaruntime-v0.3.2-auto-backend-fiveclass
     paths:
       - 'hfamap/**'
       - '.github/scripts/**'
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate v1.9.37.10 baseline + RuntimeAnalyzer v0.3
+      - name: Generate v1.9.37.10 baseline + RuntimeAnalyzer v0.3.2
         run: |
           set -euo pipefail
           python3 .github/scripts/apply_hfamap_v1936_chain.py
@@ -47,22 +47,24 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v02_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v032_auto_backend.py
           git diff --check
 
-      - name: Verify v0.3 generated sources
+      - name: Verify v0.3.2 generated sources
         run: |
           set -euo pipefail
-          grep -q 'HFAV03ADR' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '__const' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'patch-data' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '\[V03-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'com.hfa.runtime-analyzer/v0.3' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q 'HFAMap_RuntimeAnalyzer_v03.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
-          grep -q '_dyld_get_image_vmaddr_slide' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAV032TargetFamily' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '0x031201u' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '0x031211u' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'receiver-capture' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'runtime-state' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'derivedPatches' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '\[V032-BACKEND\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '\[V032-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'com.hfa.runtime-analyzer/v0.3.2' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAMap_RuntimeAnalyzer_v032.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
-          grep -q '\[V03-AUTO-RETRY\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
-          grep -q 'HFAFeatureLabelNumeric(chosen)' hfamap/src/HFAMapPatchExecutionTrace.m
 
       - name: Install build dependencies
         run: brew install ldid
@@ -72,28 +74,29 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build v0.3
+      - name: Build v0.3.2
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFARuntimeAnalyzer-v0.3.dylib'
+          out='dist/HFARuntimeAnalyzer-v0.3.2-AutoBackend.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.txt
-          strings "$out" > dist/strings_v03.txt
-          grep -q 'V03-SCAN-END' dist/strings_v03.txt
-          grep -q 'V03-OWNERSHIP-FINALIZE' dist/strings_v03.txt
-          grep -q 'GENERIC-KEY' dist/strings_v03.txt
-          grep -q 'HFAMap_RuntimeAnalyzer_v03.json' dist/strings_v03.txt
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.2-AutoBackend.txt
+          strings "$out" > dist/strings_v032.txt
+          grep -q 'V032-SCAN-END' dist/strings_v032.txt
+          grep -q 'V032-BACKEND' dist/strings_v032.txt
+          grep -q 'receiver-capture' dist/strings_v032.txt
+          grep -q 'com.hfa.runtime-analyzer/v0.3.2' dist/strings_v032.txt
+          grep -q 'HFAMap_RuntimeAnalyzer_v032.json' dist/strings_v032.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFARuntimeAnalyzer-v0.3
+          name: HFARuntimeAnalyzer-v0.3.2-AutoBackend
           path: |
-            hfamap/dist/HFARuntimeAnalyzer-v0.3.dylib
-            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.txt
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.2-AutoBackend.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.2-AutoBackend.txt
           if-no-files-found: error
