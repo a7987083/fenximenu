@@ -14,9 +14,12 @@ if 'HFAManualCaptureStart8s' not in ui:
     ui = ui.replace(anchor, anchor + proto, 1)
 
 if 'actionCyberCapture8s:' not in ui:
-    end_impl = ui.find('\n@end\n')
+    impl = ui.find('@implementation HFACyberUIController')
+    if impl < 0:
+        raise SystemExit('controller implementation missing')
+    end_impl = ui.find('\n@end\n', impl)
     if end_impl < 0:
-        raise SystemExit('controller end missing')
+        raise SystemExit('controller implementation end missing')
     method = '''\n- (void)actionCyberCapture8s:(UIButton *)sender {\n    if (HFAManualCaptureIsActive()) return;\n    sender.enabled = NO;\n    HFACyberUIAppendLog(@"\\n[COMMAND] 8 秒手动捕获");\n    if (!HFAManualCaptureStart8s()) { sender.enabled = YES; return; }\n    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8200 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{ sender.enabled = YES; });\n}\n'''
     ui = ui[:end_impl] + method + ui[end_impl:]
 
