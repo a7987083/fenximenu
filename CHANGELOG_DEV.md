@@ -1,5 +1,60 @@
 # Development Changelog
 
+## HFARuntimeAnalyzer v0.3.3 — StaticParity AutoBackend
+
+Branch: `feature/hfaruntime-v0.3.3-static-parity-autobackend`
+
+Base: `cb04586dba45e1f57df4d1a2a76a54385d864066` (`v0.3.2 AutoBackend`)
+
+Implementation commits:
+- `160b939232727e3d9c99c4bd29bb57bb61622199` — static parity + Runtime State diagnostics;
+- `e15f3226b48ca09d0fd2bb419e18836aee98bd49` — schema normalization fix;
+- `806957d0ebe3ef13559d72809295bb6eeb69de09` — successful CI build wiring.
+
+GitHub Actions run: `36161672792` — **success**
+
+Artifact ID: `10876640401`
+
+Artifact ZIP digest:
+`sha256:3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371`
+
+Binary: `HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib`
+
+Binary size: `264992` bytes
+
+Binary SHA-256:
+`ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`
+
+### Changed
+
+- Aligned on-device descriptor discovery with the offline simulator's binary-first model: structural `length/flags/family` records are retained before plaintext/decrypt success is known.
+- Changed the descriptor walk to the simulator-compatible 8-byte record alignment.
+- Removed the v0.3.2 hard stop when `HFAV02ResolveDecrypt()` cannot resolve a decrypt routine.
+- Added a unique-match static decrypt fingerprint fallback using the simulator signature; unresolved decrypt now records evidence instead of discarding all descriptors.
+- Added per-record `decryptStatus` so structural discovery and plaintext confidence are kept separate.
+- Preserved the universal second-button chain: selected menu dylib -> family parser -> AutoBackend.
+- Added read-only `hookReturnEvidence` and `staticOverrideCandidates` for Runtime State backends. These are explicitly `diagnostic-only`; RogueLegend/MeChat are not promoted to canonical patches without additional device/binary evidence.
+- Added `HFAMap_RuntimeAnalyzer_v033.json` while retaining compatibility outputs.
+- Preserved per-app output routing through `HFAOutputPath()` under `Documents/HFAMap_<CFBundleIdentifier>/`; direct `Documents/HFAMap_*` output is rejected by CI.
+
+### Verification
+
+- generation chain: passed;
+- v0.3.3 source marker and structural-parity gates: passed;
+- universal AutoBackend entry gate: passed;
+- bundle-folder output regression gate: passed;
+- direct Documents output audit: passed;
+- arm64 compile/link/strip/sign: passed;
+- final binary marker inspection: passed;
+- artifact upload/re-hash: passed;
+- device runtime validation: **pending**.
+
+### Next device matrix
+
+1. Duck Survival / Path of Kings / Random Dice 2 / Heavenfall / PopIsland / WhisperCastle: require `V033-DECRYPT`, `V033-SCAN-END`, and `HFAMap_RuntimeAnalyzer_v033.json` for every selected dylib.
+2. RogueLegend / MeChat: collect `hookReturnEvidence` and any `staticOverrideCandidates`; keep them unresolved unless semantics and original bytes close the evidence chain.
+3. Earn to Die Rogue / Rise of Berk / ZombieCatchers / HelloKittyMyDreamStore / Legend of Survivors: no-regression reference set.
+
 ## v1.9.37.10 — verified Earn to Die Rogue Fuel/Boost profile
 
 Branch: `feature/hfamap-v193710-unified-feature-model`
@@ -104,17 +159,17 @@ Conclusion: the v1.9.36.4 WayOfKings/iGMM path is device-confirmed. No further W
 - runtime-record/static 5 MB current-line regression: PENDING;
 - legacy ~15 MB current-line regression: PENDING.
 
-## v1.9.36.3 JSONExport — device passed on WayOfKings
+### v1.9.36.3 JSONExport — device passed on WayOfKings
 
 - Added evidence-preserving `normalizedExecutionPrimitive`.
 - Added read-only `targetIdentities`.
 - Device archive confirmed stable startup, scan, button normalization and target identity output.
 
-## v1.9.36.2 JSONExport — CI passed
+### v1.9.36.2 JSONExport — CI passed
 
 - Added exact `kTypeButton -> button` normalization.
 
-## v1.9.36.1 JSONExport — device tested on WayOfKings
+### v1.9.36.1 JSONExport — device tested on WayOfKings
 
 - Rebased onto the stable v1.9.36 parser.
 - Added analysis-only serializer after Full Scan.
