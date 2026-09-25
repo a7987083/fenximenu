@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.21-dev";
+    return @"2.5.22-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.21-dev-universal-feature-implementation";
+    return @"2.5.22-dev-feature-dispatcher-slicing";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"READ-ONLY-FAST-UI-ASYNC-UNIVERSAL-FEATURE-IMPLEMENTATION";
+    return @"READ-ONLY-FAST-UI-ASYNC-FEATURE-DISPATCHER-SLICING";
 }
 
 NSString *HFAMapDisplayVersion(void) {
