@@ -1,0 +1,96 @@
+name: HFARuntimeAnalyzer v0.4.1
+
+on:
+  push:
+    branches:
+      - feature/hfamap-runtime-analyzer-v1
+    paths:
+      - 'hfamap/**'
+      - '.github/scripts/**'
+      - '.github/workflows/theos-hfamap-runtime-analyzer-v041.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate baseline + RuntimeAnalyzer v0.4.1
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfamap_v1936_chain.py
+          python3 .github/scripts/hfamap_v19361_json_export.py
+          python3 .github/scripts/hfamap_v19367_dynamic_apply_local.py
+          python3 .github/scripts/hfamap_v19367_secret_callgraph_local.py
+          python3 .github/scripts/hfamap_v19367_app_local_menu_resolver.py
+          python3 .github/scripts/hfamap_v19367_ui_cleanup.py
+          python3 .github/scripts/hfamap_v19367_trace_cleanup.py
+          python3 .github/scripts/hfamap_v19367_generic_cleanup.py
+          python3 .github/scripts/hfamap_v19368_family_menu_resolver.py
+          python3 .github/scripts/apply_hfamap_v19370.py
+          python3 .github/scripts/hfamap_v19371_5m_dispatcher_resolver.py
+          python3 .github/scripts/hfamap_v19372_5m_dual_backend_fix.py
+          python3 .github/scripts/hfamap_v19373_app_local_dylib_discovery_v2.py
+          python3 .github/scripts/hfamap_v19374_prepare_patch.py
+          python3 .github/scripts/hfamap_v19374_manual_candidate_selection.py
+          python3 .github/scripts/hfamap_v19374_finalize_markers.py
+          python3 .github/scripts/hfamap_v19375_loaded_macho_dependency_discovery.py
+          python3 .github/scripts/hfamap_v19376_loaded_image_fingerprint.py
+          python3 .github/scripts/hfamap_v19377_two_stage_class_metadata_scan.py
+          python3 .github/scripts/hfamap_v19378_structural_relation_expansion.py
+          python3 .github/scripts/hfamap_v19379_complete_feature_export.py
+          python3 .github/scripts/hfamap_v193710_unified_feature_model.py
+          python3 .github/scripts/hfamap_v193710_earntodie_verified_profile.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v02.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v02_fix1.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v03.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v04.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v041_stability.py
+          git diff --check
+
+      - name: Verify v0.4.1 generated sources
+        run: |
+          set -euo pipefail
+          grep -q 'V041-SCAN-CACHE-HIT' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'stabilityProfile' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'v0.4.1-bounded' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'fam==0x000101u' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q 'HFAOwnershipV04Analyze' hfamap/src/HFAMapFamilyRuntimeResolver.m
+          grep -q 'HFAMapOwnershipResolverV04.m' hfamap/Makefile
+
+      - name: Install build dependencies
+        run: brew install ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Build v0.4.1
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out='dist/HFARuntimeAnalyzer-v0.4.1.dylib'
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.4.1.txt
+          strings "$out" > dist/strings_v041.txt
+          grep -q 'V041-SCAN-END' dist/strings_v041.txt
+          grep -q 'V041-SCAN-CACHE-HIT' dist/strings_v041.txt
+          grep -q 'V04-SCAN-END' dist/strings_v041.txt
+          grep -q 'HFAMap_RuntimeAnalyzer_v04.json' dist/strings_v041.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.4.1
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.4.1.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.4.1.txt
+          if-no-files-found: error
