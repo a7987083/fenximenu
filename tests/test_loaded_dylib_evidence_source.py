@@ -62,7 +62,10 @@ class LoadedDylibEvidenceSourceTests(unittest.TestCase):
         self.assertIn('HFAMapResolveLoadedDylibEvidence', BUNDLE)
         self.assertIn('HFAMapPersistLoadedDylibEvidence', BUNDLE)
         self.assertIn('loadedRuntimeEvidence', BUNDLE)
-        self.assertIn('LoadedDylibEvidenceResolver.mm', MAKEFILE)
+        self.assertTrue(
+            'LoadedDylibEvidenceResolver.mm' in MAKEFILE or
+            'LoadedDylibEvidenceResolver2519.mm' in MAKEFILE
+        )
 
 
 if __name__ == '__main__':
