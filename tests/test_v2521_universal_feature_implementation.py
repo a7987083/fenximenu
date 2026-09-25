@@ -25,6 +25,11 @@ class UniversalFeatureImplementation2521Tests(unittest.TestCase):
         self.assertIn('dispatch_get_global_queue(QOS_CLASS_UTILITY, 0)', self.scanner)
         self.assertNotIn('@"menuImplementationInventory":@(implementationInventory!=nil)', self.scanner)
 
+    def test_every_visible_result_popup_uses_current_build_identity(self):
+        self.assertIn('#import "HFAMapBuildInfo.h"', self.scanner)
+        self.assertIn('alertControllerWithTitle:HFAMapDisplayVersion()', self.scanner)
+        self.assertNotIn('alertControllerWithTitle:@"HFAMap v2.5.13"', self.scanner)
+
     def test_full_universal_feature_inventory_is_still_persisted(self):
         self.assertIn('HFAMapBuildMenuImplementationInventory', self.scanner)
         self.assertIn('HFAMapPersistMenuImplementationInventory', self.scanner)
