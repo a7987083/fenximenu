@@ -1,6 +1,83 @@
 # HFAMap Roadmap
 
-## Current phase — v1.9.37.10 Earn to Die Rogue completion
+## Current phase — HFARuntimeAnalyzer v0.3.3 StaticParity device validation
+
+Branch: `feature/hfaruntime-v0.3.3-static-parity-autobackend`
+
+Baseline: v0.3.2 `cb04586dba45e1f57df4d1a2a76a54385d864066`
+
+Successful CI build commit: `806957d0ebe3ef13559d72809295bb6eeb69de09`
+
+CI run: `36161672792` — success
+
+Artifact: `HFARuntimeAnalyzer-v0.3.3-StaticParity` (`10876640401`)
+
+Binary SHA256: `ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`
+
+### Goal
+
+Make the on-device analyzer follow the same evidence order as the offline simulator:
+
+`current menu Mach-O bytes -> structural descriptor records -> XREF/backend -> optional decrypt/plaintext evidence -> target semantics`
+
+Decrypt/plaintext availability must no longer decide whether a structurally valid descriptor exists.
+
+### Implemented in v0.3.3
+
+- simulator-compatible 8-byte descriptor alignment;
+- binary-first retention of target/patch family records;
+- no hard return when runtime decrypt resolution fails;
+- unique static decrypt fingerprint fallback;
+- per-record `decryptStatus`;
+- universal selected-dylib AutoBackend entry preserved;
+- Runtime State `hookReturnEvidence` and diagnostic-only `staticOverrideCandidates`;
+- new `HFAMap_RuntimeAnalyzer_v033.json`;
+- per-App output directory preserved as `Documents/HFAMap_<CFBundleIdentifier>/`;
+- direct Documents-root HFAMap output rejected by CI.
+
+### Device milestone A — previously missing AutoBackend samples
+
+Test in this order:
+
+1. Duck Survival;
+2. Path of Kings;
+3. Random Dice 2;
+4. Heavenfall;
+5. PopIsland;
+6. WhisperCastle.
+
+Acceptance for each:
+
+- selected menu dylib is correct;
+- `[V033-DECRYPT]` exists;
+- `[V033-SCAN-END]` exists;
+- `HFAMap_RuntimeAnalyzer_v033.json` exists in that App's independent folder;
+- structural descriptors/backends are present even if decrypt status is unresolved;
+- no stale file from another App appears in the folder.
+
+### Device milestone B — Runtime State completion
+
+RogueLegend and MeChat already reach Runtime State but have no v0.3.2 field offsets. For v0.3.3:
+
+1. inspect `hookReturnEvidence`;
+2. inspect any `staticOverrideCandidates`;
+3. confirm target image/UUID/RVA and original bytes;
+4. only promote a patch if the semantic path is unique and independently proven;
+5. otherwise keep the result unresolved/diagnostic rather than fabricating a canonical patch.
+
+### Device milestone C — no-regression set
+
+Recheck known-good v0.3.2 samples:
+
+- Earn to Die Rogue: expected reference 19 Backend = 18 Static + 1 Runtime State, derived 2;
+- Rise of Berk: 15 Static;
+- ZombieCatchers: 4 Static;
+- HelloKittyMyDreamStore: 6 Static;
+- Legend of Survivors: 16 Static.
+
+Do not promote v0.3.3 as the new stable analyzer until milestones A-C are supported by saved per-bundle logs/JSON.
+
+## Previous phase — v1.9.37.10 Earn to Die Rogue completion
 
 Branch: `feature/hfamap-v193710-unified-feature-model`
 
@@ -11,109 +88,24 @@ Verified-profile implementation commit:
 
 The `com.notdoppler.earntodierogue` `1.28.251 (1)` scan originally exported
 12 canonical features and treated Fuel/Boost as runtime-observed records with
-empty patch arrays. Matching IL2CPP metadata and ARM64 data-flow analysis now
-prove both are static depletion sites in `Car.FixedUpdate()`.
+empty patch arrays. Matching IL2CPP metadata and ARM64 data-flow analysis prove
+both are static depletion sites in `Car.FixedUpdate()`.
 
-Current milestone:
+Verified exact-build sites:
 
-- append `Unlimited Fuel` at `UnityFramework + 0x2D98AC8`;
-- append `Unlimited Boost` at `UnityFramework + 0x2D9887C`;
-- replace only the relevant `fsub` with ARM64 `nop` (`1F2003D5`);
-- require exact bundle version, arm64 architecture, UnityFramework UUID and
-  original-byte matches before either patch is exported;
-- preserve generic resolver behavior for every other title/build.
+- Fuel: `UnityFramework + 0x2D98AC8`, `0038211E -> 1F2003D5`;
+- Boost: `UnityFramework + 0x2D9887C`, `0038281E -> 1F2003D5`.
 
-Next tasks:
+The profile remains exact-build only and does not weaken generic truth gates.
 
-1. run a clean device scan and require 14 canonical features / 20 patches;
-2. enable Fuel and Boost separately before depletion and verify values/HUD;
-3. disable both and verify original-byte restoration;
-4. reproduce and resolve the existing Posters/Prestige overlap at
-   `UnityFramework + 0x2E25904`.
+## Stable parser/exporter checkpoint
 
-CI checkpoint:
+v1.9.36.4 JSONExport remains the device-confirmed WayOfKings/iGMM parser checkpoint. The v1.9.37/v1.9.37.1 combined playback/Dobby architecture remains retired after device startup crashes.
 
-- run: `35170319783` — success;
-- artifact: `10476488771`;
-- artifact digest:
-  `sha256:3d64e19af748115b1b968ce98a99320948fbeb97d6b28cba4fb364546701b1d4`;
-- dylib SHA-256:
-  `afc4ab46bff54bb1eef35f81d3cde65cedb557257c913b858844de4c1ea79c58`.
+Core rules remain:
 
-## Current phase
-
-v1.9.36.4 JSONExport — pure parser/exporter, CI passed, **WayOfKings/iGMM device validation passed**, cross-family regression next.
-
-## Product direction
-
-HFAMapUniversal stays focused on:
-
-`original menu -> parser -> evidence -> normalized JSON`
-
-The runtime execution engine is not part of the parser mainline. v1.9.37/v1.9.37.1 merged playback/Dobby into the parser and crashed on device startup, so that direction is retired.
-
-## Stable foundation
-
-- Frozen parser baseline: v1.9.36 ArchitectureTruth, commit `75f94da37221343b6839465ad365ddec2679e63a`.
-- Preserve constructor, `run_full_scan()` and resolver/decrypt/original-byte core exactly.
-- Canonical static patches remain `com.hfa.patch/v1` with preferred Mach-O VM addresses.
-- iGMM runtime behavior remains diagnostic-only under `com.hfa.igmm.runtime/v1`.
-- Normalized cross-family analysis uses `com.hfa.menu.analysis/v1` with `analysisOnly=true`.
-
-## Current milestone: v1.9.36.4
-
-Build checkpoint:
-
-- branch: `feature/hfamap-v19361-json-export`;
-- build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`;
-- CI run: `34907671999` — success;
-- artifact ID: `10372928333`;
-- artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`;
-- binary: `HFAMapUniversal_v1.9.36.4_JSONExport.dylib`;
-- size: `192432` bytes;
-- SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`.
-
-## WayOfKings/iGMM validation: COMPLETE
-
-Device archive `归档 6(1).zip` confirmed:
-
-- stable injection / no startup crash;
-- Full Scan completion;
-- 4-feature iGMM diagnostic export;
-- normalized analysis export with `status=pass`;
-- `Damage Multiplier -> number`, default `1`;
-- `Defence Multiplier -> number`, default `1`;
-- `God Mode -> toggle`;
-- `Debug Menu: kTypeButton -> button`;
-- raw Debug Menu primitive/reason preserved;
-- `normalizedExecutionPrimitive = runtimeAction`;
-- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- target identities for `libpathofkings.dylib` and `UnityFramework` remain correct.
-
-The iGMM path should now be treated as a completed regression checkpoint for this parser line unless new contradictory device evidence appears.
-
-## Next validation: runtime-record/static 5 MB family
-
-Use the same v1.9.36.4 binary. Required evidence:
-
-1. no startup crash;
-2. Full Scan completes;
-3. canonical `com.hfa.patch/v1` is generated only after the existing truth gates pass;
-4. the target image is the intended executable/dylib, not an injected module;
-5. target identity UUID/architecture/preferred `__TEXT` values are consistent with the tested binary;
-6. every exported `original` byte sequence matches the real target code at the preferred Mach-O VM address;
-7. no stale package from a previous run is mistaken for current output;
-8. normalized `com.hfa.menu.analysis/v1` reflects the canonical features without changing the static patch contract.
-
-## Following validation: legacy ~15 MB family
-
-After the static 5 MB family passes:
-
-1. run the same v1.9.36.4 parser on the legacy AP/IGSecret-style sample;
-2. confirm the historically working static package path still exports correctly;
-3. compare control/patch/identity normalization across the 15 MB, static 5 MB and iGMM families;
-4. only then promote this parser/exporter line as a cross-family candidate.
-
-## Deferred work
-
-Execution of generated JSON remains a separate project/module. Do not merge it back into HFAMapUniversal without a separately device-validated integration design.
+- preserve evidence instead of forcing every runtime behavior into a static patch;
+- canonical static patches require target identity and original-byte truth;
+- preferred Mach-O VM addresses define static offsets;
+- runtime-only/ambiguous evidence stays diagnostic;
+- generated outputs must be attributable to the current App and current scan.
