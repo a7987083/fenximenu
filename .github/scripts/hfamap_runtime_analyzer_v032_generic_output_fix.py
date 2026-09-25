@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 P = Path('hfamap/src/HFAMapGenericMenuResolver.m')
 s = P.read_text()
@@ -76,7 +77,17 @@ s = replace(s, 'HFAGenericJSON', r'''static void HFAGenericJSON(NSDictionary *re
     }
 }''')
 
+# Historical generators used several formatting variants. Collapse any remaining
+# direct NSHomeDirectory/Documents/HFAMap_* path construction to the common helper.
+s = re.sub(
+    r'\[NSHomeDirectory\(\)\s*stringByAppendingPathComponent:@"Documents/(HFAMap_[^"]+)"\]',
+    r'HFAOutputPath(@"\1")',
+    s,
+    flags=re.S,
+)
+
 if 'Documents/HFAMap_' in s:
-    raise SystemExit('generic resolver still contains direct Documents/HFAMap_ path')
+    leftovers = [line.strip() for line in s.splitlines() if 'Documents/HFAMap_' in line]
+    raise SystemExit('generic resolver still contains direct Documents/HFAMap_ path: ' + ' || '.join(leftovers[:8]))
 P.write_text(s)
 print('generic resolver bundle output paths fixed')
