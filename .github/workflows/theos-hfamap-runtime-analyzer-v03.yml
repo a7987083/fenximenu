@@ -52,6 +52,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v032_generic_output_fix.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_safe_discovery_paths.py
           python3 .github/scripts/hfamap_runtime_analyzer_v033_static_parity.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v033_fix1.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
