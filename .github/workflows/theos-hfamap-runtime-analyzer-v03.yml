@@ -46,6 +46,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v02.py
           python3 .github/scripts/hfamap_runtime_analyzer_v02_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
           git diff --check
 
       - name: Verify v0.3 generated sources
@@ -57,6 +58,7 @@ jobs:
           grep -q '\[V03-SCAN-END\]' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'com.hfa.runtime-analyzer/v0.3' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFAMap_RuntimeAnalyzer_v03.json' hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          grep -q '_dyld_get_image_vmaddr_slide' hfamap/src/HFAMapRuntimeAnalyzerV02.m
           grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-AUTO-RETRY\]' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
