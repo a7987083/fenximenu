@@ -61,7 +61,7 @@ if '8秒手动捕获' not in ui:
     ui = ui.replace(button_anchor, button_anchor + button_code, 1)
 
 ready_anchor = '    HFACyberUIAppendLog(@"[System] 先扫描菜单模块，再解析并导出。");\n'
-ready_code = '    HFACyberUIAppendLog(@"[System] v0.3.1：解析后可启动 8 秒手动多功能捕获。\");\n'
+ready_code = '    HFACyberUIAppendLog(@"[System] v0.3.1：解析后可启动 8 秒手动多功能捕获。");\n'
 if 'v0.3.1：解析后可启动' not in ui:
     if ready_anchor not in ui:
         raise SystemExit('CyberUI ready anchor missing')
