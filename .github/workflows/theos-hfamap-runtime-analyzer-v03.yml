@@ -48,6 +48,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v03.py
           python3 .github/scripts/hfamap_runtime_analyzer_v03_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v032_auto_backend.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v032_output_layout.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
@@ -75,6 +76,24 @@ jobs:
           grep -q 'HFA5MDispatcherObserveAction(control, target, action)' hfamap/src/HFAMapFamilyRuntimeResolver.m
           grep -q '\[V03-OWNERSHIP-FINALIZE\]' hfamap/src/HFAMapPatchExecutionTrace.m
 
+          # v0.3 discovery stays lightweight and isolated from deep backend parsing.
+          grep -q 'HFAAppLocalScanCandidates()' hfamap/src/HFAMapCyberUI.m
+          grep -q '\[DISCOVERY-MODE\] v0.3 baseline / discovery-only' hfamap/src/HFAMapCyberUI.m
+
+          # All primary logs/JSONs are grouped under Documents/HFAMap_<BundleID>/.
+          test -f hfamap/src/HFAMapOutputPaths.h
+          test -f hfamap/src/HFAMapOutputPaths.m
+          grep -q 'HFAMap_%@' hfamap/src/HFAMapOutputPaths.m
+          grep -q 'CFBundleIdentifier' hfamap/src/HFAMapOutputPaths.m
+          grep -q 'HFAOutputDirectory()' hfamap/src/HFAMapJSONExport.m
+          grep -q 'HFAOutputPath(@"HFAMap_Learn.log")' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'HFAOutputPath(@"HFAMap_AppLocalCandidates.json")' hfamap/src/HFAMapAppLocalResolver.m
+          grep -q 'src/HFAMapOutputPaths.m' hfamap/Makefile
+
+          # UI and exported analyzer metadata show the actual test build.
+          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapCyberUI.m
+          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' hfamap/src/HFAMapAppLocalResolver.m
+
       - name: Install build dependencies
         run: brew install ldid
 
@@ -101,6 +120,9 @@ jobs:
           grep -Fxq 'com.hfa.runtime-analyzer/v0.3.2' dist/strings_v032.txt
           ! grep -Fq 'com.hfa.runtime-analyzer/v0.3.2.2' dist/strings_v032.txt
           grep -q 'HFAMap_RuntimeAnalyzer_v032.json' dist/strings_v032.txt
+          grep -q 'HFAMap RuntimeAnalyzer v0.3.2 AutoBackend' dist/strings_v032.txt
+          grep -q 'HFAMap_%@' dist/strings_v032.txt
+          grep -q 'DISCOVERY-MODE' dist/strings_v032.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
