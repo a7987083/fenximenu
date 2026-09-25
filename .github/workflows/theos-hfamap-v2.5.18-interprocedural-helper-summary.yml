@@ -1,0 +1,64 @@
+name: HFAMap v2.5.18 Interprocedural Helper Summary
+
+on:
+  push:
+    branches:
+      - feature/hfamap-v2.5.18-interprocedural-helper-summary
+    paths:
+      - 'hfamap/**'
+      - 'tests/**'
+      - '.github/workflows/theos-hfamap-v2.5.18-interprocedural-helper-summary.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile tests/*.py
+      - name: Generate and check v2.5.18 invariants
+        run: |
+          set -euo pipefail
+          python3 hfamap/tools/generate_v2518_helper_summary.py
+          test -f hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          grep -q '2.5.18-dev' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          grep -q 'HFASDSummarizeHelperReturn' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          grep -q 'senderDerivedHelperReturnCount' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          grep -q 'interprocDepth > 2' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          grep -q 'READ-ONLY-INTERPROCEDURAL-HELPER-RETURN-PROVENANCE' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          ! grep -q '0x3929C0' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          ! grep -q '0xB96A54' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+          ! grep -q '0xB96B2C' hfamap/src/HFAMapSenderDerivedProvenanceResolver2518.mm
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      - name: Build arm64 dylib
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          make -C hfamap clean
+          make -C hfamap FINALPACKAGE=1
+          mkdir -p hfamap/dist/v2.5.18-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.18-dev/HFAMapUniversal-v2.5.18-dev.dylib
+          out=hfamap/dist/v2.5.18-dev/HFAMapUniversal-v2.5.18-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2518.strings"
+          file "$out" | grep -q arm64
+          grep -q '2.5.18-dev-interprocedural-helper-summary' "$RUNNER_TEMP/hfamap2518.strings"
+          grep -q 'READ-ONLY-INTERPROCEDURAL-HELPER-RETURN-PROVENANCE' "$RUNNER_TEMP/hfamap2518.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.18-dev/SHA256SUMS.txt
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFAMapUniversal-v2.5.18-InterproceduralHelperSummary
+          path: |
+            hfamap/dist/v2.5.18-dev/HFAMapUniversal-v2.5.18-dev.dylib
+            hfamap/dist/v2.5.18-dev/SHA256SUMS.txt
+          if-no-files-found: error
