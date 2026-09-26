@@ -1,8 +1,8 @@
-name: Build Zonoe API Full Smoke V1
+name: Build Zonoe Server Driven Auth Flow V1
 on:
   workflow_dispatch:
   push:
-    branches: ["test/zonoe-api-full-smoke-v1"]
+    branches: ["test/zonoe-server-driven-auth-flow-v1"]
     paths:
       - "experiments/zonoe-auth-rebuild-v1/**"
       - ".github/workflows/zonoe-auth-rebuild-v1.yml"
@@ -21,15 +21,14 @@ jobs:
             "$SRC/ZONUI.m" "$SRC/ZONNetwork.m" "$SRC/ZONAPIEndpoints.m" \
             "$SRC/ZONAuthorization.m" "$SRC/ZONActivation.m" "$SRC/ZONLicenseStatus.m" \
             "$SRC/ZONVerify.m" "$SRC/ZONStorage.m" "$SRC/ZONResponseFormatter.m" \
-            "$SRC/ZONAPISmokeCenter.m" "$SRC/ZONEntry.m" \
-            "$SRC/ZONDylibConfig.m" "$SRC/ZONDylibVerify.m" \
+            "$SRC/ZONEntry.m" "$SRC/ZONDylibConfig.m" "$SRC/ZONDylibVerify.m" \
             -framework UIKit -framework Foundation -framework Security -framework QuartzCore -framework CoreGraphics \
-            -o ZonoeAPIFullSmokeV1.dylib
-          codesign -f -s - ZonoeAPIFullSmokeV1.dylib
-          file ZonoeAPIFullSmokeV1.dylib
-          xcrun vtool -show-build ZonoeAPIFullSmokeV1.dylib || true
-          shasum -a 256 ZonoeAPIFullSmokeV1.dylib
+            -o ZonoeServerDrivenAuthFlowV1.dylib
+          codesign -f -s - ZonoeServerDrivenAuthFlowV1.dylib
+          file ZonoeServerDrivenAuthFlowV1.dylib
+          xcrun vtool -show-build ZonoeServerDrivenAuthFlowV1.dylib || true
+          shasum -a 256 ZonoeServerDrivenAuthFlowV1.dylib
       - uses: actions/upload-artifact@v4
         with:
-          name: ZonoeAPIFullSmokeV1-arm64-ios13
-          path: ZonoeAPIFullSmokeV1.dylib
+          name: ZonoeServerDrivenAuthFlowV1-arm64-ios13
+          path: ZonoeServerDrivenAuthFlowV1.dylib
