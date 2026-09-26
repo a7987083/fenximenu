@@ -1,126 +1,117 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.4.1",
-  "phase": "semantic-stability-ci-passed-device-regression-pending",
+  "version": "0.3.4.2",
+  "phase": "cfg-reachability-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.4.1-semantic-stability",
+  "branch": "feature/hfaruntime-v0.3.4.2-cfg-reachability",
   "baseline": {
-    "version": "0.3.4",
-    "commit": "b26bc6dbc275137659506eccf019523deb5b1f9f",
-    "artifact": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib"
+    "version": "0.3.4.1",
+    "commit": "0b48f2c620724a8f28812363619e58ec9db624c5",
+    "artifact": "HFARuntimeAnalyzer-v0.3.4.1-Stability.dylib"
   },
   "implementation": {
-    "stability_patch_commit": "1a9b8989c079847104d348fc219162cd640578bf",
-    "workflow_commit": "6638a2ec3a2ce8dde39ad264d008dc7487848cd8",
-    "build_tested_commit": "6638a2ec3a2ce8dde39ad264d008dc7487848cd8"
+    "cfg_patch_commit": "852db05cdd64b5ad6cf1ab7d5ce63db44799584b",
+    "workflow_commit": "64290a684acd6ca06eb355b6255c2a969d81c4e0",
+    "build_tested_commit": "64290a684acd6ca06eb355b6255c2a969d81c4e0"
   },
   "build": {
     "ci": "success",
-    "run_id": 36226498119,
-    "artifact_id": 10901201674,
-    "artifact": "HFARuntimeAnalyzer-v0.3.4.1-Stability",
-    "artifact_zip_sha256": "abf8cc0fd513d43addb03040fee7c3e36c39c744ca87ea04b5577c5d8adc7bb6",
-    "binary": "HFARuntimeAnalyzer-v0.3.4.1-Stability.dylib",
+    "run_id": 36230758952,
+    "artifact_id": 10901914640,
+    "artifact": "HFARuntimeAnalyzer-v0.3.4.2-CFGReachability",
+    "artifact_zip_sha256": "cc6d5e33a981de4235f1351691f1c453bf0609f0e6c874646074f34e4cbd0c4e",
+    "binary": "HFARuntimeAnalyzer-v0.3.4.2-CFGReachability.dylib",
     "architecture": "arm64",
-    "size_bytes": 282768,
-    "binary_sha256": "0a1ab56315776b5bb1d16f7b757910de8d178088e962c631038005a519560140"
+    "size_bytes": 282848,
+    "binary_sha256": "4725db3ddb46d6fac085d8738721b76e4b95ce44ae68287360584ab421b96b7f"
   },
-  "root_cause_assessment": {
-    "main_thread_only_hypothesis": "not-supported-by-source",
-    "evidence": "AutoBackend was already dispatched to a background global queue in v0.3.2 safe-discovery UI wiring.",
-    "highest_risk_v034_behavior": "HFAIL2CPPDescribeOwningMethod ran unconditionally for every backend on that background thread, without explicit il2cpp_thread_attach, with up to 12000 classes / 1.75 seconds per call.",
-    "device_logs": "Path/RandomDice/Earn/MeChat reached V034-DECRYPT; MeChat emitted one V034-BACKEND before termination. RogueLegend terminated earlier and remains a separate startup bucket."
-  },
-  "stability_changes": {
-    "background_execution": "dedicated serial AutoBackend queue",
-    "stage_logs": [
-      "V0341-SCAN-BEGIN",
-      "V0341-SEM-BEGIN",
-      "V0341-SEM-END",
-      "V0341-IL2CPP-BEGIN",
-      "V0341-IL2CPP-END",
-      "HFAMap_RuntimeAnalyzer_v0341_stage.log"
+  "device_evidence_from_0341": {
+    "stability": "nine tested games produced v0341 JSON and completed semantic stages without the prior V034 post-decrypt crash pattern",
+    "confirmed_semantics": [
+      "MeChat return-multiplier",
+      "RogueLegend CALL_ORIGINAL + FMUL + FDIV + FCSEL",
+      "RandomDice MergeAny conditional-return",
+      "RandomDice SPGainMulti argument-multiplier",
+      "RandomDice callback-constant-argument",
+      "Earn 18 static + 2 derived = 20 patches no-regression"
     ],
-    "budgets": {
-      "whole_semantic_scan_seconds": 4.0,
-      "per_backend_semantic_ms": 250,
-      "instruction_snapshot_max": 256
+    "new_root_cause": "linear 1KB semantic scan crossed into neighboring replacement functions and polluted classifications"
+  },
+  "cfg_0342": {
+    "analysis_model": "reachable-basic-block worklist over immutable snapshot",
+    "terminators": ["RET", "BR", "unconditional B"],
+    "conditional_edges": ["B.cond", "CBZ/CBNZ", "TBZ/TBNZ", "fallthrough"],
+    "limits": {
+      "instructions": 256,
+      "basic_blocks": 64,
+      "edges": 128,
+      "per_backend_ms": 250,
+      "whole_scan_seconds": 4.0
     },
-    "memory_safety": [
-      "vm_read_overwrite immutable replacement snapshot",
-      "safe pointer reads instead of raw live-memory memcpy",
-      "Mach-O text-bound validation"
-    ],
-    "backend_isolation": [
-      "static-patch or replacement==0 skips semantic replacement analysis",
-      "Objective-C exception fallback keeps backend record",
-      "budget-exceeded returns unknown-runtime instead of blocking the scan"
-    ],
+    "physical_boundary": "nearest greater known replacement RVA in selected menu dylib",
+    "new_semantics": ["return-transform", "support-thunk"],
+    "tail_original": "BR through original-slot-derived register is classified as TAILCALL_ORIGINAL/support-thunk instead of callback",
     "il2cpp_enrichment": {
       "default": "disabled",
-      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0341",
-      "cache": "targetRuntime keyed cache",
-      "thread_policy": "il2cpp_thread_attach/detach when opt-in enrichment is executed"
-    },
-    "rogue_breadcrumbs": [
-      "V0341-BOOT-01 legacy-log-ready",
-      "V0341-BOOT-02 family-resolver-ready",
-      "V0341-BOOT-03 runtime-profiler-ready"
-    ]
+      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0342",
+      "cache_and_thread_attach": "preserved from v0.3.4.1"
+    }
   },
-  "semantic_phase1": {
-    "preserved": true,
-    "new_algorithms_added_in_0341": false,
-    "reason": "stability changes are intentionally isolated from semantic-recognizer expansion"
+  "offline_fixture_checks": {
+    "Random Dice 2": {
+      "replacement_boundaries": ["0x40F0->0x40FC", "0x40FC->0x4108", "0x4108->0x4114", "0x4114->0x4204"],
+      "expected_effect": "short support thunks can no longer consume MUL at 0x41C0"
+    },
+    "Path of Kings": {
+      "replacement_boundaries": ["0x4050->0x40BC", "0x40BC->0x4128"],
+      "expected_effect": "receiver capture hooks can no longer consume FMUL in the 0x4128 main hook"
+    }
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "v0341_output": "HFAMap_RuntimeAnalyzer_v0341.json",
-    "stage_log": "HFAMap_RuntimeAnalyzer_v0341_stage.log",
+    "v0342_output": "HFAMap_RuntimeAnalyzer_v0342.json",
+    "stage_log": "HFAMap_RuntimeAnalyzer_v0342_stage.log",
     "compatibility_outputs": [
+      "HFAMap_RuntimeAnalyzer_v0341.json",
       "HFAMap_RuntimeAnalyzer_v034.json",
       "HFAMap_RuntimeAnalyzer_v033.json",
       "HFAMap_RuntimeAnalyzer_v032.json",
       "HFAMap_RuntimeAnalyzer_v03.json"
     ],
-    "direct_analyzer_documents_root_outputs": "forbidden-by-ci",
     "legacy_exporter_root_routing": "separate-open-task"
   },
   "verification": {
     "generator_chain": "passed",
-    "stability_source_gates": "passed",
-    "dedicated_serial_queue_gate": "passed",
-    "bundle_folder_regression_gate": "passed",
+    "cfg_source_gates": "passed",
+    "next_replacement_boundary_gate": "passed",
     "ios_compile_link_sign": "passed",
-    "binary_marker_inspection": "passed",
+    "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "device_no_crash_regression": "pending",
-    "semantic_cross_sample_regression": "pending"
+    "offline_sample_boundary_check": "passed",
+    "device_cfg_regression": "pending"
   },
   "device_validation_priority": [
-    "Earn to Die Rogue",
-    "Random Dice 2",
-    "MeChat",
     "Path of Kings",
-    "RogueLegend"
+    "Random Dice 2",
+    "Duck Survival",
+    "Dragon",
+    "RogueLegend",
+    "MeChat",
+    "Earn to Die Rogue"
   ],
-  "device_validation_rules": {
-    "default_enrichment": "keep disabled",
-    "required_files": [
-      "HFAMap_Learn.log",
-      "HFAMap_RuntimeAnalyzer_v0341_stage.log",
-      "HFAMap_RuntimeAnalyzer_v0341.json"
-    ],
-    "success_gate": "game remains alive and scan reaches V0341-SCAN-END / output file",
-    "rogue_gate": "if startup still terminates, use V0341-BOOT breadcrumbs before attributing it to Semantic Analyzer"
+  "expected_device_changes": {
+    "Path of Kings": "0x4050 and 0x40BC should stop inheriting FMUL from 0x4128; subobject receiver evidence should become visible",
+    "Random Dice 2": "0x40F0/0x40FC/0x4108 should stop inheriting later MUL operations and should become support-thunk/unknown as appropriate; MergeAny and callback semantics must remain",
+    "RogueLegend": "multi-operation float return should classify as return-transform",
+    "Earn to Die Rogue": "20-patch result must remain unchanged"
   },
   "pending_phases": [
+    "path-sensitive register-state merge",
     "feature-backend-binding",
     "descriptor-less-action-backend",
-    "fuller-cfg-and-path-merge",
     "canonical-runtime-bridge",
     "repository-wide-unified-output-routing",
     "optional-runtime-corroboration"
   ],
-  "next_task": "Device-test v0.3.4.1 with IL2CPP enrichment left disabled. First establish no-crash completion and collect complete per-App output folders; only then re-enable enrichment on one sample to validate attach/cache behavior."
+  "next_task": "Inject v0.3.4.2 into the priority samples, archive each complete HFAMap_<CFBundleIdentifier> folder, and compare v0342 cfg/basicBlocks/reachableInstructions/semanticType against v0341 and offline disassembly."
 }
