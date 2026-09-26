@@ -1,105 +1,130 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.3",
-  "phase": "static-parity-ci-passed-device-validation-pending",
+  "version": "0.3.4",
+  "phase": "semantic-backend-phase1-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.3-static-parity-autobackend",
+  "branch": "feature/hfaruntime-v0.3.4-semantic-backend-analyzer",
   "baseline": {
-    "version": "0.3.2",
-    "commit": "cb04586dba45e1f57df4d1a2a76a54385d864066",
-    "artifact": "HFARuntimeAnalyzer-v0.3.2-AutoBackend-bundlefolder.dylib"
+    "version": "0.3.3",
+    "commit": "f3090a8c1998f443eb4cae03eb857bfadf2c2002",
+    "artifact": "HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib"
   },
   "implementation": {
-    "static_parity_commit": "160b939232727e3d9c99c4bd29bb57bb61622199",
-    "schema_fix_commit": "e15f3226b48ca09d0fd2bb419e18836aee98bd49",
-    "successful_build_commit": "806957d0ebe3ef13559d72809295bb6eeb69de09"
+    "semantic_interface_commit": "761c9f4a0956fa45f29fdb150f58d789c8f5e15f",
+    "semantic_engine_commit": "0c4fe40c95df8febcd372381e10cf04c2e6ac4c0",
+    "integration_commit": "3d20602a6c1f14e70f0fd44a271c33c17058c194",
+    "build_workflow_commit": "8c06ddf267c888d6e3109316d44fd34be2776a74",
+    "successful_build_commit": "3918052e30fcc0d7dca78e4754240cf5e94dba3c"
   },
   "build": {
     "ci": "success",
-    "run_id": 36161672792,
-    "artifact_id": 10876640401,
-    "artifact": "HFARuntimeAnalyzer-v0.3.3-StaticParity",
-    "artifact_zip_sha256": "3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371",
-    "binary": "HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib",
+    "run_id": 36218004874,
+    "artifact_id": 10897963845,
+    "artifact": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend",
+    "artifact_zip_sha256": "de49e2dfd51deb6004e22b407ba20554c81da8c22005f928d633a81f1e67274d",
+    "binary": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib",
     "architecture": "arm64",
-    "size_bytes": 264992,
-    "binary_sha256": "ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca"
+    "size_bytes": 265424,
+    "binary_sha256": "cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00"
   },
-  "static_parity": {
-    "descriptor_discovery": "binary-first-length-flags-family",
-    "record_alignment_bytes": 8,
-    "hard_stop_on_missing_decrypt": false,
-    "decrypt_resolution": [
-      "existing-runtime-resolver",
-      "unique-static-fingerprint-fallback"
+  "semantic_phase1": {
+    "module": "HFARuntimeSemanticAnalyzer",
+    "cfg_lite": [
+      "unconditional-b-shared-epilogue-constant-return"
     ],
-    "per_record_decrypt_status": true,
-    "structural_records_survive_decrypt_failure": true
+    "original_call": "original-slot-register-to-BLR-evidence",
+    "operations": [
+      "MUL",
+      "FMUL",
+      "FDIV",
+      "FSUB",
+      "FCSEL"
+    ],
+    "receiver_flow": [
+      "receiver-capture",
+      "subobject-receiver-capture"
+    ],
+    "callback_evidence": "constant-argument",
+    "semantic_types": [
+      "conditional-return",
+      "return-multiplier",
+      "return-divider",
+      "return-select",
+      "argument-multiplier",
+      "argument-divider",
+      "receiver-capture",
+      "subobject-receiver-capture",
+      "callback-constant-argument",
+      "unknown-runtime"
+    ],
+    "canonical_policy": "diagnostic-first-fail-closed"
   },
-  "runtime_state": {
-    "canonical_policy": "fail-closed",
-    "hook_return_evidence": true,
-    "static_override_candidates": "diagnostic-only",
-    "known_unresolved": {
-      "RogueLegend": {
-        "backends": 3,
-        "static": 2,
-        "runtime_state": 1,
-        "field_offsets": [],
-        "derived_patches": 0
-      },
-      "MeChat": {
-        "backends": 8,
-        "static": 7,
-        "runtime_state": 1,
-        "field_offsets": [],
-        "derived_patches": 0
-      }
-    },
-    "known_reference": {
-      "Earn to Die Rogue": {
-        "backends": 19,
-        "static": 18,
-        "runtime_state": 1,
-        "derived_patches": 2,
-        "final_offsets": 20
-      }
-    }
+  "il2cpp_enrichment": {
+    "owning_method": true,
+    "bounded_live_scan": true,
+    "class_cap": 12000,
+    "wall_budget_seconds": 1.75,
+    "fields": [
+      "assembly",
+      "namespace",
+      "class",
+      "method",
+      "methodInfo",
+      "methodRuntimeAddress",
+      "intraMethodOffset",
+      "parameters",
+      "return",
+      "instance",
+      "generic",
+      "inflated"
+    ],
+    "failure_policy": "native-backend-survives-enrichment-failure"
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
     "helper": "HFAOutputDirectory/HFAOutputPath",
-    "v033_output": "HFAMap_RuntimeAnalyzer_v033.json",
-    "direct_documents_root_outputs": "forbidden-by-ci"
+    "v034_output": "HFAMap_RuntimeAnalyzer_v034.json",
+    "compatibility_outputs": [
+      "HFAMap_RuntimeAnalyzer_v033.json",
+      "HFAMap_RuntimeAnalyzer_v032.json",
+      "HFAMap_RuntimeAnalyzer_v03.json"
+    ],
+    "direct_analyzer_documents_root_outputs": "forbidden-by-ci",
+    "legacy_exporter_root_routing": "separate-open-task"
   },
   "verification": {
     "generator_chain": "passed",
-    "source_markers": "passed",
+    "semantic_source_gates": "passed",
     "universal_autobackend_entry": "passed",
     "bundle_folder_regression_gate": "passed",
-    "direct_output_path_audit": "passed",
+    "direct_analyzer_output_path_audit": "passed",
     "ios_compile_link_sign": "passed",
     "binary_marker_inspection": "passed",
-    "artifact_rehash": "passed",
+    "artifact_download_rehash": "passed",
     "device_runtime": "pending",
-    "cross_sample_regression": "pending"
+    "semantic_cross_sample_regression": "pending"
   },
   "device_validation_priority": [
-    "Duck Survival",
-    "Path of Kings",
     "Random Dice 2",
-    "Heavenfall",
-    "PopIsland",
-    "WhisperCastle",
+    "MeChat",
     "RogueLegend",
-    "MeChat"
+    "Path of Kings",
+    "Earn to Die Rogue"
   ],
-  "no_regression_samples": [
-    "Earn to Die Rogue",
-    "Rise of Berk",
-    "ZombieCatchers",
-    "HelloKittyMyDreamStore",
-    "Legend of Survivors"
+  "expected_device_questions": {
+    "Random Dice 2": "Does MergeAny expose branch-aware conditional-return evidence and are support trampolines distinguishable?",
+    "MeChat": "Does Points expose post-original integer multiplication with coherent owning-method return ABI?",
+    "RogueLegend": "Are FMUL/FDIV/FCSEL return-transform operations visible without fabricating a static patch?",
+    "Path of Kings": "Are the +0x50/+0x38 subobject receiver flows recovered?",
+    "Earn to Die Rogue": "Does the known 18 static + 2 derived patch reference remain unchanged?"
+  },
+  "pending_phases": [
+    "feature-backend-binding",
+    "descriptor-less-action-backend",
+    "fuller-cfg-and-path-merge",
+    "canonical-runtime-bridge",
+    "repository-wide-unified-output-routing",
+    "optional-runtime-corroboration"
   ],
-  "next_task": "Inject HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib, collect each App's independent HFAMap_<CFBundleIdentifier> folder, require V033-DECRYPT/V033-SCAN-END, then use RogueLegend/MeChat hookReturnEvidence to determine whether a uniquely provable final patch exists."
+  "next_task": "Inject HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib into the priority samples, archive each complete HFAMap_<CFBundleIdentifier> folder, and compare semanticEvidence/semanticType/owningMethod against the already-established offline binary semantics before implementing Feature-to-Backend binding."
 }
