@@ -38,18 +38,20 @@ jobs:
             -framework QuartzCore \
             -framework CoreGraphics \
             -framework Security \
-            -install_name @rpath/H5GGCardEntryV3.dylib \
-            -o build/h5gg-float-smoke/H5GGCardEntryV3.dylib \
-            experiments/h5gg-float-smoke/H5GGFloatSmoke.m
-          codesign --force --sign - build/h5gg-float-smoke/H5GGCardEntryV3.dylib
-          file build/h5gg-float-smoke/H5GGCardEntryV3.dylib
-          xcrun vtool -show-build build/h5gg-float-smoke/H5GGCardEntryV3.dylib
-          shasum -a 256 build/h5gg-float-smoke/H5GGCardEntryV3.dylib | tee build/h5gg-float-smoke/SHA256.txt
+            -install_name @rpath/H5GGServerVerifyV4.dylib \
+            -o build/h5gg-float-smoke/H5GGServerVerifyV4.dylib \
+            experiments/h5gg-float-smoke/H5GGFloatSmoke.m \
+            experiments/h5gg-float-smoke/ZONDylibConfig.m \
+            experiments/h5gg-float-smoke/ZONDylibVerify.m
+          codesign --force --sign - build/h5gg-float-smoke/H5GGServerVerifyV4.dylib
+          file build/h5gg-float-smoke/H5GGServerVerifyV4.dylib
+          xcrun vtool -show-build build/h5gg-float-smoke/H5GGServerVerifyV4.dylib
+          shasum -a 256 build/h5gg-float-smoke/H5GGServerVerifyV4.dylib | tee build/h5gg-float-smoke/SHA256.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: H5GGCardEntryV3-arm64-ios13
+          name: H5GGServerVerifyV4-arm64-ios13
           path: build/h5gg-float-smoke/
           if-no-files-found: error
           retention-days: 7
