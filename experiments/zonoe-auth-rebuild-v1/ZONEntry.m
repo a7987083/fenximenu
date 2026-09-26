@@ -5,40 +5,44 @@
 
 static NSString * const kZONUDIDKey = @"zonoe.auth.udid";
 
-static void ZONShowAuthorized(NSString *udid) {
-    [ZONActivation fetchLegacyStatusForUDID:udid completion:^(NSDictionary *legacy) {
-        [ZONVerify runWithUDID:udid completion:^(NSDictionary *verify) {
-            NSMutableDictionary *all = [NSMutableDictionary dictionary];
-            all[@"udid"] = udid ?: @"";
-            all[@"legacy"] = legacy ?: @{};
-            all[@"verify"] = verify ?: @{};
-            all[@"notification_key"] = @"20260926";
-            [[ZONUI shared] showInfo:all title:@"授权信息"];
-        }];
-    }];
+static void ZONShowVerifyResult(NSString *udid, NSDictionary *verify) {
+    NSMutableDictionary *display = [NSMutableDictionary dictionaryWithDictionary:verify ?: @{}];
+    display[@"udid"] = udid ?: @"";
+    display[@"notification_key"] = @"20260926";
+    [[ZONUI shared] showInfo:display title:@"授权信息"];
 }
 
-static void ZONContinueAuthorization(ZONUI *ui, NSString *udid) {
-    [ZONActivation fetchLegacyStatusForUDID:udid completion:^(NSDictionary *legacy) {
-        NSDictionary *dylibStatus = [legacy[@"legacy_dylib"] isKindOfClass:NSDictionary.class] ? legacy[@"legacy_dylib"] : nil;
-        NSInteger code = [dylibStatus[@"code"] integerValue];
-        if (code == 1) {
-            ZONShowAuthorized(udid);
+static void ZONVerifyThenRoute(ZONUI *ui, NSString *udid) {
+    [ZONVerify runWithUDID:udid completion:^(NSDictionary *verify) {
+        BOOL allowed = [verify[@"allowed"] boolValue];
+        if (allowed) {
+            ZONShowVerifyResult(udid, verify);
+            return;
+        }
+
+        if (![ZONActivation isConfigured]) {
+            NSMutableDictionary *display = [NSMutableDictionary dictionaryWithDictionary:verify ?: @{}];
+            display[@"udid"] = udid ?: @"";
+            display[@"activation_api"] = @{
+                @"configured": @NO,
+                @"message": @"当前 API 包未定义卡密激活接口"
+            };
+            [ui showInfo:display title:@"验证结果"];
             return;
         }
 
         [ui requestCardWithCompletion:^(NSString *card) {
-            if (!card) return;
+            if (!card.length) return;
             [ZONActivation activateUDID:udid card:card completion:^(BOOL ok, NSString *message, NSDictionary *raw) {
                 if (!ok) {
-                    [ui showInfo:@{
-                        @"success": @NO,
-                        @"message": message ?: @"激活失败",
-                        @"raw": raw ?: @{}
-                    } title:@"激活结果"];
+                    NSMutableDictionary *display = [NSMutableDictionary dictionaryWithDictionary:raw ?: @{}];
+                    if (!display[@"message"] && message.length) display[@"message"] = message;
+                    [ui showInfo:display title:@"卡密激活"];
                     return;
                 }
-                ZONShowAuthorized(udid);
+                [ZONVerify runWithUDID:udid completion:^(NSDictionary *verifyAfterActivation) {
+                    ZONShowVerifyResult(udid, verifyAfterActivation);
+                }];
             }];
         }];
     }];
@@ -48,17 +52,19 @@ __attribute__((constructor)) static void ZONStart(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         ZONUI *ui = [ZONUI shared];
         [ui installFloatingButton];
+        __weak ZONUI *weakUI = ui;
         ui.tapHandler = ^{
+            ZONUI *strongUI = weakUI;
+            if (!strongUI) return;
             NSString *saved = [NSUserDefaults.standardUserDefaults stringForKey:kZONUDIDKey];
             if (saved.length > 0) {
-                ZONContinueAuthorization(ui, saved);
+                ZONVerifyThenRoute(strongUI, saved);
                 return;
             }
-
-            [ui requestUDID:nil completion:^(NSString *udid) {
-                if (!udid) return;
+            [strongUI requestUDID:nil completion:^(NSString *udid) {
+                if (!udid.length) return;
                 [NSUserDefaults.standardUserDefaults setObject:udid forKey:kZONUDIDKey];
-                ZONContinueAuthorization(ui, udid);
+                ZONVerifyThenRoute(strongUI, udid);
             }];
         };
     });
