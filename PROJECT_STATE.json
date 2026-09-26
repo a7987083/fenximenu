@@ -1,13 +1,14 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.9",
-  "phase": "exact-state-xref-consumer-ci-passed-device-validation-pending",
+  "version": "0.3.10",
+  "phase": "notification-consumer-graph-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.9-exact-state-xref-consumer",
+  "branch": "feature/hfaruntime-v0.3.10-notification-consumer-graph",
   "baseline": {
-    "version": "0.3.8",
-    "commit": "67999a8228330915dc953d1b02085951da98a86f",
-    "device_status": "16/16 games completed V038-SCAN-END; 18/18 runtime backends concrete; 10 feature bindings and 10 branch bindings; V038-DOWNSTREAM-BIND remained 0"
+    "version": "0.3.9",
+    "commit": "9886dd3215f2c2364485a87b510e68986245a0ad",
+    "build_status": "CI passed for v0.3.9, device validation still pending",
+    "last_device_evidence": "v0.3.8 matrix: 16/16 scans completed; 18/18 runtime backends concrete; 10 feature bindings and 10 branch bindings; downstream binding remained 0"
   },
   "scope": {
     "priority": "Runtime Semantic Hook only",
@@ -15,78 +16,64 @@
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte points stay isolated in their profile generator and must not leak into generic runtime recognizers"
-  },
-  "device_evidence_from_038": {
-    "games": 16,
-    "scan_end": "16/16",
-    "runtime_backends": 18,
-    "concrete_runtime_semantics": "18/18",
-    "feature_bindings": 10,
-    "branch_bindings": 10,
-    "branch_outcomes": 2,
-    "static_patches": 72,
-    "derived_patches": 2,
-    "target_conflicts": 1,
-    "downstream_bindings": 0,
-    "consumer_gap_samples": ["Duck Survival", "Dragon / ProDragon", "Aniimo"],
-    "stable_regression_samples": ["RogueLegend", "Random Dice 2", "Path of Kings"]
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte points remain isolated in their profile generator and do not enter generic runtime recognizers"
   },
   "implementation": {
-    "notification_image_scan_commit": "366d438e4c4c46aaaf07d35b24d8f31ae01a1412",
-    "exact_state_xref_commit": "24d87f99d607127a95889592fd7e7948da84b369",
-    "generator_orchestrator_commit": "f3c3086c6004313cb276770ddc9536235e100c7f",
-    "build_tested_commit": "f2b63aea4468d7ed7efe74f82f258637da99009a",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v039.yml"
+    "block_observer_initial_commit": "5a2161eee8153338db50b688396dc634c5458ff9",
+    "consumer_graph_commit": "ecc3612c388a25cd2bee3328675948f2621deae9",
+    "generator_orchestrator_commit": "fa7afa106fe1d47aa78233214aff8b76f33efee3",
+    "workflow_commit": "3bba349b104e6e5d2d91c8d02b6e75bbf698e341",
+    "generic_gate_fix_commits": ["4f174b3b5db6025379d15d87bfbfb5d7a48c4d80", "20fe77bfe49b5ee3ec7a0500f437ed135bfa4b68"],
+    "build_tested_commit": "5f56a9334ba4370f923eb6bc0732b28f1faf6d2f",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0310.yml"
   },
-  "runtime_semantic_039": {
-    "notification_consumer_discovery": {
-      "scope": "same selected menu image",
-      "class_cap": 768,
-      "method_cap": 320,
-      "time_cap_seconds": 0.30,
-      "matching": "exact notification name and structured observer registration only",
-      "cache_key": "image + notification name"
+  "runtime_semantic_0310": {
+    "block_observer_invoke": {
+      "registration": "addObserverForName:object:queue:usingBlock:",
+      "backward_instruction_window": 40,
+      "materialization": "ADRP+ADD executable address followed by STR X to SP",
+      "selected_image_text_only": true,
+      "promotion": "resolved only when exactly one stack-stored executable candidate exists; otherwise candidates remain diagnostic"
     },
-    "image_exact_state_xref": {
-      "scope": "same selected menu image Objective-C methods",
-      "method_collection_cap": 1024,
-      "semantic_scan_cap": 512,
-      "time_cap_seconds": 0.35,
-      "matching": "exact stateAccesses runtimeAddress only",
-      "promotion_policy": "xref-only candidates are diagnostic and are not promoted to Feature bindings without feature-specific downstream evidence"
-    },
-    "downstream_helper_binding": {
-      "depth": 1,
+    "consumer_graph": {
+      "chain": "Feature -> notification -> observer registration -> callback -> direct helper",
+      "callback_semantic": "bounded runtime semantic analysis",
+      "helper_depth": 1,
       "helper_cap_per_callback": 6,
-      "matching": "exact downstream/helper state access to exact backend/helper state access",
-      "strong_evidence": ["notification-helper-receiver-consumer", "notification-helper-shared-state"]
+      "policy": "diagnostic-only-unless-exact-state-binding"
+    },
+    "inherited_v039": {
+      "image_wide_notification_consumer_scan": true,
+      "image_exact_state_xref": true,
+      "downstream_helper_exact_state_binding": true,
+      "xref_candidates_do_not_promote_binding": true
     },
     "il2cpp_enrichment": {
       "default": "disabled",
-      "opt_in_key": "HFAEnableIL2CPPEnrichmentV039"
+      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0310"
     }
   },
   "build": {
     "ci": "success",
-    "run_id": 36259666111,
-    "artifact_id": 10911752810,
-    "artifact": "HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver",
-    "artifact_zip_sha256": "d0b8269076667174deb825821dcbc5e8db10212c3348a56fc1515319dc6b2026",
-    "binary": "HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver.dylib",
+    "run_id": 36260656129,
+    "artifact_id": 10912630448,
+    "artifact": "HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph",
+    "artifact_zip_sha256": "7242b818ddd3cefc9fd55aa5b5f8010a16a9ed5deea17d8c0c7372f93772244c",
+    "binary": "HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.dylib",
     "architecture": "arm64",
-    "size_bytes": 316560,
-    "binary_sha256": "81521979c9d48baf9456fba54fdee265839b3f190a51c0ce5c2dd23aebc6ef04"
+    "size_bytes": 349760,
+    "binary_sha256": "eb84f0a6bd069e48d3dfc7294665fc60c5654de0d0a12795e35f7c1320b41b8d"
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "output": "HFAMap_RuntimeAnalyzer_v039.json",
-    "stage_log": "HFAMap_RuntimeAnalyzer_v039_stage.log",
+    "output": "HFAMap_RuntimeAnalyzer_v0310.json",
+    "stage_log": "HFAMap_RuntimeAnalyzer_v0310_stage.log",
     "compatibility_outputs_preserved": true
   },
   "verification": {
     "generator_chain": "passed",
     "generated_source_gates": "passed",
+    "generic_fixed_rva_gate": "passed",
     "script_pycompile": "passed",
     "ios_compile_link_sign": "passed",
     "binary_marker_gate": "passed",
@@ -95,28 +82,18 @@
     "device_validation": "pending"
   },
   "primary_device_matrix": {
-    "stable_regression": [
-      "RogueLegend",
-      "Random Dice 2",
-      "Path of Kings"
-    ],
-    "needs_consumer_resolution": [
-      "Duck Survival",
-      "Dragon / ProDragon",
-      "Aniimo"
-    ],
-    "supplemental": [
-      "MeChat for evidence-readiness timing regression",
-      "Earn to Die Rogue for static/derived/conflict regression"
-    ]
+    "stable_regression": ["RogueLegend", "Random Dice 2", "Path of Kings"],
+    "needs_consumer_resolution": ["Duck Survival", "Dragon / ProDragon", "Aniimo"],
+    "supplemental": ["MeChat for evidence-readiness timing", "Earn to Die Rogue for static/derived/conflict regression"]
   },
-  "success_gates_for_039": [
+  "success_gates_for_0310": [
     "RogueLegend preserves Damage->FMUL, Defence->FDIV, God Mode->FCSEL",
-    "Random Dice preserves DmgMulti/SPGain multiplier bindings and MergeAny branch outcome",
+    "Random Dice preserves DmgMulti/SPGain bindings and MergeAny branch outcome",
     "Path preserves Damage/Defence/God Mode bindings and God Mode branch outcome",
-    "Duck, Dragon and Aniimo emit bounded V039-NOTIFY-XREF and V039-STATE-XREF evidence without crash or budget runaway",
-    "Any new Feature binding must be justified by exact feature-specific downstream state evidence; image xref candidates alone must not promote bindings",
-    "72 static patches, 2 derived patches and the known duplicate-target conflict remain unchanged"
+    "Duck, Dragon and Aniimo report block observer resolution/candidates and consumerGraph without crash or budget runaway",
+    "A block observer is resolved only when the bounded stack-code-pointer candidate is unique",
+    "Any new strong Feature binding still requires exact feature-specific downstream state evidence; consumerGraph and xref candidates alone cannot promote bindings",
+    "Static/derived/conflict regression remains unchanged"
   ],
-  "next_task": "Inject v0.3.9 into the six-app primary matrix: RogueLegend, Random Dice 2, Path of Kings, Duck Survival, Dragon / ProDragon and Aniimo. Compare V039-NOTIFY-XREF, stateXrefConsumers, stateXrefMeta, downstreamHelperBindings and existing Feature/Branch/Outcome regressions against v0.3.8."
+  "next_task": "Inject v0.3.10 into the six-app primary matrix. Inspect V0310-BLOCK-INVOKE, consumerGraph callback/helper counts, inherited V039-NOTIFY-XREF/V039-STATE-XREF, and any exact-state downstream bindings before expanding the algorithm further."
 }
