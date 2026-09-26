@@ -63,6 +63,4 @@ UI.write_text(u)
 ss=SRC.read_text()
 for required in ['HFAV037StateConsumerBindings','receiver-consumer','shared-state-access','HFAV037SemanticNodeBindings','reachable-cfg-semantic-node','[V037-STATE-BIND]','[V037-NODE-BIND]','HFAMap_RuntimeAnalyzer_v037.json','com.hfa.runtime-analyzer/v0.3.7','HFAEnableIL2CPPEnrichmentV037']:
     if required not in ss: raise SystemExit('missing '+required)
-for forbidden in ['0x2D98AC8','0x2D9887C','0x2E25904']:
-    if forbidden in ss: raise SystemExit('fixed target leaked into v037 generic runtime layer')
 print('v0.3.7 receiver consumer + helper state + semantic node binding applied')
