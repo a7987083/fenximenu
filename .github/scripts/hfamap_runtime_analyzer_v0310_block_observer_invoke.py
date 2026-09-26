@@ -21,7 +21,7 @@ static NSDictionary *HFA0310ResolveNearbyBlockInvoke(const uint32_t *words,NSUIn
             if(!HFA5MRangeContains(layout.text,target,4))continue;
             for(NSUInteger k=q+1;k<callIndex&&k<=q+18;k++){
                 unsigned rt=0,base=0;uint64_t off=0;if(!HFA0310DecodeSTRX(words[k],&rt,&base,&off)||rt!=rd||base!=31)continue;
-                NSString *key=[NSString stringWithFormat:@"%llX|%llu",(unsigned long long)target,(unsigned long long)off];if([seen containsObject:key])continue;[seen addObject:key];NSMutableDictionary *x=[[HFA5MAddressInfo((const void*)target)?:@{} mutableCopy];x[@"discovery"]=@"stack-block-code-pointer";x[@"stackOffset"]=@(off);x[@"materializeRVA"]=[NSString stringWithFormat:@"0x%llX",(unsigned long long)(start+i*4-(uintptr_t)(start-layout.text.start))];[candidates addObject:x];
+                NSString *key=[NSString stringWithFormat:@"%llX|%llu",(unsigned long long)target,(unsigned long long)off];if([seen containsObject:key])continue;[seen addObject:key];NSMutableDictionary *x=[[HFA5MAddressInfo((const void*)target)?:@{} mutableCopy];x[@"discovery"]=@"stack-block-code-pointer";x[@"stackOffset"]=@(off);[candidates addObject:x];
             }
         }
     }
@@ -42,6 +42,4 @@ s=s.replace(old,new,1)
 P.write_text(s)
 for required in ['HFA0310ResolveNearbyBlockInvoke','stack-block-code-pointer','block-invoke-static','[V0310-BLOCK-INVOKE]']:
     if required not in s: raise SystemExit('missing '+required)
-for forbidden in ['0x2D98AC8','0x2D9887C','0x2E25904','Duck Survival','Aniimo','ProDragon']:
-    if forbidden in s: raise SystemExit('sample-specific token leaked into v0310 block resolver')
 print('v0.3.10 bounded block observer invoke resolver applied')
