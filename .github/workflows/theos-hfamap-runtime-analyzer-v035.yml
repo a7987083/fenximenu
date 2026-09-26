@@ -60,6 +60,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v035_semantic_coverage.py
           python3 .github/scripts/hfamap_runtime_analyzer_v035_feature_binding.py
           python3 .github/scripts/hfamap_runtime_analyzer_v035_action_fallback_conflicts.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v035_compile_fix.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
@@ -77,6 +78,7 @@ jobs:
           check(){ file="$1"; needle="$2"; grep -Fq "$needle" "$file" || { echo "MISSING [$needle] in $file"; exit 1; }; }
           SRC=hfamap/src/HFAMapRuntimeAnalyzerV02.m
           SEM=hfamap/src/HFARuntimeSemanticAnalyzer.m
+          HDR=hfamap/src/HFARuntimeSemanticAnalyzer.h
           UI=hfamap/src/HFAMapCyberUI.m
           check "$SEM" 'HFASemStrXReg'
           check "$SEM" 'HFASemSTLR64'
@@ -85,6 +87,7 @@ jobs:
           check "$SEM" 'receiver-capture-with-helper'
           check "$SEM" 'materializedAddresses'
           check "$SEM" 'HFASemanticFeatureBindings'
+          check "$HDR" '* _Nonnull HFASemanticFeatureBindings'
           check "$SRC" 'HFAV035DescriptorlessActionBackends'
           check "$SRC" 'HFAV035TargetConflicts'
           check "$SRC" '[V035-BIND]'
@@ -96,7 +99,6 @@ jobs:
           check "$SRC" 'HFAEnableIL2CPPEnrichmentV035'
           check "$UI" 'HFAMap RuntimeAnalyzer v0.3.5 SemanticCoverageBinding'
           check "$SRC" 'disabled-by-default'
-          # Exact-build fixed profiles remain in their original gated generator; v0.3.5 does not duplicate them.
           grep -Fq '0x2D98AC8' .github/scripts/hfamap_v193710_earntodie_verified_profile.py
           grep -Fq '0x2D9887C' .github/scripts/hfamap_v193710_earntodie_verified_profile.py
           if grep -Eq 'RandomDice|WayOfKings|RogueLegend|WhisperCastle|Duck Survival' .github/scripts/hfamap_runtime_analyzer_v035_*.py; then echo 'GAME-SPECIFIC REGRESSION IN GENERIC V035 LAYER'; exit 1; fi
@@ -105,15 +107,14 @@ jobs:
       - name: Verify generic ARM64 masks
         run: |
           python3 - <<'PY'
-          # Representative encodings verify instruction classes, not any title-specific address.
-          assert (0x9B087EC1 & 0xFFE0FC00) == 0x9B007C00   # MUL Xd,Xn,Xm
-          assert (0xF82A7928 & 0xFFE00C00) == 0xF8200800   # STR Xt,[Xn,Xm,LSL #3]
-          assert (0xC89FFD00 & 0xFFFFFC00) == 0xC89FFC00   # STLR X
-          assert (0xC809FD13 & 0xFFE0FC00) == 0xC800FC00   # STLXR X
-          assert (0xC8DFFD09 & 0xFFFFFC00) == 0xC8DFFC00   # LDAR X
-          assert (0xC85FFD09 & 0xFFFFFC00) == 0xC85FFC00   # LDAXR X
-          assert (0x1E600820 & 0xFFE0FC00) == 0x1E600800   # FMUL D
-          assert (0x1E601820 & 0xFFE0FC00) == 0x1E601800   # FDIV D
+          assert (0x9B087EC1 & 0xFFE0FC00) == 0x9B007C00
+          assert (0xF82A7928 & 0xFFE00C00) == 0xF8200800
+          assert (0xC89FFD00 & 0xFFFFFC00) == 0xC89FFC00
+          assert (0xC809FD13 & 0xFFE0FC00) == 0xC800FC00
+          assert (0xC8DFFD09 & 0xFFFFFC00) == 0xC8DFFC00
+          assert (0xC85FFD09 & 0xFFFFFC00) == 0xC85FFC00
+          assert (0x1E600820 & 0xFFE0FC00) == 0x1E600800
+          assert (0x1E601820 & 0xFFE0FC00) == 0x1E601800
           print('generic ARM64 mask gates passed')
           PY
 
