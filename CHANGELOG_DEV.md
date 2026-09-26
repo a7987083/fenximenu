@@ -1,5 +1,62 @@
 # Development Changelog
 
+## HFARuntimeAnalyzer v0.3.4 — Semantic Backend Analyzer Phase 1
+
+Branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
+
+Baseline: v0.3.3 `f3090a8c1998f443eb4cae03eb857bfadf2c2002`
+
+Build-tested commit: `3918052e30fcc0d7dca78e4754240cf5e94dba3c`
+
+GitHub Actions run: `36218004874` — **success**
+
+Artifact ID: `10897963845`
+
+Artifact ZIP digest:
+`sha256:de49e2dfd51deb6004e22b407ba20554c81da8c22005f928d633a81f1e67274d`
+
+Binary: `HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib`
+
+Binary size: `265424` bytes
+
+Binary SHA-256:
+`cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00`
+
+### Changed
+
+- Added standalone `HFARuntimeSemanticAnalyzer` instead of extending the legacy `HFAV032ReplacementSemantics()` monolith.
+- Added bounded ARM64 semantic evidence for `B` shared-epilogue constant-return paths, original-slot `BLR`, integer `MUL`, floating-point `FMUL` / `FDIV` / `FSUB`, `FCSEL`, receiver/subobject propagation and callback constant arguments.
+- Added semantic classifications including `conditional-return`, `return-multiplier`, `return-divider`, `return-select`, `argument-multiplier`, `argument-divider`, `receiver-capture`, `subobject-receiver-capture`, `callback-constant-argument`, with `unknown-runtime` as the fail-closed fallback.
+- Added IL2CPP owning-method enrichment inspired by the `UnitXP_SP3-Moonstone` resolver design: bounded live-method scanning, Assembly/Namespace/Class/Method identity, MethodInfo/method pointer, intra-method offset, parameter list, return kind, instance/generic/inflated evidence.
+- Added `semanticEvidence`, `semanticType`, `legacySemanticType` and `owningMethod` to AutoBackend runtime records.
+- Added `HFAMap_RuntimeAnalyzer_v034.json` while retaining v033/v032/v03 compatibility outputs.
+- Preserved per-App output routing through `HFAOutputPath()` under `Documents/HFAMap_<CFBundleIdentifier>/` and kept direct analyzer Documents-root paths forbidden by CI.
+- Replaced the initial macOS-only `mach_vm_region` attempt with iPhoneOS-compatible bounded `vm_read_overwrite` readability probes plus Mach-O segment protection checks.
+
+### Verification
+
+- full generated-source chain: passed;
+- v0.3.4 semantic source gates: passed;
+- universal AutoBackend entry gate: passed;
+- per-App v034 output gate: passed;
+- direct analyzer Documents-root path audit: passed;
+- iPhoneOS arm64 compile/link/strip/sign: passed;
+- final binary semantic marker inspection: passed;
+- artifact upload/download and SHA-256 rehash: passed;
+- physical-device semantic validation: **pending**.
+
+### Required device evidence
+
+Phase 1 is not considered semantically validated until real-device v034 JSON proves the expected distinctions on the existing sample corpus. Primary checks are:
+
+1. Random Dice 2: verify the shared-epilogue `MergeAny` hook becomes a conditional-return semantic and distinguish support trampolines from actual Feature logic.
+2. MeChat: verify the Points hook is recognized as a return-value multiplier and that owning-method/ABI enrichment resolves coherently.
+3. RogueLegend: inspect float return transform evidence (`FMUL` / `FDIV` / `FCSEL`) without fabricating a static patch.
+4. Path of Kings: verify `+0x50` / `+0x38` subobject receiver capture evidence and inspect the shared Damage/Defence/God Mode hook.
+5. Earn to Die Rogue: retain the existing 18 static + 2 derived-patch result as a no-regression reference.
+
+Feature-to-Backend binding, full descriptor-less action analysis for WhisperCastle, stronger whole-function CFG/path merging, canonical bridge work and runtime corroboration remain later phases.
+
 ## HFARuntimeAnalyzer v0.3.3 — StaticParity AutoBackend
 
 Branch: `feature/hfaruntime-v0.3.3-static-parity-autobackend`
