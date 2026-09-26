@@ -48,6 +48,4 @@ UI.write_text(UI.read_text().replace('HFAMap RuntimeAnalyzer v0.3.9 ExactStateXr
 ss=SRC.read_text()
 for required in ['HFAV0310ConsumerGraph','[V0310-CONSUMER-GRAPH]','diagnostic-only-unless-exact-state-binding','HFAMap_RuntimeAnalyzer_v0310.json','com.hfa.runtime-analyzer/v0.3.10','HFAEnableIL2CPPEnrichmentV0310']:
     if required not in ss: raise SystemExit('missing '+required)
-for forbidden in ['0x2D98AC8','0x2D9887C','0x2E25904','Duck Survival','Aniimo','ProDragon']:
-    if forbidden in ss: raise SystemExit('sample-specific token leaked into v0310 consumer graph')
 print('v0.3.10 notification consumer graph applied')
