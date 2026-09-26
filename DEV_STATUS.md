@@ -1,13 +1,24 @@
 # Development Status
 
-## HFAMapUniversal v1.9.36.4 JSONExport
+## HFARuntimeAnalyzer v0.3.4 SemanticBackend — Phase 1
 
-Current branch: `feature/hfamap-v19361-json-export`
-Current build-tested commit: `c62b378220d1908c2788a5a359083b484b187c66`
-CI run: `34907671999` — PASS
-Artifact: `HFAMapUniversal-v1.9.36.4-JSONExport` (ID `10372928333`)
-Binary SHA256: `a6fd46cffd2d4ce133229c4248d350a79dfbdfbb20755033132837d5690200c5`
-Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d150c7198cce`
+Current branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
+
+Baseline: v0.3.3 `f3090a8c1998f443eb4cae03eb857bfadf2c2002`
+
+Current build-tested commit: `3918052e30fcc0d7dca78e4754240cf5e94dba3c`
+
+CI run: `36218004874` — PASS
+
+Artifact: `HFARuntimeAnalyzer-v0.3.4-SemanticBackend` (ID `10897963845`)
+
+Binary: `HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib`
+
+Binary size: `265424` bytes
+
+Binary SHA256: `cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00`
+
+Artifact ZIP digest: `sha256:de49e2dfd51deb6004e22b407ba20554c81da8c22005f928d633a81f1e67274d`
 
 ### Development states
 
@@ -15,33 +26,45 @@ Artifact digest: `sha256:1fe9e536abdf9fc31c4a58e3a26db14b2e7870a2424b88cb5cb6d15
 - 已提交: yes
 - 已编译: yes
 - CI通过: yes
-- v1.9.36.4 WayOfKings 真机运行: passed
-- v1.9.36.4 WayOfKings 解析回归: passed
-- runtime-record/static 5 MB 回归: pending
-- legacy ~15 MB 回归: pending
-- cross-family closure: pending
+- Artifact下载并复核: yes
+- arm64 Mach-O: yes
+- v0.3.4 真机运行: pending
+- v0.3.4 多游戏语义回归: pending
+- Feature ↔ Backend binding: phase 2 pending
+- descriptor-less Whisper backend: pending
+- canonical bridge: pending
 
-### v1.9.36.4 device evidence
+### Implemented in phase 1
 
-Device archive `归档 6(1).zip` confirmed:
+- independent `HFARuntimeSemanticAnalyzer` module;
+- bounded ARM64 CFG-lite support for unconditional `B` / shared epilogue constant-return evidence;
+- original-slot and `BLR original` recognition;
+- integer `MUL` and FP `FMUL` / `FDIV` / `FSUB` / `FCSEL` evidence;
+- receiver and subobject-receiver propagation;
+- callback constant-argument diagnostics;
+- semantic classifications with `unknown-runtime` fail-closed fallback;
+- bounded live IL2CPP owning-method enrichment;
+- Assembly / Namespace / Class / Method / MethodInfo / method pointer / intra-method offset;
+- parameter and return ABI evidence plus instance/generic/inflated state;
+- new `HFAMap_RuntimeAnalyzer_v034.json`;
+- v033/v032/v03 compatibility outputs retained;
+- analyzer outputs continue through `HFAOutputPath()` under `Documents/HFAMap_<CFBundleIdentifier>/`.
 
-- injection stable;
-- Full Scan complete;
-- iGMM diagnostic JSON regenerated;
-- normalized analysis JSON regenerated;
-- 4 features exported;
-- Debug Menu = `control.kind: button`;
-- Debug Menu raw primitive remains `nativeHook`;
-- Debug Menu normalized primitive = `runtimeAction`;
-- Debug Menu raw canonical reason remains `runtime-hook-requires-portable-equivalent`;
-- Debug Menu normalized canonical reason = `runtime-action-not-static-bytes`;
-- target identities resolve `libpathofkings.dylib` and `UnityFramework` with the expected UUID/arm64/cryptid evidence;
-- `JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2`.
+### Current evidence boundary
 
-### Product boundary
+CI proves generated-source integration, iPhoneOS compilation/link/sign, output-path guards and final binary markers. It does **not** prove that the new semantic classifier is correct on physical-device samples.
 
-Pure parser/exporter only. No playback engine, no Dobby, no runtime takeover, no command polling and no extra constructor.
+Do not mark the following as device-confirmed until new v034 folders/logs are collected:
+
+- Random Dice 2 `MergeAny` -> `conditional-return`;
+- MeChat `Points` -> `return-multiplier`;
+- RogueLegend float `FMUL/FDIV/FCSEL` transform;
+- Path of Kings `+0x50/+0x38` subobject receiver capture.
 
 ### Next required evidence
 
-Use the same v1.9.36.4 binary on the runtime-record/static 5 MB family. Require trusted canonical output, correct target identity and original-byte truth. Then run the legacy ~15 MB family. Only after both pass should this parser line be called cross-family validated.
+Use this exact v0.3.4 dylib and collect the complete per-App `HFAMap_<CFBundleIdentifier>/` folder. Prioritize Random Dice 2, MeChat, RogueLegend and Path of Kings, then regress Earn to Die Rogue. Require `[V034-DECRYPT]`, `[V034-BACKEND]`, `[V034-SCAN-END]`, `HFAMap_RuntimeAnalyzer_v034.json`, `semanticEvidence`, `semanticType` and `owningMethod`.
+
+## Stable parser/exporter checkpoint
+
+v1.9.36.4 JSONExport remains the device-confirmed WayOfKings/iGMM parser checkpoint. That line is separate from the v0.3.4 SemanticBackend work and its remaining cross-family parser regressions are unchanged.
