@@ -1,0 +1,53 @@
+name: HFARuntimeAnalyzer v0.3.9 ExactStateXrefConsumerResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.9-exact-state-xref-consumer]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v039_chain.py
+          python3 -m py_compile .github/scripts/apply_hfaruntime_v039_chain.py .github/scripts/hfamap_runtime_analyzer_v039_notification_image_scan.py .github/scripts/hfamap_runtime_analyzer_v039_exact_state_xref.py
+          SRC=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          DIS=hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -Fq 'HFA5MImageObserverBridgesForNotification' "$DIS"
+          grep -Fq '[V039-NOTIFY-XREF]' "$DIS"
+          grep -Fq 'HFAV039ImageExactStateIndex' "$SRC"
+          grep -Fq 'HFAV039DownstreamHelperBindings' "$SRC"
+          grep -Fq '[V039-STATE-XREF]' "$SRC"
+          grep -Fq 'HFAMap_RuntimeAnalyzer_v039.json' "$SRC"
+          grep -Fq 'com.hfa.runtime-analyzer/v0.3.9' "$SRC"
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver.txt
+          strings "$out" | grep -q 'V039-STATE-XREF'
+          strings "$out" | grep -q 'V039-NOTIFY-XREF'
+          strings "$out" | grep -q 'com.hfa.runtime-analyzer/v0.3.9'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.9-ExactStateXrefConsumerResolver.txt
+          if-no-files-found: error
