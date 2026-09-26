@@ -7,6 +7,7 @@ anchor='static BOOL HFA5MDecodeADDX(uint32_t insn, unsigned *rdOut, unsigned *rn
 if anchor not in s: raise SystemExit('v0310 decoder anchor missing')
 if 'HFA0310ResolveNearbyBlockInvoke' not in s:
     helper=r'''
+static BOOL HFA5MDecodeADDX(uint32_t insn, unsigned *rdOut, unsigned *rnOut, uint64_t *offsetOut);
 static BOOL HFA0310DecodeSTRX(uint32_t w,unsigned *rt,unsigned *rn,uint64_t *off){
     if((w&0xFFC00000u)!=0xF9000000u)return NO;
     if(rt)*rt=w&31u;if(rn)*rn=(w>>5)&31u;if(off)*off=(uint64_t)((w>>10)&0xFFFu)*8u;return YES;
@@ -21,7 +22,7 @@ static NSDictionary *HFA0310ResolveNearbyBlockInvoke(const uint32_t *words,NSUIn
             if(!HFA5MRangeContains(layout.text,target,4))continue;
             for(NSUInteger k=q+1;k<callIndex&&k<=q+18;k++){
                 unsigned rt=0,base=0;uint64_t off=0;if(!HFA0310DecodeSTRX(words[k],&rt,&base,&off)||rt!=rd||base!=31)continue;
-                NSString *key=[NSString stringWithFormat:@"%llX|%llu",(unsigned long long)target,(unsigned long long)off];if([seen containsObject:key])continue;[seen addObject:key];NSMutableDictionary *x=[[HFA5MAddressInfo((const void*)target)?:@{} mutableCopy];x[@"discovery"]=@"stack-block-code-pointer";x[@"stackOffset"]=@(off);[candidates addObject:x];
+                NSString *key=[NSString stringWithFormat:@"%llX|%llu",(unsigned long long)target,(unsigned long long)off];if([seen containsObject:key])continue;[seen addObject:key];NSMutableDictionary *x=[(HFA5MAddressInfo((const void*)target)?:@{}) mutableCopy];x[@"discovery"]=@"stack-block-code-pointer";x[@"stackOffset"]=@(off);[candidates addObject:x];
             }
         }
     }
