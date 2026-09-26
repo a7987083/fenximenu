@@ -1,90 +1,84 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.4",
-  "phase": "semantic-backend-phase1-ci-passed-device-validation-pending",
+  "version": "0.3.4.1",
+  "phase": "semantic-stability-ci-passed-device-regression-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.4-semantic-backend-analyzer",
+  "branch": "feature/hfaruntime-v0.3.4.1-semantic-stability",
   "baseline": {
-    "version": "0.3.3",
-    "commit": "f3090a8c1998f443eb4cae03eb857bfadf2c2002",
-    "artifact": "HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib"
+    "version": "0.3.4",
+    "commit": "b26bc6dbc275137659506eccf019523deb5b1f9f",
+    "artifact": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib"
   },
   "implementation": {
-    "semantic_interface_commit": "761c9f4a0956fa45f29fdb150f58d789c8f5e15f",
-    "semantic_engine_commit": "0c4fe40c95df8febcd372381e10cf04c2e6ac4c0",
-    "integration_commit": "3d20602a6c1f14e70f0fd44a271c33c17058c194",
-    "build_workflow_commit": "8c06ddf267c888d6e3109316d44fd34be2776a74",
-    "successful_build_commit": "3918052e30fcc0d7dca78e4754240cf5e94dba3c"
+    "stability_patch_commit": "1a9b8989c079847104d348fc219162cd640578bf",
+    "workflow_commit": "6638a2ec3a2ce8dde39ad264d008dc7487848cd8",
+    "build_tested_commit": "6638a2ec3a2ce8dde39ad264d008dc7487848cd8"
   },
   "build": {
     "ci": "success",
-    "run_id": 36218004874,
-    "artifact_id": 10897963845,
-    "artifact": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend",
-    "artifact_zip_sha256": "de49e2dfd51deb6004e22b407ba20554c81da8c22005f928d633a81f1e67274d",
-    "binary": "HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib",
+    "run_id": 36226498119,
+    "artifact_id": 10901201674,
+    "artifact": "HFARuntimeAnalyzer-v0.3.4.1-Stability",
+    "artifact_zip_sha256": "abf8cc0fd513d43addb03040fee7c3e36c39c744ca87ea04b5577c5d8adc7bb6",
+    "binary": "HFARuntimeAnalyzer-v0.3.4.1-Stability.dylib",
     "architecture": "arm64",
-    "size_bytes": 265424,
-    "binary_sha256": "cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00"
+    "size_bytes": 282768,
+    "binary_sha256": "0a1ab56315776b5bb1d16f7b757910de8d178088e962c631038005a519560140"
+  },
+  "root_cause_assessment": {
+    "main_thread_only_hypothesis": "not-supported-by-source",
+    "evidence": "AutoBackend was already dispatched to a background global queue in v0.3.2 safe-discovery UI wiring.",
+    "highest_risk_v034_behavior": "HFAIL2CPPDescribeOwningMethod ran unconditionally for every backend on that background thread, without explicit il2cpp_thread_attach, with up to 12000 classes / 1.75 seconds per call.",
+    "device_logs": "Path/RandomDice/Earn/MeChat reached V034-DECRYPT; MeChat emitted one V034-BACKEND before termination. RogueLegend terminated earlier and remains a separate startup bucket."
+  },
+  "stability_changes": {
+    "background_execution": "dedicated serial AutoBackend queue",
+    "stage_logs": [
+      "V0341-SCAN-BEGIN",
+      "V0341-SEM-BEGIN",
+      "V0341-SEM-END",
+      "V0341-IL2CPP-BEGIN",
+      "V0341-IL2CPP-END",
+      "HFAMap_RuntimeAnalyzer_v0341_stage.log"
+    ],
+    "budgets": {
+      "whole_semantic_scan_seconds": 4.0,
+      "per_backend_semantic_ms": 250,
+      "instruction_snapshot_max": 256
+    },
+    "memory_safety": [
+      "vm_read_overwrite immutable replacement snapshot",
+      "safe pointer reads instead of raw live-memory memcpy",
+      "Mach-O text-bound validation"
+    ],
+    "backend_isolation": [
+      "static-patch or replacement==0 skips semantic replacement analysis",
+      "Objective-C exception fallback keeps backend record",
+      "budget-exceeded returns unknown-runtime instead of blocking the scan"
+    ],
+    "il2cpp_enrichment": {
+      "default": "disabled",
+      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0341",
+      "cache": "targetRuntime keyed cache",
+      "thread_policy": "il2cpp_thread_attach/detach when opt-in enrichment is executed"
+    },
+    "rogue_breadcrumbs": [
+      "V0341-BOOT-01 legacy-log-ready",
+      "V0341-BOOT-02 family-resolver-ready",
+      "V0341-BOOT-03 runtime-profiler-ready"
+    ]
   },
   "semantic_phase1": {
-    "module": "HFARuntimeSemanticAnalyzer",
-    "cfg_lite": [
-      "unconditional-b-shared-epilogue-constant-return"
-    ],
-    "original_call": "original-slot-register-to-BLR-evidence",
-    "operations": [
-      "MUL",
-      "FMUL",
-      "FDIV",
-      "FSUB",
-      "FCSEL"
-    ],
-    "receiver_flow": [
-      "receiver-capture",
-      "subobject-receiver-capture"
-    ],
-    "callback_evidence": "constant-argument",
-    "semantic_types": [
-      "conditional-return",
-      "return-multiplier",
-      "return-divider",
-      "return-select",
-      "argument-multiplier",
-      "argument-divider",
-      "receiver-capture",
-      "subobject-receiver-capture",
-      "callback-constant-argument",
-      "unknown-runtime"
-    ],
-    "canonical_policy": "diagnostic-first-fail-closed"
-  },
-  "il2cpp_enrichment": {
-    "owning_method": true,
-    "bounded_live_scan": true,
-    "class_cap": 12000,
-    "wall_budget_seconds": 1.75,
-    "fields": [
-      "assembly",
-      "namespace",
-      "class",
-      "method",
-      "methodInfo",
-      "methodRuntimeAddress",
-      "intraMethodOffset",
-      "parameters",
-      "return",
-      "instance",
-      "generic",
-      "inflated"
-    ],
-    "failure_policy": "native-backend-survives-enrichment-failure"
+    "preserved": true,
+    "new_algorithms_added_in_0341": false,
+    "reason": "stability changes are intentionally isolated from semantic-recognizer expansion"
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "helper": "HFAOutputDirectory/HFAOutputPath",
-    "v034_output": "HFAMap_RuntimeAnalyzer_v034.json",
+    "v0341_output": "HFAMap_RuntimeAnalyzer_v0341.json",
+    "stage_log": "HFAMap_RuntimeAnalyzer_v0341_stage.log",
     "compatibility_outputs": [
+      "HFAMap_RuntimeAnalyzer_v034.json",
       "HFAMap_RuntimeAnalyzer_v033.json",
       "HFAMap_RuntimeAnalyzer_v032.json",
       "HFAMap_RuntimeAnalyzer_v03.json"
@@ -94,29 +88,31 @@
   },
   "verification": {
     "generator_chain": "passed",
-    "semantic_source_gates": "passed",
-    "universal_autobackend_entry": "passed",
+    "stability_source_gates": "passed",
+    "dedicated_serial_queue_gate": "passed",
     "bundle_folder_regression_gate": "passed",
-    "direct_analyzer_output_path_audit": "passed",
     "ios_compile_link_sign": "passed",
     "binary_marker_inspection": "passed",
     "artifact_download_rehash": "passed",
-    "device_runtime": "pending",
+    "device_no_crash_regression": "pending",
     "semantic_cross_sample_regression": "pending"
   },
   "device_validation_priority": [
+    "Earn to Die Rogue",
     "Random Dice 2",
     "MeChat",
-    "RogueLegend",
     "Path of Kings",
-    "Earn to Die Rogue"
+    "RogueLegend"
   ],
-  "expected_device_questions": {
-    "Random Dice 2": "Does MergeAny expose branch-aware conditional-return evidence and are support trampolines distinguishable?",
-    "MeChat": "Does Points expose post-original integer multiplication with coherent owning-method return ABI?",
-    "RogueLegend": "Are FMUL/FDIV/FCSEL return-transform operations visible without fabricating a static patch?",
-    "Path of Kings": "Are the +0x50/+0x38 subobject receiver flows recovered?",
-    "Earn to Die Rogue": "Does the known 18 static + 2 derived patch reference remain unchanged?"
+  "device_validation_rules": {
+    "default_enrichment": "keep disabled",
+    "required_files": [
+      "HFAMap_Learn.log",
+      "HFAMap_RuntimeAnalyzer_v0341_stage.log",
+      "HFAMap_RuntimeAnalyzer_v0341.json"
+    ],
+    "success_gate": "game remains alive and scan reaches V0341-SCAN-END / output file",
+    "rogue_gate": "if startup still terminates, use V0341-BOOT breadcrumbs before attributing it to Semantic Analyzer"
   },
   "pending_phases": [
     "feature-backend-binding",
@@ -126,5 +122,5 @@
     "repository-wide-unified-output-routing",
     "optional-runtime-corroboration"
   ],
-  "next_task": "Inject HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib into the priority samples, archive each complete HFAMap_<CFBundleIdentifier> folder, and compare semanticEvidence/semanticType/owningMethod against the already-established offline binary semantics before implementing Feature-to-Backend binding."
+  "next_task": "Device-test v0.3.4.1 with IL2CPP enrichment left disabled. First establish no-crash completion and collect complete per-App output folders; only then re-enable enrichment on one sample to validate attach/cache behavior."
 }
