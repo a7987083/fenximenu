@@ -18,41 +18,47 @@ static void ZONShowAuthorized(NSString *udid) {
     }];
 }
 
+static void ZONContinueAuthorization(ZONUI *ui, NSString *udid) {
+    [ZONActivation fetchLegacyStatusForUDID:udid completion:^(NSDictionary *legacy) {
+        NSDictionary *dylibStatus = [legacy[@"legacy_dylib"] isKindOfClass:NSDictionary.class] ? legacy[@"legacy_dylib"] : nil;
+        NSInteger code = [dylibStatus[@"code"] integerValue];
+        if (code == 1) {
+            ZONShowAuthorized(udid);
+            return;
+        }
+
+        [ui requestCardWithCompletion:^(NSString *card) {
+            if (!card) return;
+            [ZONActivation activateUDID:udid card:card completion:^(BOOL ok, NSString *message, NSDictionary *raw) {
+                if (!ok) {
+                    [ui showInfo:@{
+                        @"success": @NO,
+                        @"message": message ?: @"激活失败",
+                        @"raw": raw ?: @{}
+                    } title:@"激活结果"];
+                    return;
+                }
+                ZONShowAuthorized(udid);
+            }];
+        }];
+    }];
+}
+
 __attribute__((constructor)) static void ZONStart(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         ZONUI *ui = [ZONUI shared];
         [ui installFloatingButton];
         ui.tapHandler = ^{
             NSString *saved = [NSUserDefaults.standardUserDefaults stringForKey:kZONUDIDKey];
-            [ui requestUDID:saved completion:^(NSString *udid) {
+            if (saved.length > 0) {
+                ZONContinueAuthorization(ui, saved);
+                return;
+            }
+
+            [ui requestUDID:nil completion:^(NSString *udid) {
                 if (!udid) return;
                 [NSUserDefaults.standardUserDefaults setObject:udid forKey:kZONUDIDKey];
-
-                [ZONActivation fetchLegacyStatusForUDID:udid completion:^(NSDictionary *legacy) {
-                    NSDictionary *dylibStatus = [legacy[@"legacy_dylib"] isKindOfClass:NSDictionary.class] ? legacy[@"legacy_dylib"] : nil;
-                    NSInteger code = [dylibStatus[@"code"] integerValue];
-                    if (code == 1) {
-                        ZONShowAuthorized(udid);
-                        return;
-                    }
-
-                    [ui requestCardWithCompletion:^(NSString *card) {
-                        if (!card) return;
-                        [ZONActivation activateUDID:udid card:card completion:^(BOOL ok, NSString *message, NSDictionary *raw) {
-                            if (!ok) {
-                                [ui showInfo:@{
-                                    @"success": @NO,
-                                    @"message": message ?: @"激活失败",
-                                    @"raw": raw ?: @{}
-                                } title:@"激活结果"];
-                                return;
-                            }
-                            [ZONActivation fetchLegacyStatusForUDID:udid completion:^(__unused NSDictionary *status) {
-                                ZONShowAuthorized(udid);
-                            }];
-                        }];
-                    }];
-                }];
+                ZONContinueAuthorization(ui, udid);
             }];
         };
     });
