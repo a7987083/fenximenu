@@ -1,0 +1,53 @@
+name: HFARuntimeAnalyzer v0.3.10 NotificationConsumerGraph
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.10-notification-consumer-graph]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v0310_chain.py
+          python3 -m py_compile .github/scripts/apply_hfaruntime_v0310_chain.py .github/scripts/hfamap_runtime_analyzer_v0310_block_observer_invoke.py .github/scripts/hfamap_runtime_analyzer_v0310_consumer_graph.py
+          SRC=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          DIS=hfamap/src/HFAMap5MDispatcherResolver.m
+          grep -Fq 'HFA0310ResolveNearbyBlockInvoke' "$DIS"
+          grep -Fq '[V0310-BLOCK-INVOKE]' "$DIS"
+          grep -Fq 'HFAV0310ConsumerGraph' "$SRC"
+          grep -Fq '[V0310-CONSUMER-GRAPH]' "$SRC"
+          grep -Fq 'HFAMap_RuntimeAnalyzer_v0310.json' "$SRC"
+          grep -Fq 'com.hfa.runtime-analyzer/v0.3.10' "$SRC"
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v0310_*.py; then echo 'FIXED RVA LEAKED INTO V0310 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.txt
+          strings "$out" | grep -q 'V0310-BLOCK-INVOKE'
+          strings "$out" | grep -q 'V0310-CONSUMER-GRAPH'
+          strings "$out" | grep -q 'com.hfa.runtime-analyzer/v0.3.10'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.txt
+          if-no-files-found: error
