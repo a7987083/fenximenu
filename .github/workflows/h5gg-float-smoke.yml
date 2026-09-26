@@ -36,6 +36,7 @@ jobs:
             -framework UIKit \
             -framework Foundation \
             -framework QuartzCore \
+            -framework CoreGraphics \
             -install_name @rpath/H5GGFloatSmoke.dylib \
             -o build/h5gg-float-smoke/H5GGFloatSmoke.dylib \
             experiments/h5gg-float-smoke/H5GGFloatSmoke.m
