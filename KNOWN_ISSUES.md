@@ -1,167 +1,86 @@
 # Known Issues
 
-## HFARuntimeAnalyzer v0.3.3 StaticParity
+## HFARuntimeAnalyzer v0.3.4 SemanticBackend
 
-### Device validation pending
+### Physical-device semantic validation is pending
 
 Status: open / primary gate.
 
-The v0.3.3 arm64 dylib is CI-built and artifact-rehashed, but has not yet been exercised on device. Do not mark the structural-parity changes device-passed until the new `V033-*` logs and per-bundle JSON are collected.
+The v0.3.4 arm64 dylib is CI-built, downloaded and re-hashed, but the new semantic classifications have not yet been proven on a physical device. Do not call Random Dice 2 `conditional-return`, MeChat `return-multiplier`, RogueLegend FP return transform or Path subobject capture device-confirmed until new `V034-*` logs and v034 JSON are collected.
 
-### Runtime State is not automatically a canonical patch
+### Phase-1 CFG is intentionally bounded and incomplete
 
-Status: intentional evidence gate.
+Status: open / known limitation.
 
-RogueLegend and MeChat reach a Runtime State backend but expose no object `fieldOffsets` under the existing callback-field analysis. v0.3.3 exports `hookReturnEvidence` and may emit `staticOverrideCandidates`, but those entries remain `diagnostic-only`. They must not be promoted to final `offset/original/enabled` without a unique target semantic and original-byte proof.
+The new analyzer follows an unconditional `B` in the specific branch-aware constant-return path and performs bounded linear replacement analysis. It is not yet a full basic-block graph with path merging. Multiple early-return blocks, loops, nested conditionals and heavily flattened dispatchers may therefore remain `unknown-runtime` or expose only partial evidence.
 
-### Static decrypt fallback is unique-match only
+### Dataflow is evidence, not patch authorization
 
-Status: intentional fail-closed behavior.
+Status: permanent safety/truth rule.
 
-The simulator-compatible static fingerprint is used only when exactly one match exists. Zero or multiple matches are recorded as unresolved. Structural descriptor records are still retained, but plaintext-dependent conclusions remain unavailable.
+`semanticEvidence` may identify arithmetic, receiver flow or callback constants, but it does not automatically authorize a static patch. `canonicalEligible` still requires independently proven equivalent static bytes, unique target identity and original-byte truth. Dynamic multipliers may legitimately remain Runtime Semantic backends with no fixed patch.
 
-### Cross-sample AutoBackend coverage must be rechecked on the latest build
+### Feature ↔ Backend binding is not complete
+
+Status: open / phase 2.
+
+The current analyzer can classify a replacement but does not yet fully associate every semantic branch with menu Feature identifiers. This matters for shared replacement sites such as Path of Kings Damage/Defence/God Mode and Random Dice support trampolines. UnitXP `ZNSharedSiteExecutionProbeV3` concepts are the reference for the next binding layer.
+
+### WhisperCastle still requires descriptor-less action analysis
+
+Status: open / phase 3.
+
+WhisperCastle has menu features/actions but no matching descriptor family. The existing descriptor-first AutoBackend can enter v034 but cannot recover the flattened ObjC action implementation as a feature backend. A bounded descriptor-less action/CFG path remains required.
+
+### IL2CPP owning-method scan is bounded
+
+Status: intentional performance guard.
+
+The v0.3.4 enrichment scans live IL2CPP methods with a class cap and wall-clock deadline. On very large titles it may return a timeout/lower-bound result rather than guessing an owner. Native backend evidence must survive metadata enrichment failure.
+
+### Whole-repository output routing is not yet unified
 
 Status: open.
 
-Priority samples: Duck Survival, Path of Kings, Random Dice 2, Heavenfall, PopIsland and WhisperCastle. Each selected dylib must now reach `V033-DECRYPT` and `V033-SCAN-END`, regardless of whether plaintext decrypt succeeds.
+The RuntimeAnalyzer v034/v033/v032/v03 outputs use `HFAOutputPath()` under `Documents/HFAMap_<CFBundleIdentifier>/` and CI forbids direct analyzer root writes. Previous device logs showed that some legacy package/identity/IGMM exporters can still write directly under `Documents/`. Migrating those legacy exporters into the same bundle folder remains a separate task.
+
+### Compile compatibility workaround should be cleaned
+
+Status: low-priority technical debt.
+
+The iPhoneOS SDK rejects `<mach/mach_vm.h>`. v0.3.4 correctly uses `vm_read_overwrite` and Mach-O segment protections instead. The compile-fix generator currently retains a comment mentioning the unsupported header to satisfy a workflow string check; replace that marker check with a direct `vm_read_overwrite` assertion in a later cleanup.
 
 ### Output files must remain isolated per App
 
 Status: permanent regression rule.
 
-All outputs must use `HFAOutputDirectory()` / `HFAOutputPath()` and reside under `Documents/HFAMap_<CFBundleIdentifier>/`. Shared `Documents/HFAMap_*` root outputs are rejected by CI because they allow stale data from one App to contaminate another App's analysis.
+All RuntimeAnalyzer outputs must use `HFAOutputDirectory()` / `HFAOutputPath()` and reside under `Documents/HFAMap_<CFBundleIdentifier>/`. A stale result from another App must never participate in current analysis.
 
-## v1.9.37.10 Earn to Die Rogue profile
+### Static decrypt fallback remains unique-match only
 
-### Device runtime validation pending
+Status: intentional fail-closed behavior.
 
-Status: open.
-
-Fuel/Boost are statically proven and generation-tested, but the new analyzer
-binary has not yet been built by GitHub Actions or exercised on device. Required
-checks are clean scan output, `14` canonical features, `20` patches, independent
-Fuel/Boost enable/disable and original-byte restoration.
-
-### Already-depleted values are not refilled
-
-Status: intentional behavior.
-
-The two patches NOP the subtraction instructions. They prevent additional
-consumption but do not assign a full tank. Enable them before Fuel/Boost reaches
-zero or start a new driving session.
-
-### Exact-build profile only
-
-Status: permanent safety gate.
-
-The RVAs are valid only for `com.notdoppler.earntodierogue` `1.28.251 (1)`,
-arm64, UnityFramework UUID `8654D76C-B760-34FC-BEE0-FE70AE8C95C8`, with exact
-original bytes. A game update requires fresh metadata and binary analysis.
-
-### Posters/Prestige patch overlap
-
-Status: open / pre-existing.
-
-Both features touch `UnityFramework+0x2E25904`. Posters writes `08E0BF12`
-(4 bytes), while Prestige writes `20008052C0035FD6` (8 bytes). Toggle order can
-overwrite the shared first instruction. Fuel/Boost do not introduce this
-conflict, but the package needs explicit conflict handling or a new independent
-Prestige/Posters patch site.
-
-### Generic observed-action classification remains too broad
-
-Status: mitigated for the verified target only.
-
-The generic v1.9.37.9/v1.9.37.10 logic can classify an observed action as
-`runtimeAction` even when the action is only a shared menu dispatcher. The exact
-Earn to Die profile corrects the two proven records; a future generic fix should
-use `dispatcher-observed/unresolved` until independent write/hook/static-byte
-evidence exists.
-
-## Current parser-only line: v1.9.36.4 JSONExport
-
-### v1.9.36.4 WayOfKings/iGMM validation
-
-Status: **passed / closed**.
-
-Device archive `归档 6(1).zip` confirmed stable injection, Full Scan completion, 4-feature iGMM diagnostic export and normalized analysis export. It also confirmed:
-
-- `kTypeButton -> button`;
-- raw Debug Menu `executionPrimitive = nativeHook` remains preserved;
-- `normalizedExecutionPrimitive = runtimeAction`;
-- raw `canonicalReason = runtime-hook-requires-portable-equivalent` remains preserved;
-- `normalizedCanonicalReason = runtime-action-not-static-bytes`;
-- `targetIdentities` resolves both `libpathofkings.dylib` and `UnityFramework` with the expected UUID/arm64/cryptid evidence;
-- `JSON-EXPORT status=pass features=4 sources=1 targetIdentities=2`.
-
-### Cross-family regression is still pending
-
-Status: open / primary validation gate.
-
-The current v1.9.36.4 parser has now passed the WayOfKings/iGMM family, but the same binary still must be regression-tested on:
-
-- runtime-record/static 5 MB family;
-- legacy ~15 MB family.
-
-Do not claim universal/cross-family coverage until both current-line regressions pass.
-
-### Target identities are analysis evidence, not execution authorization
-
-Status: permanent rule.
-
-Read-only UUID/architecture/filetype/preferred-`__TEXT`/cryptid records are for build matching and analysis quality only. They do not authorize hook installation or package execution.
-
-### iGMM runtime features remain non-canonical static patches
-
-Status: intentional / device-confirmed.
-
-WayOfKings uses runtime numeric/native-hook/block behavior. These records remain diagnostic and analysis-only and are not fabricated into `target/offset/original/enabled` static patches.
-
-### v1.9.37 and v1.9.37.1 are retired from the parser mainline
-
-Status: confirmed device startup failure / architecture reverted.
-
-Those builds merged the independent playback/runtime consumer and Dobby into HFAMapUniversal. Both crashed immediately when injected. HFAMapUniversal remains a parser/exporter only.
-
-### Stale generated files can confuse device validation
-
-Status: test-environment hazard.
-
-Before testing a new menu family, archive or remove old `*.hfamap.analysis.json`, `*.hfamap.igmm.json`, `*.hfapatch.json`, `*.hfapatch.identity.json`, and old playback logs. A stale canonical package must never be mistaken for current output.
-
-### Canonical structural validity is not sufficient
-
-Status: permanent verification rule.
-
-A static package is trusted only when structure, target identity and original-byte truth all agree. Preferred Mach-O VM address semantics remain required for canonical offsets.
-
-### Original-byte fallback branches remain incompletely runtime-exercised
-
-Status: open.
-
-The v1.9.33 multi-source original-byte readers remain part of the frozen parser core. Their fallback branches still need dedicated runtime evidence on samples where the preferred read path is unavailable.
-
-### Runtime-record/static 5 MB regression
-
-Status: open / next test.
-
-The current v1.9.36.4 build must reproduce a trusted `com.hfa.patch/v1` package for the static 5 MB family. Required checks include real target identity, preferred VM offsets, original-byte truth and no stale-output contamination.
-
-### Legacy ~15 MB regression
-
-Status: open / follows the 5 MB static test.
-
-The legacy AP/IGSecret family was previously runtime-confirmed on older parser versions. The current v1.9.36.4 binary must still prove that path has not regressed.
+The simulator-compatible static fingerprint is used only when exactly one match exists. Missing or ambiguous decrypt must not discard structurally valid descriptors, but plaintext-dependent conclusions remain unavailable.
 
 ## Current CI delivery
 
-Authoritative v0.3.3 analyzer candidate:
+Authoritative v0.3.4 phase-1 candidate:
 
-- binary: `HFARuntimeAnalyzer-v0.3.3-StaticParity.dylib`
-- run: `36161672792`
-- artifact: `10876640401`
-- binary SHA256: `ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`
-- artifact ZIP digest: `sha256:3256b0704686508f411056593c9b1c68d31494a63ff502796e35a7138a8ee371`
-- CI compile/link/sign: passed
-- device validation: pending
+- branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
+- build-tested commit: `3918052e30fcc0d7dca78e4754240cf5e94dba3c`
+- binary: `HFARuntimeAnalyzer-v0.3.4-SemanticBackend.dylib`
+- run: `36218004874`
+- artifact ID: `10897963845`
+- size: `265424` bytes
+- binary SHA256: `cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00`
+- artifact ZIP digest: `sha256:de49e2dfd51deb6004e22b407ba20554c81da8c22005f928d633a81f1e67274d`
+- compile/link/sign: passed
+- device semantic validation: pending
+
+## Legacy known issues retained
+
+- Earn to Die Rogue exact-build Fuel/Boost patches remain build/UUID/original-byte gated; already depleted values are not refilled.
+- Earn Posters/Prestige still have a pre-existing overlap at `UnityFramework+0x2E25904` and need explicit conflict handling.
+- v1.9.36.4 parser current-line cross-family regression for static-5MB and legacy-15MB families remains separate and pending.
+- v1.9.37/v1.9.37.1 combined playback/Dobby parser architecture remains retired after device startup crashes.
+- canonical structural validity alone is insufficient; target identity and original-byte truth remain mandatory.
