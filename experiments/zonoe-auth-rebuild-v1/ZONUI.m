@@ -1,5 +1,17 @@
 #import "ZONUI.h"
 
+@interface ZONOverlayWindow : UIWindow
+@end
+
+@implementation ZONOverlayWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    UIViewController *root = self.rootViewController;
+    if (!root.presentedViewController && hit == root.view) return nil;
+    return hit;
+}
+@end
+
 @interface ZONInfoViewController : UIViewController
 @property(nonatomic,copy) NSString *zonTitle;
 @property(nonatomic,copy) NSString *zonText;
@@ -51,8 +63,10 @@
 @end
 
 @interface ZONUI ()
+@property(nonatomic,strong) ZONOverlayWindow *overlayWindow;
+@property(nonatomic,strong) UIViewController *overlayRoot;
 @property(nonatomic,strong) UIButton *button;
-@property(nonatomic,weak) UIWindow *hostWindow;
+@property(nonatomic,weak) UIWindow *previousKeyWindow;
 @property(nonatomic,assign) CGPoint panStartCenter;
 @property(nonatomic,assign) BOOL presentingInput;
 @end
@@ -66,62 +80,68 @@
     return x;
 }
 
-- (UIWindow *)foregroundWindow {
-    UIWindow *fallback = nil;
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if (![scene isKindOfClass:UIWindowScene.class]) continue;
-            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
-            for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
-                if (candidate.hidden || candidate.alpha <= 0.01 || !candidate.rootViewController) continue;
-                if (candidate.isKeyWindow) return candidate;
-                if (!fallback && candidate.windowLevel == UIWindowLevelNormal) fallback = candidate;
-            }
-        }
-    }
-    if (fallback) return fallback;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (UIApplication.sharedApplication.keyWindow) return UIApplication.sharedApplication.keyWindow;
-#pragma clang diagnostic pop
-    for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
-        if (!candidate.hidden && candidate.alpha > 0.01 && candidate.rootViewController) return candidate;
+- (UIWindowScene *)foregroundScene API_AVAILABLE(ios(13.0)) {
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        if (scene.activationState == UISceneActivationStateForegroundActive) return (UIWindowScene *)scene;
     }
     return nil;
 }
 
-- (UIViewController *)topVC {
-    UIViewController *vc = [self foregroundWindow].rootViewController;
-    BOOL changed = YES;
-    while (vc && changed) {
-        changed = NO;
-        if (vc.presentedViewController && !vc.presentedViewController.isBeingDismissed) {
-            vc = vc.presentedViewController;
-            changed = YES;
-            continue;
+- (UIWindow *)currentHostKeyWindow {
+    if (@available(iOS 13.0, *)) {
+        UIWindowScene *scene = [self foregroundScene];
+        for (UIWindow *w in scene.windows) {
+            if (w == self.overlayWindow) continue;
+            if (w.isKeyWindow && !w.hidden && w.rootViewController) return w;
         }
-        if ([vc isKindOfClass:UINavigationController.class]) {
-            UIViewController *next = ((UINavigationController *)vc).visibleViewController;
-            if (next && next != vc) { vc = next; changed = YES; continue; }
-        }
-        if ([vc isKindOfClass:UITabBarController.class]) {
-            UIViewController *next = ((UITabBarController *)vc).selectedViewController;
-            if (next && next != vc) { vc = next; changed = YES; continue; }
+        for (UIWindow *w in scene.windows) {
+            if (w == self.overlayWindow) continue;
+            if (!w.hidden && w.alpha > 0.01 && w.windowLevel == UIWindowLevelNormal && w.rootViewController) return w;
         }
     }
-    return vc;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    UIWindow *key = UIApplication.sharedApplication.keyWindow;
+#pragma clang diagnostic pop
+    if (key != self.overlayWindow) return key;
+    return nil;
+}
+
+- (void)ensureOverlayWindow {
+    if (self.overlayWindow) return;
+
+    ZONOverlayWindow *window = nil;
+    if (@available(iOS 13.0, *)) {
+        UIWindowScene *scene = [self foregroundScene];
+        if (scene) {
+            window = [[ZONOverlayWindow alloc] initWithWindowScene:scene];
+            window.frame = scene.coordinateSpace.bounds;
+        }
+    }
+    if (!window) window = [[ZONOverlayWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+
+    UIViewController *root = [UIViewController new];
+    root.view.backgroundColor = UIColor.clearColor;
+    root.view.userInteractionEnabled = YES;
+
+    window.rootViewController = root;
+    window.backgroundColor = UIColor.clearColor;
+    window.windowLevel = UIWindowLevelStatusBar + 1.0;
+    window.hidden = NO;
+
+    self.overlayWindow = window;
+    self.overlayRoot = root;
 }
 
 - (void)installFloatingButton {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self ensureOverlayWindow];
         if (self.button.superview) return;
-        UIWindow *window = [self foregroundWindow];
-        if (!window) return;
-        self.hostWindow = window;
 
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.frame = CGRectMake(18, 150, 54, 54);
-        button.layer.cornerRadius = 27.0;
+        button.frame = CGRectMake(16, 150, 56, 56);
+        button.layer.cornerRadius = 28.0;
         button.layer.masksToBounds = YES;
         button.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.92];
         [button setTitle:@"ZN" forState:UIControlStateNormal];
@@ -134,20 +154,17 @@
         pan.maximumNumberOfTouches = 1;
         [button addGestureRecognizer:pan];
 
-        [window addSubview:button];
-        [window bringSubviewToFront:button];
+        [self.overlayRoot.view addSubview:button];
         self.button = button;
     });
 }
 
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
     UIView *view = pan.view;
-    UIView *host = view.superview;
+    UIView *host = self.overlayRoot.view;
     if (!view || !host) return;
 
-    if (pan.state == UIGestureRecognizerStateBegan) {
-        self.panStartCenter = view.center;
-    }
+    if (pan.state == UIGestureRecognizerStateBegan) self.panStartCenter = view.center;
 
     CGPoint t = [pan translationInView:host];
     CGPoint c = CGPointMake(self.panStartCenter.x + t.x, self.panStartCenter.y + t.y);
@@ -163,9 +180,8 @@
     view.center = c;
 
     if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
-        CGFloat mid = CGRectGetMidX(host.bounds);
         CGPoint target = view.center;
-        target.x = (target.x < mid) ? minX : maxX;
+        target.x = (target.x < CGRectGetMidX(host.bounds)) ? minX : maxX;
         [UIView animateWithDuration:0.22 animations:^{ view.center = target; }];
     }
 }
@@ -175,12 +191,23 @@
     if (self.tapHandler) self.tapHandler();
 }
 
-- (void)presentInputAlert:(UIAlertController *)alert completionGuard:(dispatch_block_t)onPresented {
+- (void)restoreHostKeyWindowSoon {
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIWindow *host = weakSelf.previousKeyWindow;
+        if (host && !host.hidden) [host makeKeyWindow];
+        weakSelf.previousKeyWindow = nil;
+    });
+}
+
+- (void)presentInputAlert:(UIAlertController *)alert {
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIViewController *vc = [self topVC];
-        if (!vc || vc.isBeingDismissed) return;
+        [self ensureOverlayWindow];
+        if (self.overlayRoot.presentedViewController || self.presentingInput) return;
+        self.previousKeyWindow = [self currentHostKeyWindow];
         self.presentingInput = YES;
-        [vc presentViewController:alert animated:YES completion:onPresented];
+        [self.overlayWindow makeKeyAndVisible];
+        [self.overlayRoot presentViewController:alert animated:YES completion:nil];
     });
 }
 
@@ -196,14 +223,16 @@
     __weak typeof(self) weakSelf = self;
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *x) {
         weakSelf.presentingInput = NO;
+        [weakSelf restoreHostKeyWindowSoon];
         if (completion) completion(nil);
     }]];
     [a addAction:[UIAlertAction actionWithTitle:@"下一步" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *x) {
-        weakSelf.presentingInput = NO;
         NSString *s = [a.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        weakSelf.presentingInput = NO;
+        [weakSelf restoreHostKeyWindowSoon];
         if (completion) completion(s.length ? s : nil);
     }]];
-    [self presentInputAlert:a completionGuard:nil];
+    [self presentInputAlert:a];
 }
 
 - (void)requestCardWithCompletion:(void (^)(NSString * _Nullable))completion {
@@ -217,27 +246,33 @@
     __weak typeof(self) weakSelf = self;
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *x) {
         weakSelf.presentingInput = NO;
+        [weakSelf restoreHostKeyWindowSoon];
         if (completion) completion(nil);
     }]];
     [a addAction:[UIAlertAction actionWithTitle:@"确认激活" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *x) {
-        weakSelf.presentingInput = NO;
         NSString *s = [a.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        weakSelf.presentingInput = NO;
+        [weakSelf restoreHostKeyWindowSoon];
         if (completion) completion(s.length ? s : nil);
     }]];
-    [self presentInputAlert:a completionGuard:nil];
+    [self presentInputAlert:a];
 }
 
 - (void)showInfo:(NSDictionary *)info title:(NSString *)title {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self ensureOverlayWindow];
+        if (self.overlayRoot.presentedViewController) return;
+
         NSData *data = [NSJSONSerialization dataWithJSONObject:info ?: @{} options:(NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys) error:nil];
         NSString *text = data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : (info.description ?: @"");
         ZONInfoViewController *vc = [ZONInfoViewController new];
         vc.zonTitle = title ?: @"授权信息";
         vc.zonText = text;
         vc.modalPresentationStyle = UIModalPresentationPageSheet;
-        UIViewController *presenter = [self topVC];
-        if (!presenter) return;
-        [presenter presentViewController:vc animated:YES completion:nil];
+
+        self.previousKeyWindow = [self currentHostKeyWindow];
+        [self.overlayWindow makeKeyAndVisible];
+        [self.overlayRoot presentViewController:vc animated:YES completion:nil];
     });
 }
 
