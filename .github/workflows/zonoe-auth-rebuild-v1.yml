@@ -1,0 +1,42 @@
+name: Build Zonoe Auth Rebuild V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["test/h5gg-float-smoke-v1"]
+    paths:
+      - "experiments/zonoe-auth-rebuild-v1/**"
+      - ".github/workflows/zonoe-auth-rebuild-v1.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build arm64 iOS dylib
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SRC="experiments/zonoe-auth-rebuild-v1"
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          clang -fobjc-arc -dynamiclib -arch arm64 -isysroot "$SDK" -miphoneos-version-min=13.0 \
+            "$SRC/ZONUI.m" \
+            "$SRC/ZONNetwork.m" \
+            "$SRC/ZONActivation.m" \
+            "$SRC/ZONVerify.m" \
+            "$SRC/ZONEntry.m" \
+            "$SRC/ZONDylibConfig.m" \
+            "$SRC/ZONDylibVerify.m" \
+            -framework UIKit -framework Foundation -framework Security -framework QuartzCore \
+            -o ZonoeAuthRebuildV1.dylib
+
+          codesign -f -s - ZonoeAuthRebuildV1.dylib
+          file ZonoeAuthRebuildV1.dylib
+          xcrun vtool -show-build ZonoeAuthRebuildV1.dylib || true
+          shasum -a 256 ZonoeAuthRebuildV1.dylib
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZonoeAuthRebuildV1-arm64-ios13
+          path: ZonoeAuthRebuildV1.dylib
