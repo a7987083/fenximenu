@@ -1,111 +1,111 @@
 # HFAMap Roadmap
 
-## Current phase — HFARuntimeAnalyzer v0.3.3 StaticParity device validation
+## Current phase — HFARuntimeAnalyzer v0.3.4 SemanticBackend
 
-Branch: `feature/hfaruntime-v0.3.3-static-parity-autobackend`
+Branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
 
-Baseline: v0.3.2 `cb04586dba45e1f57df4d1a2a76a54385d864066`
+Baseline: v0.3.3 `f3090a8c1998f443eb4cae03eb857bfadf2c2002`
 
-Successful CI build commit: `806957d0ebe3ef13559d72809295bb6eeb69de09`
+Phase-1 build-tested commit: `3918052e30fcc0d7dca78e4754240cf5e94dba3c`
 
-CI run: `36161672792` — success
+CI run: `36218004874` — success
 
-Artifact: `HFARuntimeAnalyzer-v0.3.3-StaticParity` (`10876640401`)
+Artifact: `HFARuntimeAnalyzer-v0.3.4-SemanticBackend` (`10897963845`)
 
-Binary SHA256: `ed381292a594b3865194622141abcce29918e16d88092405c667d78519da6cca`
+Binary SHA256: `cc4cec47801cd3d5dfa581f00fc0be6123a7388e82805f9167765de9d32f9f00`
 
 ### Goal
 
-Make the on-device analyzer follow the same evidence order as the offline simulator:
+Move beyond coarse `runtime-state` classification and make the on-device analyzer explain a recovered native backend:
 
-`current menu Mach-O bytes -> structural descriptor records -> XREF/backend -> optional decrypt/plaintext evidence -> target semantics`
+`descriptor/action -> replacement/original slot/target -> native semantic evidence -> IL2CPP owning method/ABI -> Feature binding -> canonical static patch OR Runtime Semantic backend`.
 
-Decrypt/plaintext availability must no longer decide whether a structurally valid descriptor exists.
+A runtime semantic result is a valid analysis result. Do not manufacture a static patch when no equivalent fixed byte transformation is proven.
 
-### Implemented in v0.3.3
+### Phase 1 — native semantic core + IL2CPP enrichment — implemented / CI passed
 
-- simulator-compatible 8-byte descriptor alignment;
-- binary-first retention of target/patch family records;
-- no hard return when runtime decrypt resolution fails;
-- unique static decrypt fingerprint fallback;
-- per-record `decryptStatus`;
-- universal selected-dylib AutoBackend entry preserved;
-- Runtime State `hookReturnEvidence` and diagnostic-only `staticOverrideCandidates`;
-- new `HFAMap_RuntimeAnalyzer_v033.json`;
-- per-App output directory preserved as `Documents/HFAMap_<CFBundleIdentifier>/`;
-- direct Documents-root HFAMap output rejected by CI.
+- standalone semantic analyzer module;
+- bounded `B` / shared-epilogue constant-return recognition;
+- original-slot `BLR` evidence;
+- integer/FP arithmetic evidence (`MUL`, `FMUL`, `FDIV`, `FSUB`, `FCSEL`);
+- receiver and subobject-receiver flow;
+- callback constant argument evidence;
+- semantic types with `unknown-runtime` fallback;
+- bounded IL2CPP owning-method resolution;
+- Assembly/Namespace/Class/Method/MethodInfo/method pointer/intra-method offset;
+- parameter/return ABI plus instance/generic/inflated evidence;
+- `semanticEvidence`, `semanticType`, `legacySemanticType`, `owningMethod` export;
+- `HFAMap_RuntimeAnalyzer_v034.json` in the per-App analyzer output folder.
 
-### Device milestone A — previously missing AutoBackend samples
+### Milestone A — device semantic acceptance
 
 Test in this order:
 
-1. Duck Survival;
-2. Path of Kings;
-3. Random Dice 2;
-4. Heavenfall;
-5. PopIsland;
-6. WhisperCastle.
+1. Random Dice 2;
+2. MeChat;
+3. RogueLegend;
+4. Path of Kings;
+5. Earn to Die Rogue regression.
 
-Acceptance for each:
+Acceptance targets:
 
-- selected menu dylib is correct;
-- `[V033-DECRYPT]` exists;
-- `[V033-SCAN-END]` exists;
-- `HFAMap_RuntimeAnalyzer_v033.json` exists in that App's independent folder;
-- structural descriptors/backends are present even if decrypt status is unresolved;
-- no stale file from another App appears in the folder.
+- every selected dylib emits `[V034-DECRYPT]`, `[V034-BACKEND]`, `[V034-SCAN-END]`;
+- `HFAMap_RuntimeAnalyzer_v034.json` exists in the App folder;
+- Random Dice `MergeAny` exposes branch-aware conditional return evidence;
+- MeChat exposes post-original integer multiplication evidence and coherent owning-method ABI;
+- Rogue exposes float post-original transformation evidence without being forced into a fake static patch;
+- Path exposes subobject receiver flow for the previously observed `+0x50/+0x38` cases;
+- Earn keeps the existing 18 static + 2 derived patch behavior.
 
-### Device milestone B — Runtime State completion
+### Phase 2 — Feature ↔ Backend binding
 
-RogueLegend and MeChat already reach Runtime State but have no v0.3.2 field offsets. For v0.3.3:
+Use UnitXP `ZNSharedSiteExecutionProbeV3` concepts and existing menu identifiers/registration evidence to support:
 
-1. inspect `hookReturnEvidence`;
-2. inspect any `staticOverrideCandidates`;
-3. confirm target image/UUID/RVA and original bytes;
-4. only promote a patch if the semantic path is unique and independently proven;
-5. otherwise keep the result unresolved/diagnostic rather than fabricating a canonical patch.
+- one Feature -> multiple backend records;
+- one backend/replacement -> multiple Features;
+- support-thunk/trampoline exclusion;
+- per-feature semantic evidence within a shared replacement.
 
-### Device milestone C — no-regression set
+Primary fixtures: Path Damage/Defence/God Mode and Random Dice DmgMulti/MergeAny/SPGainMulti.
 
-Recheck known-good v0.3.2 samples:
+### Phase 3 — descriptor-less action backend
 
-- Earn to Die Rogue: expected reference 19 Backend = 18 Static + 1 Runtime State, derived 2;
-- Rise of Berk: 15 Static;
-- ZombieCatchers: 4 Static;
-- HelloKittyMyDreamStore: 6 Static;
-- Legend of Survivors: 16 Static.
+Add a bounded ObjC action/IMP analysis path when descriptor discovery returns zero but menu Feature/action evidence exists.
 
-Do not promote v0.3.3 as the new stable analyzer until milestones A-C are supported by saved per-bundle logs/JSON.
+Primary fixture: WhisperCastle `gIlPAd::nwoyqBjpyKcmp` / flattened action path.
 
-## Previous phase — v1.9.37.10 Earn to Die Rogue completion
+### Phase 4 — stronger CFG/dataflow
 
-Branch: `feature/hfamap-v193710-unified-feature-model`
+- basic-block worklist instead of primarily linear bounded scanning;
+- conditional edge following and path merge;
+- improved register taint across copies/loads;
+- better original-call argument/return provenance;
+- loop/flattened-dispatch guards and strict time budgets.
 
-Baseline commit: `2306e7121f507b663f157a172cdfb9c4aa5bdc46`
+### Phase 5 — canonical/runtime bridge
 
-Verified-profile implementation commit:
-`13fff6fd49d84348c618cc7845527e0b5c8413fa`
+For each semantic backend:
 
-The `com.notdoppler.earntodierogue` `1.28.251 (1)` scan originally exported
-12 canonical features and treated Fuel/Boost as runtime-observed records with
-empty patch arrays. Matching IL2CPP metadata and ARM64 data-flow analysis prove
-both are static depletion sites in `Car.FixedUpdate()`.
+- if an equivalent static transformation is uniquely proven, emit canonical `offset/original/enabled` after target identity and original-byte validation;
+- otherwise preserve it as a Runtime Semantic backend with owning-method/ABI/Feature evidence;
+- never derive bytes only to satisfy an expected feature count.
 
-Verified exact-build sites:
+### Phase 6 — unified output routing and optional runtime corroboration
 
-- Fuel: `UnityFramework + 0x2D98AC8`, `0038211E -> 1F2003D5`;
-- Boost: `UnityFramework + 0x2D9887C`, `0038281E -> 1F2003D5`.
+- move remaining legacy package/identity/IGMM exports into the same per-App bundle folder;
+- add optional receiver/return runtime corroboration inspired by UnitXP `ZNM47ReceiverCapture` and `ZNM48ReturnCapture`;
+- runtime evidence validates static hypotheses but must not become a prerequisite for ordinary static discovery.
 
-The profile remains exact-build only and does not weaken generic truth gates.
+## Stable / previous checkpoints
 
-## Stable parser/exporter checkpoint
-
-v1.9.36.4 JSONExport remains the device-confirmed WayOfKings/iGMM parser checkpoint. The v1.9.37/v1.9.37.1 combined playback/Dobby architecture remains retired after device startup crashes.
+- v0.3.3 StaticParity: binary-first descriptor discovery and universal AutoBackend entry.
+- v1.9.37.10 Earn exact-build profile: Fuel/Boost static completion for the matching build only.
+- v1.9.36.4 JSONExport: device-confirmed WayOfKings/iGMM parser checkpoint.
 
 Core rules remain:
 
 - preserve evidence instead of forcing every runtime behavior into a static patch;
 - canonical static patches require target identity and original-byte truth;
 - preferred Mach-O VM addresses define static offsets;
-- runtime-only/ambiguous evidence stays diagnostic;
+- runtime-only/ambiguous evidence stays explicit;
 - generated outputs must be attributable to the current App and current scan.
