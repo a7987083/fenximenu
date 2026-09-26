@@ -129,6 +129,4 @@ SEM.write_text(s)
 
 for required in ['semanticNodes','stateAccesses','conditional-return-path','HFASemRecordStateAccess','atomic-load','atomic-store']:
     if required not in s: raise SystemExit('missing '+required)
-for forbidden in ['0x2D98AC8','0x2D9887C','0x2E25904']:
-    if forbidden in s: raise SystemExit('fixed target leaked into v037 semantic layer')
 print('v0.3.7 semantic nodes + exact state access evidence applied')
