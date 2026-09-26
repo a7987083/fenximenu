@@ -1,8 +1,8 @@
-name: Build Zonoe Auth Rebuild V3
+name: Build Zonoe API Full Smoke V1
 on:
   workflow_dispatch:
   push:
-    branches: ["test/h5gg-float-smoke-v1"]
+    branches: ["test/zonoe-api-full-smoke-v1"]
     paths:
       - "experiments/zonoe-auth-rebuild-v1/**"
       - ".github/workflows/zonoe-auth-rebuild-v1.yml"
@@ -20,15 +20,16 @@ jobs:
           clang -fobjc-arc -dynamiclib -arch arm64 -isysroot "$SDK" -miphoneos-version-min=13.0 \
             "$SRC/ZONUI.m" "$SRC/ZONNetwork.m" "$SRC/ZONAPIEndpoints.m" \
             "$SRC/ZONAuthorization.m" "$SRC/ZONActivation.m" "$SRC/ZONLicenseStatus.m" \
-            "$SRC/ZONVerify.m" "$SRC/ZONStorage.m" "$SRC/ZONResponseFormatter.m" "$SRC/ZONEntry.m" \
+            "$SRC/ZONVerify.m" "$SRC/ZONStorage.m" "$SRC/ZONResponseFormatter.m" \
+            "$SRC/ZONAPISmokeCenter.m" "$SRC/ZONEntry.m" \
             "$SRC/ZONDylibConfig.m" "$SRC/ZONDylibVerify.m" \
             -framework UIKit -framework Foundation -framework Security -framework QuartzCore -framework CoreGraphics \
-            -o ZonoeAuthRebuildV3.dylib
-          codesign -f -s - ZonoeAuthRebuildV3.dylib
-          file ZonoeAuthRebuildV3.dylib
-          xcrun vtool -show-build ZonoeAuthRebuildV3.dylib || true
-          shasum -a 256 ZonoeAuthRebuildV3.dylib
+            -o ZonoeAPIFullSmokeV1.dylib
+          codesign -f -s - ZonoeAPIFullSmokeV1.dylib
+          file ZonoeAPIFullSmokeV1.dylib
+          xcrun vtool -show-build ZonoeAPIFullSmokeV1.dylib || true
+          shasum -a 256 ZonoeAPIFullSmokeV1.dylib
       - uses: actions/upload-artifact@v4
         with:
-          name: ZonoeAuthRebuildV3-arm64-ios13
-          path: ZonoeAuthRebuildV3.dylib
+          name: ZonoeAPIFullSmokeV1-arm64-ios13
+          path: ZonoeAPIFullSmokeV1.dylib
