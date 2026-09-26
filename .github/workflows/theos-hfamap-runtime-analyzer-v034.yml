@@ -54,6 +54,7 @@ jobs:
           python3 .github/scripts/hfamap_runtime_analyzer_v033_static_parity.py
           python3 .github/scripts/hfamap_runtime_analyzer_v033_fix1.py
           python3 .github/scripts/hfamap_runtime_analyzer_v034_semantic_backend.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v034_compile_fix.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('hfamap/src/HFAMapRuntimeAnalyzerV02.m')
@@ -78,6 +79,7 @@ jobs:
           test -f "$SEM"
           check "$SEM" 'HFASemanticAnalyzeReplacement'
           check "$SEM" 'HFAIL2CPPDescribeOwningMethod'
+          check "$SEM" '#import <mach/mach_vm.h>'
           check "$SEM" 'conditional-return'
           check "$SEM" 'return-multiplier'
           check "$SEM" 'return-divider'
