@@ -1,117 +1,126 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.4.2",
-  "phase": "cfg-reachability-ci-passed-device-validation-pending",
+  "version": "0.3.7",
+  "phase": "runtime-semantic-controlflow-consumer-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.4.2-cfg-reachability",
+  "branch": "feature/hfaruntime-v0.3.7-runtime-semantic-controlflow-consumer",
   "baseline": {
-    "version": "0.3.4.1",
-    "commit": "0b48f2c620724a8f28812363619e58ec9db624c5",
-    "artifact": "HFARuntimeAnalyzer-v0.3.4.1-Stability.dylib"
+    "version": "0.3.6",
+    "commit": "a816af7dc3a6bd85436d22b7e66197ff30e9ac3d",
+    "device_status": "15/15 games completed V036-SCAN-END; 16/16 runtime backends had concrete semantic types"
+  },
+  "scope": {
+    "priority": "Runtime Semantic Hook only",
+    "static_patch": "frozen regression baseline except conflict fail-closed work",
+    "runtime_action_descriptorless": "frozen for this phase",
+    "generic_only": true,
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte points stay isolated in their profile generator and must not leak into generic runtime recognizers"
   },
   "implementation": {
-    "cfg_patch_commit": "852db05cdd64b5ad6cf1ab7d5ce63db44799584b",
-    "workflow_commit": "64290a684acd6ca06eb355b6255c2a969d81c4e0",
-    "build_tested_commit": "64290a684acd6ca06eb355b6255c2a969d81c4e0"
+    "semantic_nodes_initial_commit": "55557e87e0fe093d4b3063b333ba027ca55c7bc5",
+    "consumer_binding_initial_commit": "d656769c5e23854648f157a6d52e9268a2825fe6",
+    "semantic_gate_fix_commit": "5aaa329d2f4eb41de16e522575df3a282a4d5119",
+    "build_tested_commit": "2f9a1396ff13d635250792d62e6bf6f148f29513",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v037.yml"
   },
   "build": {
     "ci": "success",
-    "run_id": 36230758952,
-    "artifact_id": 10901914640,
-    "artifact": "HFARuntimeAnalyzer-v0.3.4.2-CFGReachability",
-    "artifact_zip_sha256": "cc6d5e33a981de4235f1351691f1c453bf0609f0e6c874646074f34e4cbd0c4e",
-    "binary": "HFARuntimeAnalyzer-v0.3.4.2-CFGReachability.dylib",
+    "run_id": 36252269728,
+    "artifact_id": 10909446623,
+    "artifact": "HFARuntimeAnalyzer-v0.3.7-ControlFlowConsumerBinding",
+    "artifact_zip_sha256": "62e4f29d63b9bc6d7f36630febbe1a716d8ff607adef51075925a95b0ea8b45f",
+    "binary": "HFARuntimeAnalyzer-v0.3.7-ControlFlowConsumerBinding.dylib",
     "architecture": "arm64",
-    "size_bytes": 282848,
-    "binary_sha256": "4725db3ddb46d6fac085d8738721b76e4b95ce44ae68287360584ab421b96b7f"
+    "size_bytes": 299728,
+    "binary_sha256": "71d7ecd41eab76e1d96b489178b4acc939f97ee73e43a6d75b95328ed53e8251"
   },
-  "device_evidence_from_0341": {
-    "stability": "nine tested games produced v0341 JSON and completed semantic stages without the prior V034 post-decrypt crash pattern",
-    "confirmed_semantics": [
-      "MeChat return-multiplier",
-      "RogueLegend CALL_ORIGINAL + FMUL + FDIV + FCSEL",
-      "RandomDice MergeAny conditional-return",
-      "RandomDice SPGainMulti argument-multiplier",
-      "RandomDice callback-constant-argument",
-      "Earn 18 static + 2 derived = 20 patches no-regression"
+  "device_evidence_from_036": {
+    "games": 15,
+    "scan_end": "15/15",
+    "runtime_backends": 16,
+    "concrete_runtime_semantics": "16/16",
+    "feature_bindings": 10,
+    "branch_bindings": 8,
+    "confirmed": [
+      "Random Dice SPGainMulti argumentIndex=2 transform flow",
+      "RogueLegend Damage->FMUL, Defence->FDIV, God Mode->FCSEL",
+      "MeChat Points->return MUL",
+      "Path Damage->FMUL and Defence->FDIV",
+      "Duck helper expansion reaches helper semantic analysis",
+      "Dragon receiver-capture remains concrete"
     ],
-    "new_root_cause": "linear 1KB semantic scan crossed into neighboring replacement functions and polluted classifications"
+    "remaining_second_class_gaps": [
+      "Path God Mode control-flow/early-return node ownership",
+      "Random Dice MergeAny constant-return node ownership",
+      "Duck helper state producer/consumer binding",
+      "Dragon captured receiver global consumer binding"
+    ]
   },
-  "cfg_0342": {
-    "analysis_model": "reachable-basic-block worklist over immutable snapshot",
-    "terminators": ["RET", "BR", "unconditional B"],
-    "conditional_edges": ["B.cond", "CBZ/CBNZ", "TBZ/TBNZ", "fallthrough"],
-    "limits": {
+  "runtime_semantic_037": {
+    "semantic_nodes": [
+      "operation",
+      "conditional-branch",
+      "conditional-return-path",
+      "constant-return",
+      "return"
+    ],
+    "state_accesses": {
+      "scope": "exact in-image writable addresses only",
+      "access": ["read", "write"],
+      "kinds": ["ldr-global", "str-global", "atomic-load", "atomic-store"],
+      "fail_closed": "heap/object-field accesses are not promoted to shared-state evidence"
+    },
+    "consumer_binding": [
+      "receiver-consumer: backend write + feature action read of same exact writable address",
+      "shared-state-access: exact shared address with at least one write"
+    ],
+    "node_binding": "preserves existing v0.3.6 arithmetic branch bindings, then fills unresolved bindings from reachable semanticNodes",
+    "helper_depth": "existing bounded one-level helper expansion retained",
+    "budgets": {
       "instructions": 256,
       "basic_blocks": 64,
       "edges": 128,
       "per_backend_ms": 250,
       "whole_scan_seconds": 4.0
     },
-    "physical_boundary": "nearest greater known replacement RVA in selected menu dylib",
-    "new_semantics": ["return-transform", "support-thunk"],
-    "tail_original": "BR through original-slot-derived register is classified as TAILCALL_ORIGINAL/support-thunk instead of callback",
     "il2cpp_enrichment": {
       "default": "disabled",
-      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0342",
-      "cache_and_thread_attach": "preserved from v0.3.4.1"
-    }
-  },
-  "offline_fixture_checks": {
-    "Random Dice 2": {
-      "replacement_boundaries": ["0x40F0->0x40FC", "0x40FC->0x4108", "0x4108->0x4114", "0x4114->0x4204"],
-      "expected_effect": "short support thunks can no longer consume MUL at 0x41C0"
-    },
-    "Path of Kings": {
-      "replacement_boundaries": ["0x4050->0x40BC", "0x40BC->0x4128"],
-      "expected_effect": "receiver capture hooks can no longer consume FMUL in the 0x4128 main hook"
+      "opt_in_key": "HFAEnableIL2CPPEnrichmentV037"
     }
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "v0342_output": "HFAMap_RuntimeAnalyzer_v0342.json",
-    "stage_log": "HFAMap_RuntimeAnalyzer_v0342_stage.log",
-    "compatibility_outputs": [
-      "HFAMap_RuntimeAnalyzer_v0341.json",
-      "HFAMap_RuntimeAnalyzer_v034.json",
-      "HFAMap_RuntimeAnalyzer_v033.json",
-      "HFAMap_RuntimeAnalyzer_v032.json",
-      "HFAMap_RuntimeAnalyzer_v03.json"
-    ],
-    "legacy_exporter_root_routing": "separate-open-task"
+    "output": "HFAMap_RuntimeAnalyzer_v037.json",
+    "stage_log": "HFAMap_RuntimeAnalyzer_v037_stage.log",
+    "compatibility_outputs_preserved": true
   },
   "verification": {
     "generator_chain": "passed",
-    "cfg_source_gates": "passed",
-    "next_replacement_boundary_gate": "passed",
+    "generated_source_gates": "passed",
+    "script_pycompile": "passed",
+    "fixed_rva_generic_layer_gate": "passed",
     "ios_compile_link_sign": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "offline_sample_boundary_check": "passed",
-    "device_cfg_regression": "pending"
+    "device_validation": "pending"
   },
   "device_validation_priority": [
     "Path of Kings",
     "Random Dice 2",
     "Duck Survival",
-    "Dragon",
+    "Dragon / ProDragon",
     "RogueLegend",
     "MeChat",
     "Earn to Die Rogue"
   ],
-  "expected_device_changes": {
-    "Path of Kings": "0x4050 and 0x40BC should stop inheriting FMUL from 0x4128; subobject receiver evidence should become visible",
-    "Random Dice 2": "0x40F0/0x40FC/0x4108 should stop inheriting later MUL operations and should become support-thunk/unknown as appropriate; MergeAny and callback semantics must remain",
-    "RogueLegend": "multi-operation float return should classify as return-transform",
-    "Earn to Die Rogue": "20-patch result must remain unchanged"
-  },
-  "pending_phases": [
-    "path-sensitive register-state merge",
-    "feature-backend-binding",
-    "descriptor-less-action-backend",
-    "canonical-runtime-bridge",
-    "repository-wide-unified-output-routing",
-    "optional-runtime-corroboration"
+  "success_gates_for_037": [
+    "15/15 games still complete V037-SCAN-END without crash or budget cap",
+    "16/16 runtime backends remain concrete; no regression to runtime-state/unknown-runtime",
+    "Path God Mode gains a control-flow semantic-node binding without breaking Damage/Defence bindings",
+    "Random Dice MergeAny gains constant-return/control-flow node binding while DmgMulti/SPGain remain correct",
+    "Duck and/or Dragon only gain Feature bindings when exact state consumer evidence matches; no fuzzy address binding",
+    "72 static patch regression set remains unchanged",
+    "Earn verified fixed/derived points remain isolated and duplicate-target conflict remains visible"
   ],
-  "next_task": "Inject v0.3.4.2 into the priority samples, archive each complete HFAMap_<CFBundleIdentifier> folder, and compare v0342 cfg/basicBlocks/reachableInstructions/semanticType against v0341 and offline disassembly."
+  "next_task": "Inject v0.3.7 into the same 15-game matrix and compare featureBindings, branchBinding.kind/evidence, stateAccesses, helperEvidence, V037-STATE-BIND and V037-NODE-BIND against v0.3.6."
 }
