@@ -28,7 +28,7 @@ jobs:
             "$SRC/ZONEntry.m" \
             "$SRC/ZONDylibConfig.m" \
             "$SRC/ZONDylibVerify.m" \
-            -framework UIKit -framework Foundation -framework Security -framework QuartzCore \
+            -framework UIKit -framework Foundation -framework Security -framework QuartzCore -framework CoreGraphics \
             -o ZonoeAuthRebuildV1.dylib
 
           codesign -f -s - ZonoeAuthRebuildV1.dylib
