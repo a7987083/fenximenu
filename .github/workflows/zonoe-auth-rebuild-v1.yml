@@ -1,5 +1,4 @@
-name: Build Zonoe Auth Rebuild V1
-
+name: Build Zonoe Auth Rebuild V2
 on:
   workflow_dispatch:
   push:
@@ -7,13 +6,11 @@ on:
     paths:
       - "experiments/zonoe-auth-rebuild-v1/**"
       - ".github/workflows/zonoe-auth-rebuild-v1.yml"
-
 jobs:
   build:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
       - name: Build arm64 iOS dylib
         shell: bash
         run: |
@@ -21,22 +18,16 @@ jobs:
           SRC="experiments/zonoe-auth-rebuild-v1"
           SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
           clang -fobjc-arc -dynamiclib -arch arm64 -isysroot "$SDK" -miphoneos-version-min=13.0 \
-            "$SRC/ZONUI.m" \
-            "$SRC/ZONNetwork.m" \
-            "$SRC/ZONActivation.m" \
-            "$SRC/ZONVerify.m" \
-            "$SRC/ZONEntry.m" \
-            "$SRC/ZONDylibConfig.m" \
-            "$SRC/ZONDylibVerify.m" \
+            "$SRC/ZONUI.m" "$SRC/ZONNetwork.m" "$SRC/ZONActivation.m" "$SRC/ZONVerify.m" \
+            "$SRC/ZONStorage.m" "$SRC/ZONResponseFormatter.m" "$SRC/ZONEntry.m" \
+            "$SRC/ZONDylibConfig.m" "$SRC/ZONDylibVerify.m" \
             -framework UIKit -framework Foundation -framework Security -framework QuartzCore -framework CoreGraphics \
-            -o ZonoeAuthRebuildV1.dylib
-
-          codesign -f -s - ZonoeAuthRebuildV1.dylib
-          file ZonoeAuthRebuildV1.dylib
-          xcrun vtool -show-build ZonoeAuthRebuildV1.dylib || true
-          shasum -a 256 ZonoeAuthRebuildV1.dylib
-
+            -o ZonoeAuthRebuildV2.dylib
+          codesign -f -s - ZonoeAuthRebuildV2.dylib
+          file ZonoeAuthRebuildV2.dylib
+          xcrun vtool -show-build ZonoeAuthRebuildV2.dylib || true
+          shasum -a 256 ZonoeAuthRebuildV2.dylib
       - uses: actions/upload-artifact@v4
         with:
-          name: ZonoeAuthRebuildV1-arm64-ios13
-          path: ZonoeAuthRebuildV1.dylib
+          name: ZonoeAuthRebuildV2-arm64-ios13
+          path: ZonoeAuthRebuildV2.dylib
