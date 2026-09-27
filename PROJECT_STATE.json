@@ -1,86 +1,74 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.12",
-  "phase": "static-canonical-completion-ci-passed-device-validation-pending",
+  "version": "0.3.13",
+  "phase": "static-backend-ledger-bridge-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.12-static-canonical-completion",
+  "branch": "feature/hfaruntime-v0.3.13-static-backend-ledger-bridge",
   "baseline": {
-    "version": "0.3.11",
-    "commit": "9f3b708548faa65c048db1631ec75d9548f443be",
-    "build_tested_commit": "ac6aefe1996d3530c8a7354f95c83b4c52cc6883",
-    "class1_device_evidence_before_0312": "Legend of Survivors and Zombie Catchers reached canonical package export with static patch counts matching analyzer expectations; Hello Kitty and Rise of Berk exported fewer patches than the analyzer reported; Archery Clash and PopIsland had static backends but no package export; Earn to Die Rogue had a known shared-target conflict; actual hfapatch files were outside the archived HFAMap subdirectories."
+    "version": "0.3.12",
+    "branch_head": "2ec9d7b4a736239220020ee81177caadbd477791",
+    "build_tested_commit": "0fe0e9ef083e57882e7c23dfe16cfce0af43c6f6",
+    "device_matrix": {
+      "game_directories": 16,
+      "runtime_analyzer_static_backends": 72,
+      "v0312_ledger_count": 59,
+      "analyzer_to_ledger_gap": 13,
+      "ledger_selected_or_conflict": 59,
+      "ledger_silently_dropped": 0,
+      "family_gap": {
+        "0x031201": "10 analyzer static backends, 0 represented in v0.3.12 ledger, gap 10",
+        "0x031211": "62 analyzer static backends, 59 represented in v0.3.12 ledger, gap 3"
+      },
+      "fully_accounted_examples": ["Legend of Survivors 16/16", "Zombie Catchers 4/4", "RogueLegend 2/2", "Earn to Die Rogue 18/18 into ledger"],
+      "gap_examples": ["Archery Clash 2->0", "Hello Kitty MDS 6->5", "Heavenfall Arena 1->0", "PopIsland 1->0", "Rise of Berk 15->8", "MeChat 7->6"],
+      "earn_conflict": "shared target remains fail-closed; v0.3.12 selected accounting could still say exported for entries even when package emission was blocked"
+    }
   },
   "scope": {
     "priority": "Class 1 Static Patch only",
-    "runtime_semantic_hook": "paused until Class 1 export completeness is proven",
+    "runtime_semantic_hook": "paused until Class 1 analyzer-to-ledger and export completeness are proven",
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; fixed sample RVAs and sample names are prohibited from the v0.3.12 generic layer"
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; fixed sample RVAs and sample names are prohibited from the v0.3.13 generic layer"
   },
   "implementation": {
-    "static_canonical_completion_commit": "98e94b3b1e81b076a6a866d9405e9e153dc7e97d",
-    "generator_chain_commit": "bfdad2727b02df8bcba3e88029f65006884e4549",
-    "original_resolver_fix_commit": "0804b7a2264ce60f4922535423d23b824c32f7c5",
-    "superseded_helper_marker_commit": "b64e56a893ca8025d9f6605adf68979a9a107b61",
-    "compile_marker_chain_commit": "f9254bfd450e751d6c749a80379546c5b12fa1d6",
-    "workflow_marker_gate_commit": "371c6b6c8015a7f0ccc7b3317c920e4def09767d",
-    "build_tested_commit": "0fe0e9ef083e57882e7c23dfe16cfce0af43c6f6",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0312.yml"
+    "static_backend_ledger_bridge_commit": "9fbaf8f2b899ea7b8b30d28948c6136936063632",
+    "generator_chain_initial_commit": "f65a368ce7dac9631abcb48f0db2e42c98b31057",
+    "one_to_one_conflict_match_fix_commit": "262b031872337e061754a1c68a7c1ed56fac02cd",
+    "generator_chain_final_commit": "eb3fde7ab98b0836ccbb7cfe3a2885fc805bdd15",
+    "build_tested_commit": "697f582c9be12c1f8840657bdf75fc20ce5289d2",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0313.yml"
   },
-  "class1_static_canonical_0312": {
-    "ownership": {
-      "primary": "exact HFAFeatureDefinitionForKey descriptor ownership",
-      "generic_fallback": "exact descriptor key suffix -switch mapped to the same key without the suffix",
-      "no_fuzzy_matching": true
-    },
-    "ledger_policy": "every descriptor is exported, excluded-with-reason, or conflict; no silent drop is allowed",
-    "ledger_reasons": [
-      "no-feature-key",
-      "no-feature-owner",
-      "target-module-missing",
-      "offset-invalid",
-      "enabled-bytes-invalid",
-      "target-image-not-loaded",
-      "original-bytes-unavailable",
-      "patch-already-enabled",
-      "duplicate-identical-same-feature",
-      "shared-target-multiple-features",
-      "duplicate-target-different-bytes"
-    ],
-    "original_bytes": {
-      "resolver": "existing v1.9.33 multi-source resolver",
-      "sources": ["vm-read", "memcpy", "mach-o-file", "mach-o-file-after-enabled-live"],
-      "audit_fields": ["originalSource", "cryptid"]
-    },
-    "conflict_policy": {
-      "same_target_same_feature_same_bytes": "dedupe; one exported and duplicate descriptors explicitly excluded",
-      "same_target_multiple_features_or_different_bytes": "conflict; package export blocked fail-closed"
-    },
-    "package": {
-      "schema": "com.hfa.patch/v1",
-      "root_location": "Documents/<bundle>_<version>_<build>.hfapatch.json",
-      "mirror_location": "Documents/HFAMap_<bundle>/<bundle>_<version>_<build>.hfapatch.json",
-      "mirror_marker": "PACKAGE-MIRROR"
-    },
+  "class1_static_backend_ledger_bridge_0313": {
+    "ordering_change": "RuntimeAnalyzer static backend discovery is explicitly executed as a canonical prepass before v0.3.13 ledger completion",
+    "analyzer_source": "HFAMap_RuntimeAnalyzer_v0311.json",
+    "bridge_source_label": "runtime-analyzer-binary-first",
+    "match_key": "runtimeAddress + originalBytes + enabledBytes",
+    "matching_policy": "one-to-one queue consumption so shared-target different-byte backends remain distinct",
+    "legacy_entries": "existing descriptor-backed ledger entries are marked source=legacy-descriptor and enriched with analyzer provenance when exact match succeeds",
+    "missing_backend_policy": "every analyzer static backend absent from the legacy descriptor ledger is appended to the canonical ledger; without exact Feature ownership it is excluded with reason unowned-static-backend rather than guessed",
+    "additional_exclusion_reasons": ["unowned-static-backend", "analyzer-target-not-unique", "analyzer-noncanonical-static", "analyzer-bytes-incomplete"],
+    "parity_gate": "package export is blocked fail-closed if analyzer output is unavailable or analyzerStaticCount != ledgerCount or analyzer matching+bridging does not cover every analyzer static backend",
     "audit": {
-      "file": "HFAMap_StaticCanonical_v0312.json",
-      "schema": "com.hfa.static-canonical-audit/v0.3.12",
-      "policy": "fail-closed-no-silent-drop",
-      "fields": ["packageStatus", "packageRootPath", "packageMirrorPath", "packageSize", "packageFeatureCount", "packagePatchCount", "targetCount", "ledgerCount", "exportedCount", "excludedCount", "conflictCount", "candidateCount", "silentlyDropped", "ledger", "featureDispositions", "conflicts"]
+      "file": "HFAMap_StaticCanonical_v0313.json",
+      "schema": "com.hfa.static-canonical-audit/v0.3.13",
+      "policy": "fail-closed-analyzer-ledger-parity",
+      "new_fields": ["analyzerAvailable", "analyzerStaticCount", "analyzerMatchedCount", "analyzerBridgedCount", "ledgerParity", "selectedCount", "emittedCount", "emittedPatchCount", "selectionStatus", "packageOutcome"]
     },
-    "runtime_class2_behavior": "not promoted or changed by v0.3.12; legacy runtime package helpers are retained only as unused source compatibility and are not called by the v0.3.12 Class-1 finalizer"
+    "package_accounting": "selection and physical emission are separated; when a package is blocked by conflict, selected entries receive packageOutcome=blocked-by-package-conflict and emittedCount/emittedPatchCount remain zero",
+    "runtime_class2_behavior": "not promoted or changed by v0.3.13"
   },
   "build": {
     "ci": "success",
-    "run_id": 36324430861,
-    "artifact_id": 10933078543,
-    "artifact": "HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion",
-    "artifact_zip_sha256": "57983c2bb686be1310a1f9a008c2f465cf41fc0da013bc6c1d45657257e50136",
-    "binary": "HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.dylib",
+    "run_id": 36335382548,
+    "artifact_id": 10936139049,
+    "artifact": "HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge",
+    "artifact_zip_sha256": "ba89d356e662ed64812a7efe509c4050c2af8c94d7388149433a8e5a958fd6f6",
+    "binary": "HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.dylib",
     "architecture": "arm64",
-    "size_bytes": 333200,
-    "binary_sha256": "4a1037a55a0dc5ba04b214b3d82f6f10a4877ea802e729e79c12426b41c5e2ec"
+    "size_bytes": 333216,
+    "binary_sha256": "6b1522d0c1008c069bcf5f0a9c03fd58348effb9ed1703d03dac85d999d1658b"
   },
   "verification": {
     "generator_chain": "passed",
@@ -91,24 +79,23 @@
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "device_export_completeness": "pending",
+    "device_analyzer_ledger_parity": "pending",
+    "device_feature_ownership_for_bridged_backends": "pending",
     "device_apply_restore": "not implemented in this version"
   },
-  "primary_class1_device_matrix": {
-    "positive_regression": ["Legend of Survivors", "Zombie Catchers"],
-    "repair": ["Archery Clash", "Rise of Berk", "Hello Kitty MDS", "PopIsland"],
-    "conflict": ["Earn to Die Rogue"],
-    "mixed_optional": ["MeChat"]
-  },
-  "success_gates_for_0312": [
-    "HFAMap_StaticCanonical_v0312.json is created for every Class-1 scan",
-    "silentlyDropped is exactly zero",
-    "every descriptor has exported, excluded, or conflict disposition with an explicit reason",
-    "positive samples create a mirrored hfapatch in the HFAMap bundle directory",
-    "Archery Clash and PopIsland either export a package or provide an explicit machine-readable reason for every excluded descriptor",
-    "Rise of Berk and Hello Kitty account for every previously missing patch through exported/excluded/conflict ledger entries",
-    "shared-target conflicts remain visible and block ambiguous package export fail-closed",
-    "no Runtime Semantic feature is promoted into a Static canonical patch by this version"
+  "success_gates_for_0313": [
+    "HFAMap_StaticCanonical_v0313.json is created for every Class-1 scan",
+    "analyzerAvailable is true for Class-1 samples",
+    "analyzerStaticCount equals ledgerCount",
+    "analyzerMatchedCount + analyzerBridgedCount equals analyzerStaticCount",
+    "ledgerParity is true",
+    "silentlyDropped is zero",
+    "every bridged analyzer-only backend is explicitly excluded with a reason unless exact Feature ownership is proven",
+    "the 0x031201 family no longer disappears before ledger accounting",
+    "the three previously missing 0x031211 backends are represented in the ledger",
+    "shared-target conflicts remain distinct under the runtime+original+enabled match key and continue to block ambiguous package export",
+    "blocked packages report emittedCount=0 and emittedPatchCount=0",
+    "no Runtime Semantic feature is promoted into a Static canonical patch"
   ],
-  "next_task": "Device-test the Class-1 matrix and return the complete HFAMap_<bundle> folders. Inspect STATIC-LEDGER, STATIC-DISPOSITION, STATIC-CONFLICT, V0312-STATIC-CANONICAL, PACKAGE-EXPORT, PACKAGE-MIRROR, and HFAMap_StaticCanonical_v0312.json. Do not resume Class 2 until export completeness is explained for all selected Class-1 samples. After export completeness is proven, add Apply->enabled readback->Restore->original readback as the final Class-1 verification phase."
+  "next_task": "Device-test v0.3.13 against the same full 16-game matrix. First prove Analyzer Static -> Canonical Ledger parity (expected historical baseline 72 -> 72 with zero silent drop). Then inspect the newly bridged 13 entries and determine exact Feature ownership where possible without fuzzy matching. Do not start Apply/Restore verification until analyzer-to-ledger parity is proven."
 }
