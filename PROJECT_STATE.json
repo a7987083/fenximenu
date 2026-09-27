@@ -1,85 +1,86 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.11",
-  "phase": "adr-fulltext-xref-consumer-ci-passed-device-validation-pending",
+  "version": "0.3.12",
+  "phase": "static-canonical-completion-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.11-adr-fulltext-xref-consumer",
+  "branch": "feature/hfaruntime-v0.3.12-static-canonical-completion",
   "baseline": {
-    "version": "0.3.10",
-    "commit": "9a2f7bda28d2930b4050e30f90ce4d838c8c619a",
-    "device_evidence": "six-app v0.3.10 matrix: Path, Random Dice 2 and RogueLegend regressed cleanly; Duck and Aniimo kept concrete runtime semantics but consumer resolution remained unresolved while method-ordered notification/state scans hit their caps; Dragon discovered the correct menu candidate but did not enter analyzer because manual selection was not completed"
+    "version": "0.3.11",
+    "commit": "9f3b708548faa65c048db1631ec75d9548f443be",
+    "build_tested_commit": "ac6aefe1996d3530c8a7354f95c83b4c52cc6883",
+    "class1_device_evidence_before_0312": "Legend of Survivors and Zombie Catchers reached canonical package export with static patch counts matching analyzer expectations; Hello Kitty and Rise of Berk exported fewer patches than the analyzer reported; Archery Clash and PopIsland had static backends but no package export; Earn to Die Rogue had a known shared-target conflict; actual hfapatch files were outside the archived HFAMap subdirectories."
   },
   "scope": {
-    "priority": "Runtime Semantic Hook only",
-    "static_patch": "frozen regression baseline",
+    "priority": "Class 1 Static Patch only",
+    "runtime_semantic_hook": "paused until Class 1 export completeness is proven",
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte points remain isolated in profile generators and are prohibited from generic runtime recognizers"
-  },
-  "binary_evidence_before_0311": {
-    "sample_role": "algorithm validation only; sample names and sample RVAs are prohibited from generic recognizers",
-    "shared_block_pattern": "observer block invoke is commonly materialized with ARM64 ADR and stored into a stack block with STP rather than only ADRP+ADD plus STR",
-    "consumer_chain": "Feature action -> notification -> block observer -> first block invoke -> nested dispatch block -> captured callback",
-    "state_xref_finding": "exact-state consumers can exist in C/helper/block functions outside the early Objective-C method scan window; therefore absence from the old 512-method scan is not evidence of absence"
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; fixed sample RVAs and sample names are prohibited from the v0.3.12 generic layer"
   },
   "implementation": {
-    "adr_stp_block_resolver_commit": "bb9e5f4907be7e5797c3ef149b72bdc154b3c87c",
-    "full_text_state_xref_commit": "a190127e22eaef27c56dbf3cca1c845b688cd3f3",
-    "notification_selector_xref_commit": "c09489f40b42cd37fc876288b502ab635901bbdf",
-    "consumer_graph_nested_block_commit": "95fe5a596228ef81affa180f882b9f47c6edd2f7",
-    "generator_chain_commit": "9e59cf32f9474b86e40fa77ce2d2627faac1cad8",
-    "workflow_commit": "6e7be2c917bf4b0f04c793ca137bc2ceb16c239c",
-    "build_tested_commit": "ac6aefe1996d3530c8a7354f95c83b4c52cc6883",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0311.yml"
+    "static_canonical_completion_commit": "98e94b3b1e81b076a6a866d9405e9e153dc7e97d",
+    "generator_chain_commit": "bfdad2727b02df8bcba3e88029f65006884e4549",
+    "original_resolver_fix_commit": "0804b7a2264ce60f4922535423d23b824c32f7c5",
+    "superseded_helper_marker_commit": "b64e56a893ca8025d9f6605adf68979a9a107b61",
+    "compile_marker_chain_commit": "f9254bfd450e751d6c749a80379546c5b12fa1d6",
+    "workflow_marker_gate_commit": "371c6b6c8015a7f0ccc7b3317c920e4def09767d",
+    "build_tested_commit": "0fe0e9ef083e57882e7c23dfe16cfce0af43c6f6",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0312.yml"
   },
-  "runtime_semantic_0311": {
-    "block_observer_invoke": {
-      "materializations": ["ADR", "ADRP+ADD"],
-      "stack_stores": ["STR X to SP", "STP X pair to SP"],
-      "selected_image_text_only": true,
-      "promotion": "resolved only when the bounded stack-stored executable candidate is unique; ambiguous candidates remain diagnostic"
+  "class1_static_canonical_0312": {
+    "ownership": {
+      "primary": "exact HFAFeatureDefinitionForKey descriptor ownership",
+      "generic_fallback": "exact descriptor key suffix -switch mapped to the same key without the suffix",
+      "no_fuzzy_matching": true
     },
-    "notification_prefilter": {
-      "strategy": "locate Objective-C observer selector refs in __objc_selrefs, scan selected-image __text for exact selector-ref xrefs, map only those PCs to candidate owning methods, then run HFA5MScanMethod on the reduced set",
-      "selectors": ["addObserverForName:object:queue:usingBlock:", "addObserver:selector:name:object:"],
-      "reason": "replace ordered first-N method scanning rather than increase its budget"
+    "ledger_policy": "every descriptor is exported, excluded-with-reason, or conflict; no silent drop is allowed",
+    "ledger_reasons": [
+      "no-feature-key",
+      "no-feature-owner",
+      "target-module-missing",
+      "offset-invalid",
+      "enabled-bytes-invalid",
+      "target-image-not-loaded",
+      "original-bytes-unavailable",
+      "patch-already-enabled",
+      "duplicate-identical-same-feature",
+      "shared-target-multiple-features",
+      "duplicate-target-different-bytes"
+    ],
+    "original_bytes": {
+      "resolver": "existing v1.9.33 multi-source resolver",
+      "sources": ["vm-read", "memcpy", "mach-o-file", "mach-o-file-after-enabled-live"],
+      "audit_fields": ["originalSource", "cryptid"]
     },
-    "full_text_state_xref": {
-      "strategy": "linearly scan selected-image __text for exact backend/helper state address materialization before semantic analysis",
-      "forms": ["ADR", "ADRP+ADD", "ADRP+LDR/STR unsigned immediate"],
-      "owner_recovery": ["dladdr symbol", "bounded ARM64 prologue/backward boundary heuristic"],
-      "semantic_analysis": "only recovered candidate functions are analyzed",
-      "candidate_policy": "full-text xref alone is diagnostic and cannot promote a Feature binding"
+    "conflict_policy": {
+      "same_target_same_feature_same_bytes": "dedupe; one exported and duplicate descriptors explicitly excluded",
+      "same_target_multiple_features_or_different_bytes": "conflict; package export blocked fail-closed"
     },
-    "consumer_graph": {
-      "inputs": ["observer callback", "block observer candidates", "dictionary blocks", "downstream callback evidence", "action/dispatcher dictionary blocks"],
-      "nested_block_detection": "bounded executable-pointer-to-stack scan within resolved callbacks",
-      "helper_depth": 1,
-      "policy": "diagnostic-only-unless-exact-state-binding"
+    "package": {
+      "schema": "com.hfa.patch/v1",
+      "root_location": "Documents/<bundle>_<version>_<build>.hfapatch.json",
+      "mirror_location": "Documents/HFAMap_<bundle>/<bundle>_<version>_<build>.hfapatch.json",
+      "mirror_marker": "PACKAGE-MIRROR"
     },
-    "scan_marker": "V0311-SCAN-END",
-    "il2cpp_enrichment": {
-      "default": "disabled",
-      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0311"
-    }
+    "audit": {
+      "file": "HFAMap_StaticCanonical_v0312.json",
+      "schema": "com.hfa.static-canonical-audit/v0.3.12",
+      "policy": "fail-closed-no-silent-drop",
+      "fields": ["packageStatus", "packageRootPath", "packageMirrorPath", "packageSize", "packageFeatureCount", "packagePatchCount", "targetCount", "ledgerCount", "exportedCount", "excludedCount", "conflictCount", "candidateCount", "silentlyDropped", "ledger", "featureDispositions", "conflicts"]
+    },
+    "runtime_class2_behavior": "not promoted or changed by v0.3.12; legacy runtime package helpers are retained only as unused source compatibility and are not called by the v0.3.12 Class-1 finalizer"
   },
   "build": {
     "ci": "success",
-    "run_id": 36304641178,
-    "artifact_id": 10926429375,
-    "artifact": "HFARuntimeAnalyzer-v0.3.11-ADRFullTextXrefConsumer",
-    "artifact_zip_sha256": "a288127dd117e992f41b0ce745578a89116e680d8adcecb8908fcee4aba42b02",
-    "binary": "HFARuntimeAnalyzer-v0.3.11-ADRFullTextXrefConsumer.dylib",
+    "run_id": 36324430861,
+    "artifact_id": 10933078543,
+    "artifact": "HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion",
+    "artifact_zip_sha256": "57983c2bb686be1310a1f9a008c2f465cf41fc0da013bc6c1d45657257e50136",
+    "binary": "HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.dylib",
     "architecture": "arm64",
-    "size_bytes": 349792,
-    "binary_sha256": "7cf4925d69f7f28865c0fd4f1cd2134e5d85a7f062ec7981e375a8d81b31b600"
-  },
-  "output_contract": {
-    "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "output": "HFAMap_RuntimeAnalyzer_v0311.json",
-    "stage_log": "HFAMap_RuntimeAnalyzer_v0311_stage.log",
-    "compatibility_outputs_preserved": true
+    "size_bytes": 333200,
+    "binary_sha256": "4a1037a55a0dc5ba04b214b3d82f6f10a4877ea802e729e79c12426b41c5e2ec"
   },
   "verification": {
     "generator_chain": "passed",
@@ -90,22 +91,24 @@
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "device_validation": "pending"
+    "device_export_completeness": "pending",
+    "device_apply_restore": "not implemented in this version"
   },
-  "primary_device_matrix": {
-    "stable_regression": ["RogueLegend", "Random Dice 2", "Path of Kings"],
-    "needs_consumer_resolution": ["Duck Survival", "Dragon / ProDragon", "Aniimo"],
-    "dragon_test_requirement": "manually select the discovered menu dylib candidate before running the analyzer if the UI still reports manualSelectionRequired"
+  "primary_class1_device_matrix": {
+    "positive_regression": ["Legend of Survivors", "Zombie Catchers"],
+    "repair": ["Archery Clash", "Rise of Berk", "Hello Kitty MDS", "PopIsland"],
+    "conflict": ["Earn to Die Rogue"],
+    "mixed_optional": ["MeChat"]
   },
-  "success_gates_for_0311": [
-    "RogueLegend preserves Damage->FMUL, Defence->FDIV and God Mode->FCSEL",
-    "Random Dice 2 preserves DmgMulti/SPGain bindings and MergeAny branch outcome",
-    "Path of Kings preserves Damage/Defence/God Mode bindings and imports existing dictionary-block callback evidence into the v0.3.11 consumer graph",
-    "Duck and Aniimo no longer depend on the ordered 320/512-method scan to discover notification/state consumers",
-    "ADR/STP observer blocks are surfaced by V0311-BLOCK-INVOKE when present",
-    "Dragon full-text state xref reports exact-state candidates after the menu dylib is selected",
-    "No xref or nested-block candidate is promoted to a strong Feature binding without feature-specific exact-state evidence",
-    "Static/derived/conflict baselines remain unchanged"
+  "success_gates_for_0312": [
+    "HFAMap_StaticCanonical_v0312.json is created for every Class-1 scan",
+    "silentlyDropped is exactly zero",
+    "every descriptor has exported, excluded, or conflict disposition with an explicit reason",
+    "positive samples create a mirrored hfapatch in the HFAMap bundle directory",
+    "Archery Clash and PopIsland either export a package or provide an explicit machine-readable reason for every excluded descriptor",
+    "Rise of Berk and Hello Kitty account for every previously missing patch through exported/excluded/conflict ledger entries",
+    "shared-target conflicts remain visible and block ambiguous package export fail-closed",
+    "no Runtime Semantic feature is promoted into a Static canonical patch by this version"
   ],
-  "next_task": "Inject the v0.3.11 build into the six-app primary matrix. For Duck, Dragon and Aniimo inspect V0311-BLOCK-INVOKE, V0311-NOTIFY-XREF, V0311-STATE-XREF and V0311-CONSUMER-GRAPH. For Dragon complete manual menu selection first. Compare stable-app Feature/Branch/Outcome bindings against the v0.3.10 run."
+  "next_task": "Device-test the Class-1 matrix and return the complete HFAMap_<bundle> folders. Inspect STATIC-LEDGER, STATIC-DISPOSITION, STATIC-CONFLICT, V0312-STATIC-CANONICAL, PACKAGE-EXPORT, PACKAGE-MIRROR, and HFAMap_StaticCanonical_v0312.json. Do not resume Class 2 until export completeness is explained for all selected Class-1 samples. After export completeness is proven, add Apply->enabled readback->Restore->original readback as the final Class-1 verification phase."
 }
