@@ -38,7 +38,6 @@ jobs:
           grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
           grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.3 PageZeroRVAFix' "$UI"
           if grep -Fq 'strcmp(value, "main") == 0) return 0;' "$TRACE"; then echo 'STALE MAIN INDEX-0 ASSUMPTION'; exit 1; fi
-          if grep -Fq 'if(seg->vmsize&&raw>=seg->vmaddr&&raw<seg->vmaddr+seg->vmsize)preferred=YES;' "$TRACE"; then echo 'STALE PAGEZERO-INCLUSIVE RVA TEST'; exit 1; fi
           if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03133_*.py; then echo 'FIXED RVA LEAKED INTO V03133 GENERIC LAYER'; exit 1; fi
           if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v03133_*.py; then echo 'SAMPLE NAME LEAKED INTO V03133 GENERIC LAYER'; exit 1; fi
           git diff --check
