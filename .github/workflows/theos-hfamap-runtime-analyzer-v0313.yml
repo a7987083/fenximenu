@@ -1,0 +1,69 @@
+name: HFARuntimeAnalyzer v0.3.13 StaticBackendLedgerBridge
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13-static-backend-ledger-bridge]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v0313_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v0313_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v0313_static_backend_ledger_bridge.py \
+            .github/scripts/hfamap_runtime_analyzer_v0312_static_canonical_completion.py \
+            .github/scripts/hfamap_runtime_analyzer_v0312_compile_fixes.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'HFA0313BridgeAnalyzerStaticBackends' "$TRACE"
+          grep -Fq 'runtime-analyzer-binary-first' "$TRACE"
+          grep -Fq 'unowned-static-backend' "$TRACE"
+          grep -Fq '[STATIC-BRIDGE]' "$TRACE"
+          grep -Fq '[V0313-ANALYZER-PREPASS]' "$TRACE"
+          grep -Fq '[V0313-LEDGER-BRIDGE]' "$TRACE"
+          grep -Fq '[V0313-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v0313.json' "$TRACE"
+          grep -Fq 'selectedCount' "$TRACE"
+          grep -Fq 'emittedCount' "$TRACE"
+          grep -Fq 'blocked-by-package-conflict' "$TRACE"
+          grep -Fq 'blocked-ledger-parity' "$TRACE"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13 StaticBackendLedgerBridge' "$UI"
+          test "$(grep -c 'static void HFAWritePatchPackage' "$TRACE")" -eq 1
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v0313_*.py; then echo 'FIXED RVA LEAKED INTO V0313 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v0313_*.py; then echo 'SAMPLE NAME LEAKED INTO V0313 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.txt
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'V0313-ANALYZER-PREPASS' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'V0313-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'V0313-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'STATIC-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v0313.json' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.txt
+          if-no-files-found: error
