@@ -4,6 +4,7 @@ import subprocess
 ROOT=Path(__file__).resolve().parents[2]
 S=ROOT/'.github'/'scripts'
 subprocess.check_call(['python3',str(S/'apply_hfaruntime_v0313_chain.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03131_callsite_normalize.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03131_single_pass_rva_fix.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
