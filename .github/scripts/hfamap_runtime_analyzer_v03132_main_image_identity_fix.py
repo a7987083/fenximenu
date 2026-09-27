@@ -63,6 +63,11 @@ static int HFAImageIndexForName(const char *value) {
 }'''
 s=s[:a]+main_resolver+s[b:]
 
+# Earlier generators may retain their own main-executable helper. v0.3.13.2
+# uses the resolver above as the single Class-1 definition; keep the older
+# helper only as dormant compatibility code so -Werror does not block builds.
+s=s.replace('static int HFAMainExecutableImageIndex(void) {','static int __attribute__((unused)) HFAMainExecutableImageIndex(void) {',1)
+
 # Canonical target identity must be derived from the actually loaded target
 # image. Runtime UUID is authoritative; serialized UUID is only a fallback.
 a,b=function_span(s,'static BOOL HFA03131CanonicalTarget(NSString *target,NSString *offset,NSString *explicitUUID,NSString **identityOut,uint64_t *rvaOut)')
