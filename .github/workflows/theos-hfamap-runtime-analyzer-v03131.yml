@@ -16,6 +16,7 @@ jobs:
           python3 .github/scripts/apply_hfaruntime_v03131_chain.py
           python3 -m py_compile \
             .github/scripts/apply_hfaruntime_v03131_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_callsite_normalize.py \
             .github/scripts/hfamap_runtime_analyzer_v03131_single_pass_rva_fix.py \
             .github/scripts/apply_hfaruntime_v0313_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v0313_static_backend_ledger_bridge.py \
