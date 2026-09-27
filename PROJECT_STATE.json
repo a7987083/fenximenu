@@ -1,14 +1,13 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.10",
-  "phase": "notification-consumer-graph-ci-passed-device-validation-pending",
+  "version": "0.3.11",
+  "phase": "adr-fulltext-xref-consumer-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.10-notification-consumer-graph",
+  "branch": "feature/hfaruntime-v0.3.11-adr-fulltext-xref-consumer",
   "baseline": {
-    "version": "0.3.9",
-    "commit": "9886dd3215f2c2364485a87b510e68986245a0ad",
-    "build_status": "CI passed for v0.3.9, device validation still pending",
-    "last_device_evidence": "v0.3.8 matrix: 16/16 scans completed; 18/18 runtime backends concrete; 10 feature bindings and 10 branch bindings; downstream binding remained 0"
+    "version": "0.3.10",
+    "commit": "9a2f7bda28d2930b4050e30f90ce4d838c8c619a",
+    "device_evidence": "six-app v0.3.10 matrix: Path, Random Dice 2 and RogueLegend regressed cleanly; Duck and Aniimo kept concrete runtime semantics but consumer resolution remained unresolved while method-ordered notification/state scans hit their caps; Dragon discovered the correct menu candidate but did not enter analyzer because manual selection was not completed"
   },
   "scope": {
     "priority": "Runtime Semantic Hook only",
@@ -16,65 +15,77 @@
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte points remain isolated in their profile generator and do not enter generic runtime recognizers"
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte points remain isolated in profile generators and are prohibited from generic runtime recognizers"
+  },
+  "binary_evidence_before_0311": {
+    "sample_role": "algorithm validation only; sample names and sample RVAs are prohibited from generic recognizers",
+    "shared_block_pattern": "observer block invoke is commonly materialized with ARM64 ADR and stored into a stack block with STP rather than only ADRP+ADD plus STR",
+    "consumer_chain": "Feature action -> notification -> block observer -> first block invoke -> nested dispatch block -> captured callback",
+    "state_xref_finding": "exact-state consumers can exist in C/helper/block functions outside the early Objective-C method scan window; therefore absence from the old 512-method scan is not evidence of absence"
   },
   "implementation": {
-    "block_observer_initial_commit": "5a2161eee8153338db50b688396dc634c5458ff9",
-    "consumer_graph_commit": "ecc3612c388a25cd2bee3328675948f2621deae9",
-    "generator_orchestrator_commit": "fa7afa106fe1d47aa78233214aff8b76f33efee3",
-    "workflow_commit": "3bba349b104e6e5d2d91c8d02b6e75bbf698e341",
-    "generic_gate_fix_commits": ["4f174b3b5db6025379d15d87bfbfb5d7a48c4d80", "20fe77bfe49b5ee3ec7a0500f437ed135bfa4b68"],
-    "build_tested_commit": "5f56a9334ba4370f923eb6bc0732b28f1faf6d2f",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0310.yml"
+    "adr_stp_block_resolver_commit": "bb9e5f4907be7e5797c3ef149b72bdc154b3c87c",
+    "full_text_state_xref_commit": "a190127e22eaef27c56dbf3cca1c845b688cd3f3",
+    "notification_selector_xref_commit": "c09489f40b42cd37fc876288b502ab635901bbdf",
+    "consumer_graph_nested_block_commit": "95fe5a596228ef81affa180f882b9f47c6edd2f7",
+    "generator_chain_commit": "9e59cf32f9474b86e40fa77ce2d2627faac1cad8",
+    "workflow_commit": "6e7be2c917bf4b0f04c793ca137bc2ceb16c239c",
+    "build_tested_commit": "ac6aefe1996d3530c8a7354f95c83b4c52cc6883",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0311.yml"
   },
-  "runtime_semantic_0310": {
+  "runtime_semantic_0311": {
     "block_observer_invoke": {
-      "registration": "addObserverForName:object:queue:usingBlock:",
-      "backward_instruction_window": 40,
-      "materialization": "ADRP+ADD executable address followed by STR X to SP",
+      "materializations": ["ADR", "ADRP+ADD"],
+      "stack_stores": ["STR X to SP", "STP X pair to SP"],
       "selected_image_text_only": true,
-      "promotion": "resolved only when exactly one stack-stored executable candidate exists; otherwise candidates remain diagnostic"
+      "promotion": "resolved only when the bounded stack-stored executable candidate is unique; ambiguous candidates remain diagnostic"
+    },
+    "notification_prefilter": {
+      "strategy": "locate Objective-C observer selector refs in __objc_selrefs, scan selected-image __text for exact selector-ref xrefs, map only those PCs to candidate owning methods, then run HFA5MScanMethod on the reduced set",
+      "selectors": ["addObserverForName:object:queue:usingBlock:", "addObserver:selector:name:object:"],
+      "reason": "replace ordered first-N method scanning rather than increase its budget"
+    },
+    "full_text_state_xref": {
+      "strategy": "linearly scan selected-image __text for exact backend/helper state address materialization before semantic analysis",
+      "forms": ["ADR", "ADRP+ADD", "ADRP+LDR/STR unsigned immediate"],
+      "owner_recovery": ["dladdr symbol", "bounded ARM64 prologue/backward boundary heuristic"],
+      "semantic_analysis": "only recovered candidate functions are analyzed",
+      "candidate_policy": "full-text xref alone is diagnostic and cannot promote a Feature binding"
     },
     "consumer_graph": {
-      "chain": "Feature -> notification -> observer registration -> callback -> direct helper",
-      "callback_semantic": "bounded runtime semantic analysis",
+      "inputs": ["observer callback", "block observer candidates", "dictionary blocks", "downstream callback evidence", "action/dispatcher dictionary blocks"],
+      "nested_block_detection": "bounded executable-pointer-to-stack scan within resolved callbacks",
       "helper_depth": 1,
-      "helper_cap_per_callback": 6,
       "policy": "diagnostic-only-unless-exact-state-binding"
     },
-    "inherited_v039": {
-      "image_wide_notification_consumer_scan": true,
-      "image_exact_state_xref": true,
-      "downstream_helper_exact_state_binding": true,
-      "xref_candidates_do_not_promote_binding": true
-    },
+    "scan_marker": "V0311-SCAN-END",
     "il2cpp_enrichment": {
       "default": "disabled",
-      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0310"
+      "opt_in_key": "HFAEnableIL2CPPEnrichmentV0311"
     }
   },
   "build": {
     "ci": "success",
-    "run_id": 36260656129,
-    "artifact_id": 10912630448,
-    "artifact": "HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph",
-    "artifact_zip_sha256": "7242b818ddd3cefc9fd55aa5b5f8010a16a9ed5deea17d8c0c7372f93772244c",
-    "binary": "HFARuntimeAnalyzer-v0.3.10-NotificationConsumerGraph.dylib",
+    "run_id": 36304641178,
+    "artifact_id": 10926429375,
+    "artifact": "HFARuntimeAnalyzer-v0.3.11-ADRFullTextXrefConsumer",
+    "artifact_zip_sha256": "a288127dd117e992f41b0ce745578a89116e680d8adcecb8908fcee4aba42b02",
+    "binary": "HFARuntimeAnalyzer-v0.3.11-ADRFullTextXrefConsumer.dylib",
     "architecture": "arm64",
-    "size_bytes": 349760,
-    "binary_sha256": "eb84f0a6bd069e48d3dfc7294665fc60c5654de0d0a12795e35f7c1320b41b8d"
+    "size_bytes": 349792,
+    "binary_sha256": "7cf4925d69f7f28865c0fd4f1cd2134e5d85a7f062ec7981e375a8d81b31b600"
   },
   "output_contract": {
     "directory": "Documents/HFAMap_<CFBundleIdentifier>/",
-    "output": "HFAMap_RuntimeAnalyzer_v0310.json",
-    "stage_log": "HFAMap_RuntimeAnalyzer_v0310_stage.log",
+    "output": "HFAMap_RuntimeAnalyzer_v0311.json",
+    "stage_log": "HFAMap_RuntimeAnalyzer_v0311_stage.log",
     "compatibility_outputs_preserved": true
   },
   "verification": {
     "generator_chain": "passed",
     "generated_source_gates": "passed",
     "generic_fixed_rva_gate": "passed",
-    "script_pycompile": "passed",
+    "generic_sample_name_gate": "passed",
     "ios_compile_link_sign": "passed",
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
@@ -84,16 +95,17 @@
   "primary_device_matrix": {
     "stable_regression": ["RogueLegend", "Random Dice 2", "Path of Kings"],
     "needs_consumer_resolution": ["Duck Survival", "Dragon / ProDragon", "Aniimo"],
-    "supplemental": ["MeChat for evidence-readiness timing", "Earn to Die Rogue for static/derived/conflict regression"]
+    "dragon_test_requirement": "manually select the discovered menu dylib candidate before running the analyzer if the UI still reports manualSelectionRequired"
   },
-  "success_gates_for_0310": [
-    "RogueLegend preserves Damage->FMUL, Defence->FDIV, God Mode->FCSEL",
-    "Random Dice preserves DmgMulti/SPGain bindings and MergeAny branch outcome",
-    "Path preserves Damage/Defence/God Mode bindings and God Mode branch outcome",
-    "Duck, Dragon and Aniimo report block observer resolution/candidates and consumerGraph without crash or budget runaway",
-    "A block observer is resolved only when the bounded stack-code-pointer candidate is unique",
-    "Any new strong Feature binding still requires exact feature-specific downstream state evidence; consumerGraph and xref candidates alone cannot promote bindings",
-    "Static/derived/conflict regression remains unchanged"
+  "success_gates_for_0311": [
+    "RogueLegend preserves Damage->FMUL, Defence->FDIV and God Mode->FCSEL",
+    "Random Dice 2 preserves DmgMulti/SPGain bindings and MergeAny branch outcome",
+    "Path of Kings preserves Damage/Defence/God Mode bindings and imports existing dictionary-block callback evidence into the v0.3.11 consumer graph",
+    "Duck and Aniimo no longer depend on the ordered 320/512-method scan to discover notification/state consumers",
+    "ADR/STP observer blocks are surfaced by V0311-BLOCK-INVOKE when present",
+    "Dragon full-text state xref reports exact-state candidates after the menu dylib is selected",
+    "No xref or nested-block candidate is promoted to a strong Feature binding without feature-specific exact-state evidence",
+    "Static/derived/conflict baselines remain unchanged"
   ],
-  "next_task": "Inject v0.3.10 into the six-app primary matrix. Inspect V0310-BLOCK-INVOKE, consumerGraph callback/helper counts, inherited V039-NOTIFY-XREF/V039-STATE-XREF, and any exact-state downstream bindings before expanding the algorithm further."
+  "next_task": "Inject the v0.3.11 build into the six-app primary matrix. For Duck, Dragon and Aniimo inspect V0311-BLOCK-INVOKE, V0311-NOTIFY-XREF, V0311-STATE-XREF and V0311-CONSUMER-GRAPH. For Dragon complete manual menu selection first. Compare stable-app Feature/Branch/Outcome bindings against the v0.3.10 run."
 }
