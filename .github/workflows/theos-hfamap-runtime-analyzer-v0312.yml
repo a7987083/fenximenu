@@ -53,12 +53,13 @@ jobs:
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
           shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.txt
-          strings "$out" | grep -q 'V0312-STATIC-CANONICAL'
-          strings "$out" | grep -q 'STATIC-LEDGER'
-          strings "$out" | grep -q 'STATIC-DISPOSITION'
-          strings "$out" | grep -q 'STATIC-AUDIT'
-          strings "$out" | grep -q 'PACKAGE-MIRROR'
-          strings "$out" | grep -q 'HFAMap_StaticCanonical_v0312.json'
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'V0312-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'STATIC-LEDGER' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'STATIC-DISPOSITION' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'STATIC-AUDIT' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'PACKAGE-MIRROR' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v0312.json' dist/HFARuntimeAnalyzer-v0.3.12-strings.txt
       - uses: actions/upload-artifact@v4
         with:
           name: HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion
