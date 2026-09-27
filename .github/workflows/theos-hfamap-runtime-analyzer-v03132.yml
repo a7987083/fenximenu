@@ -1,0 +1,70 @@
+name: HFARuntimeAnalyzer v0.3.13.2 MainImageIdentityFix
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.2-main-image-identity-fix]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v03132_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v03132_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03132_main_image_identity_fix.py \
+            .github/scripts/apply_hfaruntime_v03131_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_epoch_guard.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_rva_bridge_fix.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'HFA03132MainImageIndex' "$TRACE"
+          grep -Fq 'MH_EXECUTE' "$TRACE"
+          grep -Fq '[V03132-MAIN-IMAGE]' "$TRACE"
+          grep -Fq '[V03132-ANALYZER-PREPASS]' "$TRACE"
+          grep -Fq '[V03132-LEDGER-BRIDGE]' "$TRACE"
+          grep -Fq '[V03132-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'uuid+rva+original+enabled' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v03132.json' "$TRACE"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=run' "$V02"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.2 MainImageIdentityFix' "$UI"
+          if grep -Fq 'strcmp(value, "main") == 0) return 0;' "$TRACE"; then echo 'STALE MAIN INDEX-0 ASSUMPTION'; exit 1; fi
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03132_*.py; then echo 'FIXED RVA LEAKED INTO V03132 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v03132_*.py; then echo 'SAMPLE NAME LEAKED INTO V03132 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix.txt
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'V03132-MAIN-IMAGE' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'V03132-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'V03132-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'V03131-ANALYZER-GUARD' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'uuid+rva+original+enabled' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v03132.json' dist/HFARuntimeAnalyzer-v0.3.13.2-strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix.txt
+          if-no-files-found: error
