@@ -1,73 +1,68 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.13.2",
-  "phase": "main-image-identity-fix-ci-passed-device-validation-pending",
+  "version": "0.3.13.3",
+  "phase": "pagezero-rva-fix-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.13.2-main-image-identity-fix",
+  "branch": "feature/hfaruntime-v0.3.13.3-pagezero-rva-fix",
   "scope": {
     "priority": "Class 1 Static Patch only",
     "runtime_semantic_hook": "paused until Class 1 static export completeness and stability are proven",
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; sample names and sample fixed RVAs are prohibited from the v0.3.13.2 generic layer"
+    "fixed_rva_policy": "sample names and sample fixed RVAs are prohibited from the v0.3.13.3 generic layer"
   },
-  "baseline_v0312": {
-    "device_matrix_games": 16,
-    "runtime_analyzer_static_backends": 72,
-    "canonical_ledger": 59,
-    "analyzer_to_ledger_gap": 13,
-    "ledger_silently_dropped": 0
+  "baseline": {
+    "v0312": "16-game matrix: RuntimeAnalyzer static=72, canonical ledger=59, gap=13, silentlyDropped=0",
+    "v03131": "per-export analyzer epoch guard fixed repeat-scan device crashes; main executable identity remained unresolved",
+    "v03132": "main executable path/UUID resolution succeeded on device, but analyzer RVA inputs below 0x100000000 were incorrectly classified as preferred VM addresses because __PAGEZERO was included in the range test"
   },
-  "v0313_regression": {
-    "status": "superseded",
-    "issue": "multiple full RuntimeAnalyzer executions could occur within one export epoch and main-executable preferred-VM/RVA identity was not normalized consistently"
+  "v03132_device_result": {
+    "status": "main-image-identity-passed-pagezero-rva-bug-found",
+    "main_image_identity": "passed; real NSBundle executable path and runtime LC_UUID matched analyzer target identity",
+    "single_pass": "passed; one action=run with same-epoch action=reuse",
+    "failure": "canonical RVA underflow for already-RVA analyzer inputs",
+    "evidence_pattern": "analyzer RVA such as 0x45099C or 0x7E5390 was treated as lying in __PAGEZERO and normalized by subtracting main preferred VM base, yielding 0xFFFFFFFF00...",
+    "package_result": "ledger parity remained false, so hfapatch export was correctly blocked fail-closed"
   },
-  "v03131_device_result": {
-    "status": "single-pass-regression-fixed-main-image-identity-still-broken",
-    "stability": "tested crash samples no longer showed the v0.3.13 repeat-scan crash pattern",
-    "audit_file": "HFAMap_StaticCanonical_v03131.json generated",
-    "final_hfapatch": "not emitted for affected Class-1 samples because ledger parity correctly failed closed",
-    "rise_of_berk": "analyzer=15, ledger=23 due legacy main target and analyzer main target failing exact identity/RVA matching",
-    "zombie_catchers": "analyzer=4, ledger=8 for the same main-image identity issue",
-    "root_cause": "target=main was still resolved through an index-0 assumption in Class-1 paths, producing the wrong loaded-image UUID/preferred VM basis in the injected environment"
-  },
-  "implementation_v03132": {
-    "build_tested_commit": "6382eb826f42fc28bea2b59e743fc944c59f12d0",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v03132.yml",
-    "generator_chain": ".github/scripts/apply_hfaruntime_v03132_chain.py",
-    "main_image_fix_script": ".github/scripts/hfamap_runtime_analyzer_v03132_main_image_identity_fix.py",
-    "main_image_resolution": "resolve NSBundle.mainBundle.executablePath against dyld paths, then resolved-symlink path, then basename+MH_EXECUTE, then unique MH_EXECUTE fallback; do not assume dyld index 0",
-    "global_main_target_policy": "HFAImageIndexForName(\"main\") uses the true executable image resolver so legacy original-byte reads and canonical bridge use the same image",
-    "canonical_identity_policy": "loaded target LC_UUID is authoritative; serialized UUID is fallback only",
-    "canonical_rva_policy": "if input lies in a preferred Mach-O segment, subtract the minimum non-PAGEZERO VM address; otherwise treat it as already-RVA",
-    "canonical_match_key": "target runtime UUID + canonical RVA + original bytes + enabled bytes",
-    "legacy_main_classification": "target is labeled main by comparing against the real executable image index, not imageIndex==0",
+  "implementation_v03133": {
+    "build_tested_commit": "bebd3a39bcc98e27652879e26a4ed5949c9c1f55",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v03133.yml",
+    "generator_chain": ".github/scripts/apply_hfaruntime_v03133_chain.py",
+    "pagezero_fix_script": ".github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py",
+    "canonicalizer": "HFA03133CanonicalTarget",
+    "segment_policy": "__PAGEZERO is excluded from both minVM selection and preferred-address range classification",
+    "preferred_range_policy": "only non-PAGEZERO, non-empty LC_SEGMENT_64 ranges can classify raw input as a preferred VM address",
+    "already_rva_policy": "if raw input does not lie in a real Mach-O segment preferred range, preserve it unchanged as RVA",
+    "preferred_vm_policy": "if raw input lies in a real preferred VM segment, subtract minimum non-PAGEZERO VM address",
+    "match_key": "runtime target UUID + canonical RVA + original bytes + enabled bytes",
+    "main_image_policy": "v0.3.13.2 NSBundle executable image resolver retained unchanged",
     "single_pass_policy": "v0.3.13.1 per-export analyzer epoch guard retained unchanged",
-    "audit_file": "HFAMap_StaticCanonical_v03132.json",
-    "audit_schema": "com.hfa.static-canonical-audit/v0.3.13.2",
+    "audit_file": "HFAMap_StaticCanonical_v03133.json",
+    "audit_schema": "com.hfa.static-canonical-audit/v0.3.13.3",
     "markers": [
-      "[V03132-MAIN-IMAGE]",
-      "[V03132-ANALYZER-PREPASS]",
-      "[V03132-LEDGER-BRIDGE]",
-      "[V03132-STATIC-CANONICAL]",
+      "[V03133-RVA-NORMALIZE]",
+      "[V03133-MAIN-IMAGE]",
+      "[V03133-ANALYZER-PREPASS]",
+      "[V03133-LEDGER-BRIDGE]",
+      "[V03133-STATIC-CANONICAL]",
       "[V03131-ANALYZER-GUARD]"
     ]
   },
   "build": {
     "ci": "success",
-    "run_id": 36357956590,
-    "artifact_id": 10944214933,
-    "artifact": "HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix",
-    "artifact_zip_sha256": "296108bd5fcc13f029d8c3a0c60549c353e91285a972c18f862e50e327847d13",
-    "binary": "HFARuntimeAnalyzer-v0.3.13.2-MainImageIdentityFix.dylib",
+    "run_id": 36359023065,
+    "artifact_id": 10943974843,
+    "artifact": "HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix",
+    "artifact_zip_sha256": "52af8a291f4cafc392eee8340551289cbf4324d0498790da13b45f72fcf74d29",
+    "binary": "HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.dylib",
     "architecture": "arm64",
     "size_bytes": 333296,
-    "binary_sha256": "033f078c5f6acfe62532aa23b58f7dc083c050274830c52b6642d049a954bc1d"
+    "binary_sha256": "7ccf339dd35a2d6608960afd64e7f0a0a1453f42b3120538ecca09a209d691ae"
   },
   "verification": {
     "generator_chain": "passed",
-    "generated_source_gates": "passed",
+    "pagezero_canonicalizer_gate": "passed",
     "stale_main_index0_gate": "passed",
     "generic_fixed_rva_gate": "passed",
     "generic_sample_name_gate": "passed",
@@ -75,20 +70,22 @@
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "device_main_image_identity": "pending",
+    "device_rva_normalization": "pending",
     "device_analyzer_ledger_parity": "pending",
     "device_hfapatch_emission": "pending",
     "device_apply_restore": "not started"
   },
   "device_acceptance_gates": [
-    "[V03132-MAIN-IMAGE] path equals NSBundle main executable and UUID equals RuntimeAnalyzer target UUID for main-target Class-1 backends",
-    "Rise of Berk reaches analyzer=15 and ledger=15 with ledgerParity=true",
-    "Zombie Catchers reaches analyzer=4 and ledger=4 with ledgerParity=true",
+    "[V03133-RVA-NORMALIZE] reports mode=rva and canonical equal to raw for already-RVA analyzer offsets",
+    "[V03133-RVA-NORMALIZE] reports mode=preferred and subtracts the non-PAGEZERO preferred VM base for full preferred VM addresses",
+    "Rise of Berk reaches analyzer=15 and ledger=15 with ledgerParity=true; historical expectation matched=8 and bridged=7 is advisory only",
+    "Zombie Catchers reaches analyzer=4 and ledger=4 with ledgerParity=true; historical expectation matched=4 and bridged=0 is advisory only",
     "affected Class-1 sample emits and mirrors an actual .hfapatch.json only after parity and canonical validation pass",
     "v0.3.13.1 single-pass guard remains one action=run per export epoch with later same-epoch entries action=reuse",
+    "v0.3.13.2 main executable path/UUID identity remains correct",
     "silentlyDropped remains zero",
     "shared-target conflicts remain fail-closed",
     "no Runtime Semantic feature is promoted into a Static canonical patch"
   ],
-  "next_task": "Device-test v0.3.13.2 first on Rise of Berk and Zombie Catchers. Verify V03132-MAIN-IMAGE path/UUID, analyzer-to-ledger parity, and physical hfapatch emission. If both pass, rerun the full Class-1 matrix before starting Apply -> enabled readback -> Restore -> original readback verification."
+  "next_task": "Device-test v0.3.13.3 first on Rise of Berk and Zombie Catchers. Verify V03133-RVA-NORMALIZE modes, analyzer-to-ledger parity, and physical hfapatch emission. If both pass, rerun the full Class-1 matrix before Apply -> enabled readback -> Restore -> original readback verification."
 }
