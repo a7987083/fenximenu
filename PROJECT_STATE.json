@@ -1,74 +1,76 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.13",
-  "phase": "static-backend-ledger-bridge-ci-passed-device-validation-pending",
+  "version": "0.3.13.1",
+  "phase": "single-pass-ledger-bridge-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.13-static-backend-ledger-bridge",
-  "baseline": {
-    "version": "0.3.12",
-    "branch_head": "2ec9d7b4a736239220020ee81177caadbd477791",
-    "build_tested_commit": "0fe0e9ef083e57882e7c23dfe16cfce0af43c6f6",
-    "device_matrix": {
-      "game_directories": 16,
-      "runtime_analyzer_static_backends": 72,
-      "v0312_ledger_count": 59,
-      "analyzer_to_ledger_gap": 13,
-      "ledger_selected_or_conflict": 59,
-      "ledger_silently_dropped": 0,
-      "family_gap": {
-        "0x031201": "10 analyzer static backends, 0 represented in v0.3.12 ledger, gap 10",
-        "0x031211": "62 analyzer static backends, 59 represented in v0.3.12 ledger, gap 3"
-      },
-      "fully_accounted_examples": ["Legend of Survivors 16/16", "Zombie Catchers 4/4", "RogueLegend 2/2", "Earn to Die Rogue 18/18 into ledger"],
-      "gap_examples": ["Archery Clash 2->0", "Hello Kitty MDS 6->5", "Heavenfall Arena 1->0", "PopIsland 1->0", "Rise of Berk 15->8", "MeChat 7->6"],
-      "earn_conflict": "shared target remains fail-closed; v0.3.12 selected accounting could still say exported for entries even when package emission was blocked"
-    }
-  },
+  "branch": "feature/hfaruntime-v0.3.13.1-single-pass-ledger-bridge",
   "scope": {
     "priority": "Class 1 Static Patch only",
-    "runtime_semantic_hook": "paused until Class 1 analyzer-to-ledger and export completeness are proven",
+    "runtime_semantic_hook": "paused until Class 1 static export completeness and stability are proven",
     "runtime_action_descriptorless": "frozen",
     "generic_only": true,
     "fail_closed": true,
-    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; fixed sample RVAs and sample names are prohibited from the v0.3.13 generic layer"
+    "fixed_rva_policy": "verified exact-build/UUID/original-byte profile points remain isolated; sample names and sample fixed RVAs are prohibited from the v0.3.13.1 generic layer"
   },
-  "implementation": {
-    "static_backend_ledger_bridge_commit": "9fbaf8f2b899ea7b8b30d28948c6136936063632",
-    "generator_chain_initial_commit": "f65a368ce7dac9631abcb48f0db2e42c98b31057",
-    "one_to_one_conflict_match_fix_commit": "262b031872337e061754a1c68a7c1ed56fac02cd",
-    "generator_chain_final_commit": "eb3fde7ab98b0836ccbb7cfe3a2885fc805bdd15",
-    "build_tested_commit": "697f582c9be12c1f8840657bdf75fc20ce5289d2",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v0313.yml"
+  "baseline_v0312": {
+    "device_matrix_games": 16,
+    "runtime_analyzer_static_backends": 72,
+    "canonical_ledger": 59,
+    "analyzer_to_ledger_gap": 13,
+    "ledger_silently_dropped": 0,
+    "family_gap": {
+      "0x031201": "10 analyzer static backends missing from ledger",
+      "0x031211": "3 analyzer static backends missing from ledger"
+    }
   },
-  "class1_static_backend_ledger_bridge_0313": {
-    "ordering_change": "RuntimeAnalyzer static backend discovery is explicitly executed as a canonical prepass before v0.3.13 ledger completion",
-    "analyzer_source": "HFAMap_RuntimeAnalyzer_v0311.json",
-    "bridge_source_label": "runtime-analyzer-binary-first",
-    "match_key": "runtimeAddress + originalBytes + enabledBytes",
-    "matching_policy": "one-to-one queue consumption so shared-target different-byte backends remain distinct",
-    "legacy_entries": "existing descriptor-backed ledger entries are marked source=legacy-descriptor and enriched with analyzer provenance when exact match succeeds",
-    "missing_backend_policy": "every analyzer static backend absent from the legacy descriptor ledger is appended to the canonical ledger; without exact Feature ownership it is excluded with reason unowned-static-backend rather than guessed",
-    "additional_exclusion_reasons": ["unowned-static-backend", "analyzer-target-not-unique", "analyzer-noncanonical-static", "analyzer-bytes-incomplete"],
-    "parity_gate": "package export is blocked fail-closed if analyzer output is unavailable or analyzerStaticCount != ledgerCount or analyzer matching+bridging does not cover every analyzer static backend",
-    "audit": {
-      "file": "HFAMap_StaticCanonical_v0313.json",
-      "schema": "com.hfa.static-canonical-audit/v0.3.13",
-      "policy": "fail-closed-analyzer-ledger-parity",
-      "new_fields": ["analyzerAvailable", "analyzerStaticCount", "analyzerMatchedCount", "analyzerBridgedCount", "ledgerParity", "selectedCount", "emittedCount", "emittedPatchCount", "selectionStatus", "packageOutcome"]
+  "v0313_device_regression": {
+    "status": "do-not-use-for-class1-acceptance",
+    "uploaded_log": "日志(20260927-181644).zip",
+    "stability": {
+      "observation": "15/16 samples showed two RuntimeAnalyzer scan-begins; Path of Kings, Duck Survival, Random Dice 2, Dragon and Aniimo showed a second scan-begin without a second scan-end and were reported crashing by the device tester",
+      "root_cause_confidence": "high",
+      "root_cause": "multiple callers could enter the full RuntimeAnalyzer during one export operation after v0.3.13 added its canonical prepass"
     },
-    "package_accounting": "selection and physical emission are separated; when a package is blocked by conflict, selected entries receive packageOutcome=blocked-by-package-conflict and emittedCount/emittedPatchCount remain zero",
-    "runtime_class2_behavior": "not promoted or changed by v0.3.13"
+    "ledger_normalization": {
+      "rise_of_berk": "analyzer=15, ledger=23 because preferred VM addresses such as 0x100... were not normalized to analyzer RVA form",
+      "zombie_catchers": "analyzer=4, ledger=8 for the same main-executable preferred-VM-vs-RVA mismatch",
+      "earn_to_die_rogue": "analyzer=18, ledger=18, matched=18; selected=16, conflict=2, emitted=0 remained correctly fail-closed"
+    }
+  },
+  "implementation_v03131": {
+    "build_tested_commit": "d77f78e7d110db392b9f759bf68e1b1aa468e8f5",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v03131.yml",
+    "generator_chain": ".github/scripts/apply_hfaruntime_v03131_chain.py",
+    "epoch_guard_script": ".github/scripts/hfamap_runtime_analyzer_v03131_epoch_guard.py",
+    "rva_bridge_script": ".github/scripts/hfamap_runtime_analyzer_v03131_rva_bridge_fix.py",
+    "single_pass_policy": "per-export epoch guard wraps HFAAnalyzerV02ScanSelectedImage: first call in an export epoch executes the implementation; later callers in the same export epoch return the cached result; a later user export begins a new epoch and performs a fresh scan",
+    "single_pass_markers": [
+      "[V03131-ANALYZER-GUARD] action=begin",
+      "[V03131-ANALYZER-GUARD] action=run",
+      "[V03131-ANALYZER-GUARD] action=reuse"
+    ],
+    "canonical_match_key": "target identity + canonical RVA + original bytes + enabled bytes",
+    "canonical_target_identity": "explicit target UUID, otherwise loaded image LC_UUID, otherwise image basename fallback",
+    "canonical_rva_policy": "if an input offset lies inside a preferred Mach-O VM segment, subtract the minimum non-PAGEZERO VM address; otherwise treat it as already-RVA",
+    "shared_target_policy": "same RVA with different original/enabled tuples remains separate so conflicts such as Earn are not collapsed",
+    "audit_file": "HFAMap_StaticCanonical_v03131.json",
+    "audit_schema": "com.hfa.static-canonical-audit/v0.3.13.1",
+    "main_markers": [
+      "[V03131-ANALYZER-PREPASS]",
+      "[V03131-LEDGER-BRIDGE]",
+      "[V03131-STATIC-CANONICAL]"
+    ]
   },
   "build": {
     "ci": "success",
-    "run_id": 36335382548,
-    "artifact_id": 10936139049,
-    "artifact": "HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge",
-    "artifact_zip_sha256": "ba89d356e662ed64812a7efe509c4050c2af8c94d7388149433a8e5a958fd6f6",
-    "binary": "HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge.dylib",
+    "run_id": 36341287848,
+    "artifact_id": 10938708811,
+    "artifact": "HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge",
+    "artifact_zip_sha256": "8ab5b6cf3842f8b2ac45509bc9aa03e3edd6ba28334b6bc362d5562cc5d9914e",
+    "binary": "HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge.dylib",
     "architecture": "arm64",
-    "size_bytes": 333216,
-    "binary_sha256": "6b1522d0c1008c069bcf5f0a9c03fd58348effb9ed1703d03dac85d999d1658b"
+    "size_bytes": 333296,
+    "binary_sha256": "088bcefd5a606ba2617f4dd685c9d9c18203ff07227299a676903689fce5ac1a"
   },
   "verification": {
     "generator_chain": "passed",
@@ -79,23 +81,19 @@
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
+    "device_stability": "pending",
     "device_analyzer_ledger_parity": "pending",
-    "device_feature_ownership_for_bridged_backends": "pending",
-    "device_apply_restore": "not implemented in this version"
+    "device_apply_restore": "not started"
   },
-  "success_gates_for_0313": [
-    "HFAMap_StaticCanonical_v0313.json is created for every Class-1 scan",
-    "analyzerAvailable is true for Class-1 samples",
-    "analyzerStaticCount equals ledgerCount",
-    "analyzerMatchedCount + analyzerBridgedCount equals analyzerStaticCount",
-    "ledgerParity is true",
-    "silentlyDropped is zero",
-    "every bridged analyzer-only backend is explicitly excluded with a reason unless exact Feature ownership is proven",
-    "the 0x031201 family no longer disappears before ledger accounting",
-    "the three previously missing 0x031211 backends are represented in the ledger",
-    "shared-target conflicts remain distinct under the runtime+original+enabled match key and continue to block ambiguous package export",
-    "blocked packages report emittedCount=0 and emittedPatchCount=0",
+  "device_acceptance_gates": [
+    "For one user export, exactly one analyzer guard action=run is observed; any additional analyzer entry in that same export reports action=reuse rather than running the full implementation again",
+    "Path of Kings, Duck Survival, Random Dice 2, Dragon and Aniimo complete the export without the v0.3.13 repeat-scan crash pattern",
+    "Rise of Berk is expected to normalize to analyzer=15 and ledger=15; historical ownership baseline suggests matched=8 and bridged=7, but device logs are authoritative",
+    "Zombie Catchers is expected to normalize to analyzer=4 and ledger=4; historical baseline suggests matched=4 and bridged=0, but device logs are authoritative",
+    "Legend of Survivors remains 16/16, Hello Kitty MDS remains 6/6, Earn to Die Rogue remains 18/18 into ledger",
+    "Earn shared-target conflict remains selected=16 conflict=2 emitted=0 unless stronger exact evidence resolves the conflict",
+    "silentlyDropped remains zero",
     "no Runtime Semantic feature is promoted into a Static canonical patch"
   ],
-  "next_task": "Device-test v0.3.13 against the same full 16-game matrix. First prove Analyzer Static -> Canonical Ledger parity (expected historical baseline 72 -> 72 with zero silent drop). Then inspect the newly bridged 13 entries and determine exact Feature ownership where possible without fuzzy matching. Do not start Apply/Restore verification until analyzer-to-ledger parity is proven."
+  "next_task": "Device-test v0.3.13.1. Prioritize the five v0.3.13 crash samples plus Rise of Berk and Zombie Catchers. If stability and canonical-RVA parity pass, rerun the full 16-game matrix before starting Class-1 Apply -> enabled readback -> Restore -> original readback verification."
 }
