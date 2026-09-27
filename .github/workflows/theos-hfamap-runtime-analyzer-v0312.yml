@@ -1,0 +1,65 @@
+name: HFARuntimeAnalyzer v0.3.12 StaticCanonicalCompletion
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.12-static-canonical-completion]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v0312_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v0312_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v0312_static_canonical_completion.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'HFA0312FeatureIdentityForKey' "$TRACE"
+          grep -Fq '[STATIC-LEDGER]' "$TRACE"
+          grep -Fq '[STATIC-DISPOSITION]' "$TRACE"
+          grep -Fq '[STATIC-CONFLICT]' "$TRACE"
+          grep -Fq '[STATIC-AUDIT]' "$TRACE"
+          grep -Fq '[PACKAGE-MIRROR]' "$TRACE"
+          grep -Fq '[V0312-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v0312.json' "$TRACE"
+          grep -Fq 'fail-closed-no-silent-drop' "$TRACE"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.12 StaticCanonicalCompletion' "$UI"
+          test "$(grep -c 'static void HFAWritePatchPackage' "$TRACE")" -eq 1
+          test "$(grep -c 'HFAWritePatchPackage(exportFeatures,exportTargets,ledger,featureDispositions,conflicts)' "$TRACE")" -eq 1
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v0312_*.py; then echo 'FIXED RVA LEAKED INTO V0312 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v0312_*.py; then echo 'SAMPLE NAME LEAKED INTO V0312 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.txt
+          strings "$out" | grep -q 'V0312-STATIC-CANONICAL'
+          strings "$out" | grep -q 'STATIC-LEDGER'
+          strings "$out" | grep -q 'STATIC-DISPOSITION'
+          strings "$out" | grep -q 'STATIC-AUDIT'
+          strings "$out" | grep -q 'PACKAGE-MIRROR'
+          strings "$out" | grep -q 'HFAMap_StaticCanonical_v0312.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.12-StaticCanonicalCompletion.txt
+          if-no-files-found: error
