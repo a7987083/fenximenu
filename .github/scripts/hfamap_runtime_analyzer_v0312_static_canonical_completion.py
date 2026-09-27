@@ -25,11 +25,9 @@ def function_span(text, signature):
             if depth==0: return start,i+1
     raise SystemExit(f'unterminated function: {signature}')
 
-for required in ['HFACanonical34Validate','HFACanonical34WriteIdentity','HFAFeatureDefinitionForKey','HFAReadOriginalBytes']:
+for required in ['HFACanonical34Validate','HFACanonical34WriteIdentity','HFAFeatureDefinitionForKey','HFAReadOriginalBytes','HFAReadOriginalBytesFromFile']:
     if required not in s: raise SystemExit('v0312 prerequisite missing '+required)
 
-# Helpers are inserted immediately before the package writer, after the v1.9.34
-# canonical helpers already exist in generated source.
 writer_sig='static void HFAWritePatchPackage(NSArray *features, NSDictionary *targets)'
 wa,wb=function_span(s,writer_sig)
 helpers=r'''
@@ -106,7 +104,7 @@ new_finalize=r'''unsigned HFAPatchTraceFinalizeScan(void) {
         if(!key.length){e[@"status"]=@"excluded";e[@"reason"]=@"no-feature-key";[ledger addObject:e];continue;}
         if(!ident){e[@"status"]=@"excluded";e[@"reason"]=@"no-feature-owner";[ledger addObject:e];continue;}
         if(!mappingValid){e[@"status"]=@"excluded";if(!d->module[0])e[@"reason"]=@"target-module-missing";else if(!haveOffset||!HFAValidOffset(off))e[@"reason"]=@"offset-invalid";else e[@"reason"]=@"enabled-bytes-invalid";[ledger addObject:e];continue;}
-        int imageIndex=HFAImageIndexForName(d->module);if(imageIndex<0){e[@"status"]=@"excluded";e[@"reason"]=@"target-image-not-loaded";[ledger addObject:e];continue;}NSData *enabled=HFADataFromHex(patch);uint64_t rva=strtoull(norm,NULL,16);NSData *original=enabled.length?HFAReadOriginalBytes((uint32_t)imageIndex,rva,enabled.length):nil;if(!enabled.length||original.length!=enabled.length){e[@"status"]=@"excluded";e[@"reason"]=@"original-bytes-unavailable";[ledger addObject:e];continue;}NSString *origHex=HFAHexData(original),*enHex=[NSString stringWithUTF8String:patch];e[@"original"]=origHex;if([original isEqualToData:enabled]){e[@"status"]=@"excluded";e[@"reason"]=@"patch-already-enabled";[ledger addObject:e];continue;}
+        int imageIndex=HFAImageIndexForName(d->module);if(imageIndex<0){e[@"status"]=@"excluded";e[@"reason"]=@"target-image-not-loaded";[ledger addObject:e];continue;}NSData *enabled=HFADataFromHex(patch);uint64_t rva=strtoull(norm,NULL,16);const char *originalSource="unavailable";int originalCryptid=-1;NSData *original=enabled.length?HFAReadOriginalBytes((uint32_t)imageIndex,rva,enabled.length,&originalSource,&originalCryptid):nil;if(enabled.length&&original.length==enabled.length&&[original isEqualToData:enabled]){int fileCryptid=-1;NSData *fileOriginal=HFAReadOriginalBytesFromFile((uint32_t)imageIndex,rva,enabled.length,&fileCryptid);if(fileOriginal.length==enabled.length&&![fileOriginal isEqualToData:enabled]){original=fileOriginal;originalSource="mach-o-file-after-enabled-live";originalCryptid=fileCryptid;}}e[@"originalSource"]=[NSString stringWithUTF8String:originalSource?:"unavailable"];e[@"cryptid"]=@(originalCryptid);if(!enabled.length||original.length!=enabled.length){e[@"status"]=@"excluded";e[@"reason"]=@"original-bytes-unavailable";[ledger addObject:e];continue;}NSString *origHex=HFAHexData(original),*enHex=[NSString stringWithUTF8String:patch];e[@"original"]=origHex;if([original isEqualToData:enabled]){e[@"status"]=@"excluded";e[@"reason"]=@"patch-already-enabled";[ledger addObject:e];continue;}
         NSString *fid=ident[@"id"],*tid=imageIndex==0?@"main":[NSString stringWithUTF8String:d->module],*image=imageIndex==0?@"@main":[NSString stringWithUTF8String:HFABase(_dyld_get_image_name((uint32_t)imageIndex))];e[@"target"]=tid;e[@"status"]=@"candidate";e[@"reason"]=@"awaiting-conflict-audit";NSUInteger li=ledger.count;[ledger addObject:e];[candidates addObject:@{@"ledgerIndex":@(li),@"featureId":fid,@"target":tid,@"image":image,@"offset":[NSString stringWithUTF8String:norm],@"original":origHex,@"enabled":enHex}];
     }}
     NSMutableDictionary *byTarget=[NSMutableDictionary dictionary];for(NSDictionary *c in candidates){NSString *k=[NSString stringWithFormat:@"%@|%@",c[@"target"]?:@"?",c[@"offset"]?:@"?"];NSMutableArray *a=byTarget[k];if(!a){a=[NSMutableArray array];byTarget[k]=a;}[a addObject:c];}
@@ -128,7 +126,7 @@ ui=ui.replace('HFAMap RuntimeAnalyzer v0.3.11 ADRFullTextXrefConsumer','HFAMap R
 UI.write_text(ui)
 
 out=TRACE.read_text()
-for req in ['HFA0312FeatureIdentityForKey','descriptor-key-exact','[STATIC-LEDGER]','[STATIC-DISPOSITION]','[STATIC-CONFLICT]','[STATIC-AUDIT]','[PACKAGE-MIRROR]','[V0312-STATIC-CANONICAL]','HFAMap_StaticCanonical_v0312.json','fail-closed-no-silent-drop']:
+for req in ['HFA0312FeatureIdentityForKey','descriptor-key-exact','[STATIC-LEDGER]','[STATIC-DISPOSITION]','[STATIC-CONFLICT]','[STATIC-AUDIT]','[PACKAGE-MIRROR]','[V0312-STATIC-CANONICAL]','HFAMap_StaticCanonical_v0312.json','fail-closed-no-silent-drop','originalSource','mach-o-file-after-enabled-live']:
     if req not in out: raise SystemExit('v0312 missing '+req)
 if 'HFAWritePatchPackage(exportFeatures,exportTargets,ledger,featureDispositions,conflicts)' not in out:
     raise SystemExit('v0312 package bridge missing')
