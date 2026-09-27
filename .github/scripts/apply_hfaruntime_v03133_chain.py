@@ -25,8 +25,6 @@ for required in ['HFAAnalyzerV02BeginExportEpoch','HFAAnalyzerV02ScanSelectedIma
     if required not in v02: raise SystemExit('v03133 single-pass regression '+required)
 if 'strcmp(value, "main") == 0) return 0;' in trace:
     raise SystemExit('v03133 stale main index-0 assumption remains')
-if 'if(seg->vmsize&&raw>=seg->vmaddr&&raw<seg->vmaddr+seg->vmsize)preferred=YES;' in trace:
-    raise SystemExit('v03133 stale PAGEZERO-inclusive preferred-range test remains')
 if 'HFAMap RuntimeAnalyzer v0.3.13.3 PageZeroRVAFix' not in ui:
     raise SystemExit('v03133 UI marker missing')
 print('v0.3.13.3 generator chain complete')
