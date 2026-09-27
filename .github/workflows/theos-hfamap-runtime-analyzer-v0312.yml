@@ -16,7 +16,8 @@ jobs:
           python3 .github/scripts/apply_hfaruntime_v0312_chain.py
           python3 -m py_compile \
             .github/scripts/apply_hfaruntime_v0312_chain.py \
-            .github/scripts/hfamap_runtime_analyzer_v0312_static_canonical_completion.py
+            .github/scripts/hfamap_runtime_analyzer_v0312_static_canonical_completion.py \
+            .github/scripts/hfamap_runtime_analyzer_v0312_compile_fixes.py
           TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
           UI=hfamap/src/HFAMapCyberUI.m
           grep -Fq 'HFA0312FeatureIdentityForKey' "$TRACE"
@@ -28,6 +29,8 @@ jobs:
           grep -Fq '[V0312-STATIC-CANONICAL]' "$TRACE"
           grep -Fq 'HFAMap_StaticCanonical_v0312.json' "$TRACE"
           grep -Fq 'fail-closed-no-silent-drop' "$TRACE"
+          grep -Fq 'static __attribute__((unused)) void HFAWriteIGMMPackage(' "$TRACE"
+          grep -Fq 'static __attribute__((unused)) unsigned HFAAppendVerifiedEarnToDieRogueProfile(' "$TRACE"
           grep -Fq 'HFAMap RuntimeAnalyzer v0.3.12 StaticCanonicalCompletion' "$UI"
           test "$(grep -c 'static void HFAWritePatchPackage' "$TRACE")" -eq 1
           test "$(grep -c 'HFAWritePatchPackage(exportFeatures,exportTargets,ledger,featureDispositions,conflicts)' "$TRACE")" -eq 1
