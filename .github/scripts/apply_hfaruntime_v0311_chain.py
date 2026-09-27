@@ -9,6 +9,7 @@ for name in [
     'hfamap_runtime_analyzer_v0311_notification_prefilter.py',
     'hfamap_runtime_analyzer_v0311_fulltext_xref.py',
     'hfamap_runtime_analyzer_v0311_consumer_graph.py',
+    'hfamap_runtime_analyzer_v0311_compile_fixes.py',
 ]:
     subprocess.check_call(['python3',str(S/name)],cwd=ROOT)
 
