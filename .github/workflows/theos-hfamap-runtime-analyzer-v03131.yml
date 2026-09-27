@@ -1,0 +1,67 @@
+name: HFARuntimeAnalyzer v0.3.13.1 SinglePassLedgerBridge
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.1-single-pass-ledger-bridge]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v03131_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v03131_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_single_pass_rva_fix.py \
+            .github/scripts/apply_hfaruntime_v0313_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v0313_static_backend_ledger_bridge.py \
+            .github/scripts/hfamap_runtime_analyzer_v0313_conflict_match_fix.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          test "$(grep -o 'HFAAnalyzerV02ScanSelectedImage();' "$TRACE" | wc -l | tr -d ' ')" -eq 1
+          grep -Fq '[V03131-ANALYZER-PREPASS]' "$TRACE"
+          grep -Fq '[V03131-ANALYZER-REUSE]' "$TRACE"
+          grep -Fq '[V03131-LEDGER-BRIDGE]' "$TRACE"
+          grep -Fq '[V03131-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'identity+rva+original+enabled' "$TRACE"
+          grep -Fq 'canonicalTargetIdentity' "$TRACE"
+          grep -Fq 'canonicalRVA' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v03131.json' "$TRACE"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.1 SinglePassLedgerBridge' "$UI"
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03131_*.py; then echo 'FIXED RVA LEAKED INTO V03131 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v03131_*.py; then echo 'SAMPLE NAME LEAKED INTO V03131 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge.txt
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'V03131-ANALYZER-PREPASS' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'V03131-ANALYZER-REUSE' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'V03131-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'V03131-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'identity+rva+original+enabled' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v03131.json' dist/HFARuntimeAnalyzer-v0.3.13.1-strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.1-SinglePassLedgerBridge.txt
+          if-no-files-found: error
