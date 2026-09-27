@@ -45,7 +45,7 @@ canonical=r'''static BOOL HFA03133CanonicalTarget(NSString *target,NSString *off
     if(minVM==UINT64_MAX)return NO;
     uint64_t rva=preferred?(raw-minVM):raw;
     NSString *runtimeUUID=HFA03131ImageUUIDForIndex(idx);NSString *serialized=[explicitUUID uppercaseString];NSString *identity=runtimeUUID.length?runtimeUUID:serialized;
-    if(runtimeUUID.length&&serialized.length&&![runtimeUUID isEqual:serialized])HFALog("[V03132-IDENTITY-OVERRIDE] target=%s serialized=%s runtime=%s\\n",target.UTF8String?:"?",serialized.UTF8String?:"?",runtimeUUID.UTF8String?:"?");
+    if(runtimeUUID.length&&serialized.length&&![runtimeUUID isEqual:serialized])HFALog("[V03133-IDENTITY-OVERRIDE] target=%s serialized=%s runtime=%s\\n",target.UTF8String?:"?",serialized.UTF8String?:"?",runtimeUUID.UTF8String?:"?");
     if(!identity.length){const char *p=_dyld_get_image_name((uint32_t)idx);identity=p?[NSString stringWithUTF8String:HFABase(p)]:target;}
     HFALog("[V03133-RVA-NORMALIZE] target=%s raw=0x%llX minVM=0x%llX mode=%s canonical=0x%llX\\n",target.UTF8String?:"?",(unsigned long long)raw,(unsigned long long)minVM,preferred?"preferred":"rva",(unsigned long long)rva);
     if(identityOut)*identityOut=identity?:@"";if(rvaOut)*rvaOut=rva;return YES;
@@ -67,6 +67,10 @@ UI.write_text(ui)
 out=TRACE.read_text()
 for req in ['HFA03133CanonicalTarget','realSegment=strcmp(seg->segname,"__PAGEZERO")!=0','[V03133-RVA-NORMALIZE]','[V03133-MAIN-IMAGE]','[V03133-ANALYZER-PREPASS]','[V03133-LEDGER-BRIDGE]','[V03133-STATIC-CANONICAL]','uuid+rva+original+enabled','HFAMap_StaticCanonical_v03133.json']:
     if req not in out: raise SystemExit('v03133 generated trace missing '+req)
-if 'if(seg->vmsize&&raw>=seg->vmaddr&&raw<seg->vmaddr+seg->vmsize)preferred=YES;' in out:
-    raise SystemExit('v03133 stale PAGEZERO-inclusive preferred-range test remains')
+ca,cb=function_span(out,'static BOOL HFA03133CanonicalTarget(NSString *target,NSString *offset,NSString *explicitUUID,NSString **identityOut,uint64_t *rvaOut)')
+canonical_body=out[ca:cb]
+if '__PAGEZERO' not in canonical_body or 'realSegment' not in canonical_body:
+    raise SystemExit('v03133 canonicalizer lacks PAGEZERO exclusion')
+if 'if(seg->vmsize&&raw>=seg->vmaddr&&raw<seg->vmaddr+seg->vmsize)preferred=YES;' in canonical_body:
+    raise SystemExit('v03133 canonicalizer still uses PAGEZERO-inclusive preferred-range test')
 print('v0.3.13.3 PAGEZERO-safe canonical RVA fix applied')
