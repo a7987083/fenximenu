@@ -1,0 +1,75 @@
+name: HFARuntimeAnalyzer v0.3.13.3 PageZeroRVAFix
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.3-pagezero-rva-fix]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v03133_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v03133_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py \
+            .github/scripts/apply_hfaruntime_v03132_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03132_main_image_identity_fix.py \
+            .github/scripts/apply_hfaruntime_v03131_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_epoch_guard.py \
+            .github/scripts/hfamap_runtime_analyzer_v03131_rva_bridge_fix.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'HFA03133CanonicalTarget' "$TRACE"
+          grep -Fq 'realSegment=strcmp(seg->segname,"__PAGEZERO")!=0' "$TRACE"
+          grep -Fq '[V03133-RVA-NORMALIZE]' "$TRACE"
+          grep -Fq '[V03133-MAIN-IMAGE]' "$TRACE"
+          grep -Fq '[V03133-ANALYZER-PREPASS]' "$TRACE"
+          grep -Fq '[V03133-LEDGER-BRIDGE]' "$TRACE"
+          grep -Fq '[V03133-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'uuid+rva+original+enabled' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v03133.json' "$TRACE"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=run' "$V02"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.3 PageZeroRVAFix' "$UI"
+          if grep -Fq 'strcmp(value, "main") == 0) return 0;' "$TRACE"; then echo 'STALE MAIN INDEX-0 ASSUMPTION'; exit 1; fi
+          if grep -Fq 'if(seg->vmsize&&raw>=seg->vmaddr&&raw<seg->vmaddr+seg->vmsize)preferred=YES;' "$TRACE"; then echo 'STALE PAGEZERO-INCLUSIVE RVA TEST'; exit 1; fi
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03133_*.py; then echo 'FIXED RVA LEAKED INTO V03133 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat' .github/scripts/hfamap_runtime_analyzer_v03133_*.py; then echo 'SAMPLE NAME LEAKED INTO V03133 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.txt
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'V03133-RVA-NORMALIZE' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'V03133-MAIN-IMAGE' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'V03133-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'V03133-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'V03131-ANALYZER-GUARD' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'uuid+rva+original+enabled' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v03133.json' dist/HFARuntimeAnalyzer-v0.3.13.3-strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.txt
+          if-no-files-found: error
