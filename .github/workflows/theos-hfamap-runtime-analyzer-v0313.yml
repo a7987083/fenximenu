@@ -17,6 +17,7 @@ jobs:
           python3 -m py_compile \
             .github/scripts/apply_hfaruntime_v0313_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v0313_static_backend_ledger_bridge.py \
+            .github/scripts/hfamap_runtime_analyzer_v0313_conflict_match_fix.py \
             .github/scripts/hfamap_runtime_analyzer_v0312_static_canonical_completion.py \
             .github/scripts/hfamap_runtime_analyzer_v0312_compile_fixes.py
           TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
@@ -33,6 +34,8 @@ jobs:
           grep -Fq 'emittedCount' "$TRACE"
           grep -Fq 'blocked-by-package-conflict' "$TRACE"
           grep -Fq 'blocked-ledger-parity' "$TRACE"
+          grep -Fq 'runtime+original+enabled' "$TRACE"
+          grep -Fq 'analyzerMatchKey' "$TRACE"
           grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13 StaticBackendLedgerBridge' "$UI"
           test "$(grep -c 'static void HFAWritePatchPackage' "$TRACE")" -eq 1
           if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v0313_*.py; then echo 'FIXED RVA LEAKED INTO V0313 GENERIC LAYER'; exit 1; fi
@@ -60,6 +63,7 @@ jobs:
           grep -Fq 'V0313-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
           grep -Fq 'STATIC-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
           grep -Fq 'HFAMap_StaticCanonical_v0313.json' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
+          grep -Fq 'runtime+original+enabled' dist/HFARuntimeAnalyzer-v0.3.13-strings.txt
       - uses: actions/upload-artifact@v4
         with:
           name: HFARuntimeAnalyzer-v0.3.13-StaticBackendLedgerBridge
