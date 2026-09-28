@@ -3,7 +3,9 @@ import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
 CLUSTER=Path(__file__).with_name('hfamap_runtime_analyzer_v03134_static_cluster_ownership.py')
+ORPHAN=Path(__file__).with_name('hfamap_runtime_analyzer_v03134_orphan_feature_recovery.py')
 subprocess.check_call(['python3',str(CLUSTER)],cwd=ROOT)
+subprocess.check_call(['python3',str(ORPHAN)],cwd=ROOT)
 
 APPLOCAL=Path('hfamap/src/HFAMapAppLocalResolver.m')
 CYBER=Path('hfamap/src/HFAMapCyberUI.m')
@@ -65,6 +67,9 @@ for marker in ['[AUTO-SELECT] candidates=1','found.count == 1','found.count > 1'
 ui=CYBER.read_text()
 for marker in ['[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready','if (count > 1)','HFAAppLocalHasManualSelection']:
     if marker not in ui: raise SystemExit('missing auto-select UI marker '+marker)
+trace=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
+for marker in ['[V03134-ORPHAN-RECOVERY]','static-registration-key','staticRegistrationEvidence']:
+    if marker not in trace: raise SystemExit('missing orphan recovery chain marker '+marker)
 if 'if (count) [self showCandidateSelector];' in ui:
     raise SystemExit('legacy always-show selector regression remains')
-print('v0.3.13.4 unique dylib auto-selection + UI selector gate applied')
+print('v0.3.13.4 orphan feature recovery + unique dylib auto-selection applied')
