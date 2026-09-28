@@ -24,20 +24,23 @@ def function_span(text, signature):
             if depth==0:return start,i+1
     raise SystemExit(f'unterminated function: {signature}')
 
-# 1) Menu discovery must not drop an otherwise valid feature only because its title
-#    getter is empty/obfuscated.  The identifier is a stable structural identity and
-#    is sufficient as a fallback display label for Class-1 ownership.
+# 1) Preserve normal menu feature registration, but recover features whose title is
+#    empty/obfuscated.  This is structural menu discovery and does not require a click.
 f=FAMILY.read_text()
-old='''            if (identifier.length && label.length)\n                HFARegisterFeatureDefinition(label.UTF8String, identifier.UTF8String);'''
-new='''            if (identifier.length) {\n                NSString *featureLabel = label.length ? label : identifier;\n                HFARegisterFeatureDefinition(featureLabel.UTF8String, identifier.UTF8String);\n                HFAFamilyLog([NSString stringWithFormat:@"[V03134-STATIC-FEATURE] identifier=%@ label=%@ source=%@",\n                              identifier, featureLabel, label.length ? @"menu-label" : @"identifier-fallback"]);\n            }'''
-if old not in f: raise SystemExit('family feature-definition anchor missing')
-f=f.replace(old,new,1)
+fa,fb=function_span(f,'static void HFAFamilyWalkView(HFAFamilyContext *context, UIView *view, unsigned depth)')
+walk=f[fa:fb]
+anchor='            HFAGenericMenuObserveObject(view, "family-ui-control");'
+insert='''            if (identifier.length && !label.length) {\n                HFARegisterFeatureDefinition(identifier.UTF8String, identifier.UTF8String);\n                HFAFamilyLog([NSString stringWithFormat:@"[V03134-STATIC-FEATURE] identifier=%@ label=%@ source=identifier-fallback",\n                              identifier, identifier]);\n            }\n'''
+if '[V03134-STATIC-FEATURE]' not in walk:
+    if anchor not in walk: raise SystemExit('family generic-menu observe anchor missing')
+    walk=walk.replace(anchor,insert+anchor,1)
+f=f[:fa]+walk+f[fb:]
 FAMILY.write_text(f)
 
 s=TRACE.read_text()
 
-# 2) Remove the v03134 runtime-event ownership injection.  Runtime events are useful
-#    diagnostics but cannot be a prerequisite for Class-1 static ownership.
+# 2) Remove the v03134 runtime-event ownership injection. Runtime events remain
+#    diagnostics only and are not a Class-1 ownership prerequisite.
 secret_sig='void HFARegisterPatchSecret(id owner, id wrapper, const char *kind)'
 a,b=function_span(s,secret_sig)
 secret=s[a:b]
@@ -48,10 +51,9 @@ s=s[:a]+secret+s[b:]
 
 # 3) Static ownership policy:
 #    A. exact wrapper-secret-RVA -> descriptor key -> feature definition
-#    B. if no keyed descriptor exists and the selected menu structurally exposes one
-#       and only one feature definition, all canonical static backends belong to that
-#       sole feature.  This handles the common one-toggle/multi-patch layout without
-#       using button clicks or array ordering.
+#    B. no keyed descriptor + exactly one structural menu feature -> all canonical
+#       static backends belong to that sole feature. This supports one-toggle / multi-
+#       patch menus without clicks or array-order guesses.
 a,b=function_span(s,'static NSDictionary *HFA03134OwnershipForBackend(NSDictionary *backend)')
 owner_fn=r'''static NSDictionary *HFA03134OwnershipForBackend(NSDictionary *backend){
     uint64_t descriptor=HFA03134HexRVA(backend[@"descriptorRVA"]),patchDescriptor=HFA03134HexRVA(backend[@"patchDescriptorRVA"]);if(!descriptor&&!patchDescriptor)return nil;
@@ -72,7 +74,7 @@ owner_fn=r'''static NSDictionary *HFA03134OwnershipForBackend(NSDictionary *back
 }'''
 s=s[:a]+owner_fn+s[b:]
 
-# 4) Ownership evidence must state the static source; do not claim event ownership.
+# 4) Ownership evidence reports the static source; never claim event ownership.
 s=s.replace('e[@"ownershipSource"]=@"wrapper-secret-rva+event-identifier";e[@"ownershipEvidence"]=owner;',
             'e[@"ownershipSource"]=owner[@"source"]?:@"static-structural";e[@"ownershipEvidence"]=owner;',1)
 s=s.replace('ownership=secret-rva+event-identifier','ownership=static-structural',1)
