@@ -7,10 +7,12 @@ subprocess.check_call(['python3',str(S/'apply_hfaruntime_v03133_chain.py')],cwd=
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_class1_ownership_completion.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_conflict_export_fix.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_static_ownership_fix.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 v02=(ROOT/'hfamap'/'src'/'HFAMapRuntimeAnalyzerV02.m').read_text()
 family=(ROOT/'hfamap'/'src'/'HFAMapFamilyRuntimeResolver.m').read_text()
+applocal=(ROOT/'hfamap'/'src'/'HFAMapAppLocalResolver.m').read_text()
 ui=(ROOT/'hfamap'/'src'/'HFAMapCyberUI.m').read_text()
 for required in [
     'HFA03134WrapperSecretRVA',
@@ -35,6 +37,8 @@ if 'status=@"blocked-conflict"' in trace:
     raise SystemExit('v03134 whole-package conflict block regression')
 for required in ['[V03134-STATIC-FEATURE]','identifier-fallback']:
     if required not in family: raise SystemExit('v03134 family static-feature fallback missing '+required)
+for required in ['[AUTO-SELECT] candidates=1','found.count == 1','found.count > 1','manualSelectionRequired=0']:
+    if required not in applocal: raise SystemExit('v03134 unique candidate auto-select missing '+required)
 for required in ['HFAAnalyzerV02BeginExportEpoch','HFAAnalyzerV02ScanSelectedImageImpl','[V03131-ANALYZER-GUARD] action=run','[V03131-ANALYZER-GUARD] action=reuse']:
     if required not in v02: raise SystemExit('v03134 analyzer single-pass regression '+required)
 if 'HFAMap RuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion' not in ui:
