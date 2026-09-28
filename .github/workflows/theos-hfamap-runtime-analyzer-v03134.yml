@@ -19,6 +19,8 @@ jobs:
             .github/scripts/hfamap_runtime_analyzer_v03134_class1_ownership_completion.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_static_ownership_fix.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_conflict_export_fix.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_static_cluster_ownership.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_orphan_feature_recovery.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py \
             .github/scripts/apply_hfaruntime_v03133_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py
@@ -29,6 +31,11 @@ jobs:
           UI=hfamap/src/HFAMapCyberUI.m
           grep -Fq '[V03134-STATIC-FEATURE]' "$FAMILY"
           grep -Fq '[V03134-STATIC-OWNERSHIP]' "$TRACE"
+          grep -Fq '[V03134-STATIC-CLUSTER]' "$TRACE"
+          grep -Fq '[V03134-ORPHAN-RECOVERY]' "$TRACE"
+          grep -Fq 'HFA03134RegistrationEvidence' "$TRACE"
+          grep -Fq 'static-registration-key' "$TRACE"
+          grep -Fq 'staticRegistrationEvidence' "$TRACE"
           grep -Fq 'static-wrapper-secret-rva' "$TRACE"
           grep -Fq 'static-singleton-feature-definition' "$TRACE"
           grep -Fq 'ownership=static-structural' "$TRACE"
@@ -79,6 +86,9 @@ jobs:
           strings "$out" > "$strings_file"
           grep -Fq 'V03134-STATIC-FEATURE' "$strings_file"
           grep -Fq 'V03134-STATIC-OWNERSHIP' "$strings_file"
+          grep -Fq 'V03134-STATIC-CLUSTER' "$strings_file"
+          grep -Fq 'V03134-ORPHAN-RECOVERY' "$strings_file"
+          grep -Fq 'static-registration-key' "$strings_file"
           grep -Fq 'static-singleton-feature-definition' "$strings_file"
           grep -Fq '[AUTO-SELECT] candidates=1' "$strings_file"
           grep -Fq '[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready' "$strings_file"
