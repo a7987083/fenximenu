@@ -32,3 +32,17 @@ jobs:
         with:
           name: ZonoeServerDrivenAuthFlowV1-arm64-ios13
           path: ZonoeServerDrivenAuthFlowV1.dylib
+      - name: Package source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p ZonoeServerDrivenAuthFlowV1-source
+          cp -R experiments/zonoe-auth-rebuild-v1/. ZonoeServerDrivenAuthFlowV1-source/
+          cp .github/workflows/zonoe-auth-rebuild-v1.yml ZonoeServerDrivenAuthFlowV1-source/
+          git rev-parse HEAD > ZonoeServerDrivenAuthFlowV1-source/SOURCE_COMMIT.txt
+          ditto -c -k --sequesterRsrc --keepParent ZonoeServerDrivenAuthFlowV1-source ZonoeServerDrivenAuthFlowV1-source.zip
+          shasum -a 256 ZonoeServerDrivenAuthFlowV1-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZonoeServerDrivenAuthFlowV1-source
+          path: ZonoeServerDrivenAuthFlowV1-source.zip
