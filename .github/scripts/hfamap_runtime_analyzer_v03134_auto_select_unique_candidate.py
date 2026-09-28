@@ -1,4 +1,9 @@
 from pathlib import Path
+import subprocess
+
+ROOT=Path(__file__).resolve().parents[2]
+CLUSTER=Path(__file__).with_name('hfamap_runtime_analyzer_v03134_static_cluster_ownership.py')
+subprocess.check_call(['python3',str(CLUSTER)],cwd=ROOT)
 
 APPLOCAL=Path('hfamap/src/HFAMapAppLocalResolver.m')
 
