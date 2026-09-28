@@ -7,6 +7,19 @@ ORPHAN=Path(__file__).with_name('hfamap_runtime_analyzer_v03134_orphan_feature_r
 subprocess.check_call(['python3',str(CLUSTER)],cwd=ROOT)
 subprocess.check_call(['python3',str(ORPHAN)],cwd=ROOT)
 
+# Repair generated declaration order and SDK API spelling before ObjC compile.
+TRACE=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
+t=TRACE.read_text().replace('_dyld_image_vmaddr_slide(', '_dyld_get_image_vmaddr_slide(')
+late='''    NSMutableDictionary *clusterOwnerByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *clusterIdByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *registrationEvidenceByBackend=[NSMutableDictionary dictionary];\n    HFA03134MenuLayout registrationLayout={0};BOOL haveRegistrationLayout=HFA03134MenuLayoutLoad(&registrationLayout);'''
+base='''    NSMutableDictionary *clusterOwnerByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *clusterIdByBackend=[NSMutableDictionary dictionary];'''
+if late not in t: raise SystemExit('late orphan declaration block missing')
+t=t.replace(late,base,1)
+ordered='    NSMutableArray *ordered=[NSMutableArray array];'
+pre='''    NSMutableDictionary *registrationEvidenceByBackend=[NSMutableDictionary dictionary];\n    HFA03134MenuLayout registrationLayout={0};BOOL haveRegistrationLayout=HFA03134MenuLayoutLoad(&registrationLayout);\n    NSMutableArray *ordered=[NSMutableArray array];'''
+if ordered not in t: raise SystemExit('ordered orphan declaration anchor missing')
+t=t.replace(ordered,pre,1)
+TRACE.write_text(t)
+
 APPLOCAL=Path('hfamap/src/HFAMapAppLocalResolver.m')
 CYBER=Path('hfamap/src/HFAMapCyberUI.m')
 
@@ -67,9 +80,10 @@ for marker in ['[AUTO-SELECT] candidates=1','found.count == 1','found.count > 1'
 ui=CYBER.read_text()
 for marker in ['[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready','if (count > 1)','HFAAppLocalHasManualSelection']:
     if marker not in ui: raise SystemExit('missing auto-select UI marker '+marker)
-trace=Path('hfamap/src/HFAMapPatchExecutionTrace.m').read_text()
-for marker in ['[V03134-ORPHAN-RECOVERY]','static-registration-key','staticRegistrationEvidence']:
+trace=TRACE.read_text()
+for marker in ['[V03134-ORPHAN-RECOVERY]','static-registration-key','staticRegistrationEvidence','_dyld_get_image_vmaddr_slide']:
     if marker not in trace: raise SystemExit('missing orphan recovery chain marker '+marker)
+if '_dyld_image_vmaddr_slide(' in trace: raise SystemExit('wrong dyld slide API remains')
 if 'if (count) [self showCandidateSelector];' in ui:
     raise SystemExit('legacy always-show selector regression remains')
-print('v0.3.13.4 orphan feature recovery + unique dylib auto-selection applied')
+print('v0.3.13.4 orphan feature recovery + compile repair + unique dylib auto-selection applied')
