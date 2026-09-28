@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[2]
 S=ROOT/'.github'/'scripts'
 subprocess.check_call(['python3',str(S/'apply_hfaruntime_v03133_chain.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_class1_ownership_completion.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_conflict_export_fix.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 v02=(ROOT/'hfamap'/'src'/'HFAMapRuntimeAnalyzerV02.m').read_text()
@@ -17,11 +18,15 @@ for required in [
     '[V03134-OWNERSHIP-BRIDGE]',
     '[V03134-LEDGER-BRIDGE]',
     '[V03134-STATIC-CANONICAL]',
+    '[V03134-CONFLICT-FILTER]',
+    'exported-with-conflicts-filtered',
     'HFAMap_StaticCanonical_v03134.json',
     'HFA03133CanonicalTarget',
     'realSegment=strcmp(seg->segname,"__PAGEZERO")!=0',
 ]:
     if required not in trace: raise SystemExit('v03134 generated trace missing '+required)
+if 'status=@"blocked-conflict"' in trace:
+    raise SystemExit('v03134 whole-package conflict block regression')
 for required in ['HFAAnalyzerV02BeginExportEpoch','HFAAnalyzerV02ScanSelectedImageImpl','[V03131-ANALYZER-GUARD] action=run','[V03131-ANALYZER-GUARD] action=reuse']:
     if required not in v02: raise SystemExit('v03134 analyzer single-pass regression '+required)
 if 'HFAMap RuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion' not in ui:
