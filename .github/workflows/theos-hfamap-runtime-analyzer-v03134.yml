@@ -36,6 +36,8 @@ jobs:
           grep -Fq 'found.count == 1' "$APPLOCAL"
           grep -Fq 'found.count > 1' "$APPLOCAL"
           grep -Fq 'manualSelectionRequired=0' "$APPLOCAL"
+          grep -Fq '[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready' "$UI"
+          grep -Fq 'if (count > 1)' "$UI"
           grep -Fq 'HFA03134WrapperSecretRVA' "$TRACE"
           grep -Fq 'HFA03134OwnershipForBackend' "$TRACE"
           grep -Fq '[V03134-OWNERSHIP-BRIDGE]' "$TRACE"
@@ -48,6 +50,7 @@ jobs:
           grep -Fq '[V03131-ANALYZER-GUARD] action=run' "$V02"
           grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
           grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion' "$UI"
+          if grep -Fq 'if (count) [self showCandidateSelector];' "$UI"; then echo 'LEGACY ALWAYS-SHOW SELECTOR REGRESSION'; exit 1; fi
           if grep -Fq '[V03134-EVENT-OWNERSHIP]' "$TRACE"; then echo 'RUNTIME EVENT OWNERSHIP REGRESSION'; exit 1; fi
           if grep -Fq 'wrapper-secret-rva+event-identifier' "$TRACE"; then echo 'RUNTIME EVENT OWNERSHIP SOURCE REGRESSION'; exit 1; fi
           if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03134_*.py; then echo 'FIXED RVA LEAKED INTO V03134 GENERIC LAYER'; exit 1; fi
@@ -65,24 +68,30 @@ jobs:
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out=dist/HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.dylib
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.4-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.4-${SHORT_SHA}-strings.txt"
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.txt
-          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-STATIC-FEATURE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-STATIC-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'static-singleton-feature-definition' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq '[AUTO-SELECT] candidates=1' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-OWNERSHIP-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'HFAMap_StaticCanonical_v03134.json' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          if grep -Fq 'V03134-EVENT-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt; then echo 'RUNTIME EVENT OWNERSHIP STRING REGRESSION'; exit 1; fi
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.4-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V03134-STATIC-FEATURE' "$strings_file"
+          grep -Fq 'V03134-STATIC-OWNERSHIP' "$strings_file"
+          grep -Fq 'static-singleton-feature-definition' "$strings_file"
+          grep -Fq '[AUTO-SELECT] candidates=1' "$strings_file"
+          grep -Fq '[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready' "$strings_file"
+          grep -Fq 'V03134-OWNERSHIP-BRIDGE' "$strings_file"
+          grep -Fq 'V03134-LEDGER-BRIDGE' "$strings_file"
+          grep -Fq 'V03134-STATIC-CANONICAL' "$strings_file"
+          grep -Fq 'HFAMap_StaticCanonical_v03134.json' "$strings_file"
+          if grep -Fq 'V03134-EVENT-OWNERSHIP' "$strings_file"; then echo 'RUNTIME EVENT OWNERSHIP STRING REGRESSION'; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
-          name: HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion
+          name: HFARuntimeAnalyzer-v0.3.13.4-${{ github.run_id }}
           path: |
-            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.dylib
-            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.txt
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.4-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.4-*.txt
           if-no-files-found: error
