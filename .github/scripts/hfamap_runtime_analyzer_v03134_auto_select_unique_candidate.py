@@ -6,6 +6,7 @@ CLUSTER=Path(__file__).with_name('hfamap_runtime_analyzer_v03134_static_cluster_
 subprocess.check_call(['python3',str(CLUSTER)],cwd=ROOT)
 
 APPLOCAL=Path('hfamap/src/HFAMapAppLocalResolver.m')
+CYBER=Path('hfamap/src/HFAMapCyberUI.m')
 
 
 def function_span(text, name):
@@ -45,7 +46,24 @@ fn=fn.replace(old,new,1)
 s=s[:start]+fn+s[end:]
 APPLOCAL.write_text(s)
 
+# v1.9.37.4 injects a UI selector for every non-zero candidate count. Override
+# that old behavior at the end of the v0.3.13.4 chain: one candidate is already
+# selected by HFAAppLocalScanCandidates and must not present the selector.
+cyber=CYBER.read_text()
+old_ui='''        dispatch_async(dispatch_get_main_queue(), ^{\n            sender.enabled = YES;\n            if (count) [self showCandidateSelector];\n        });'''
+new_ui='''        dispatch_async(dispatch_get_main_queue(), ^{\n            sender.enabled = YES;\n            if (count > 1) {\n                HFACyberUIAppendLog([NSString stringWithFormat:@"[AUTO-SELECT-UI] candidates=%u action=show-selector", count]);\n                [self showCandidateSelector];\n            } else if (count == 1) {\n                HFACyberUIAppendLog(@"[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready");\n            }\n        });'''
+if old_ui not in cyber: raise SystemExit('v03134 cyber selector gate anchor missing')
+cyber=cyber.replace(old_ui,new_ui,1)
+cyber=cyber.replace('❌ 请先扫描并手动选择一个菜单 dylib','❌ 请先扫描并选择一个菜单 dylib',1)
+cyber=cyber.replace('[System] 先扫描菜单模块，手动选择目标，再解析并导出。','[System] 扫描后：唯一候选自动选择；多个候选手动选择；然后解析并导出。',1)
+CYBER.write_text(cyber)
+
 out=APPLOCAL.read_text()
 for marker in ['[AUTO-SELECT] candidates=1','found.count == 1','found.count > 1','manualSelectionRequired=0']:
     if marker not in out: raise SystemExit('missing auto-select marker '+marker)
-print('v0.3.13.4 unique dylib auto-selection applied')
+ui=CYBER.read_text()
+for marker in ['[AUTO-SELECT-UI] candidates=1 action=skip-selector selection=ready','if (count > 1)','请先扫描并选择一个菜单 dylib']:
+    if marker not in ui: raise SystemExit('missing auto-select UI marker '+marker)
+if 'if (count) [self showCandidateSelector];' in ui:
+    raise SystemExit('legacy always-show selector regression remains')
+print('v0.3.13.4 unique dylib auto-selection + UI selector gate applied')
