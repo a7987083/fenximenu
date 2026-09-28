@@ -1,7 +1,6 @@
 #import "ZONActivation.h"
 #import "ZONAPIEndpoints.h"
 #import "ZONNetwork.h"
-#import "ZONStorage.h"
 @implementation ZONActivation
 + (BOOL)isConfigured { return YES; }
 + (void)activateUDID:(NSString *)udid card:(NSString *)card completion:(void (^)(BOOL, NSString *, NSDictionary * _Nullable))completion {
@@ -12,21 +11,13 @@
         NSString *rawText=data.length?[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]:@"";
         id msgObj=d[@"message"]?:d[@"msg"];
         NSString *msg=[msgObj isKindOfClass:NSString.class]?msgObj:(rawText.length?rawText:@"");
-        BOOL ok=NO;
-        if([d[@"ok"] respondsToSelector:@selector(boolValue)]) {
-            ok=[d[@"ok"] boolValue];
-        } else {
-            NSString *code=[d[@"code"] isKindOfClass:NSString.class]?[d[@"code"] lowercaseString]:@"";
-            ok=[@[@"ok",@"success",@"activated",@"bound"] containsObject:code];
-        }
-        NSDictionary *display=d.count?d:(msg.length?@{@"message":msg}:@{});
-        if(ok){
-            [ZONStorage setUDID:udid];
-            [ZONStorage setCard:card];
-            [ZONStorage setLastActivationObject:display];
-            [ZONStorage setJustActivated:YES];
-        }
-        if(completion)completion(ok,msg?:@"",display);
+        NSMutableDictionary *display=[NSMutableDictionary dictionaryWithDictionary:d?:@{}];
+        if(!display.count && msg.length) display[@"message"]=msg;
+        if(response) display[@"http_status"]=@(response.statusCode);
+        // /appstore 旧协议的 code=0 同时出现在成功和失败结果中，不能据此判断业务成功。
+        // 这里只报告请求是否成功到达服务器；真正激活结果由调用方继续查询 /apiface + Verify 确认。
+        BOOL transportOK=response && response.statusCode>=200 && response.statusCode<300;
+        if(completion) completion(transportOK,msg?:@"",display.copy);
     }];
 }
 @end
