@@ -9,6 +9,7 @@ if pos < 0:
     raise SystemExit('orphan recovery bridge anchor missing')
 
 helpers = r'''
+extern const char *HFAAppLocalPrimaryImage(void);
 typedef struct { uintptr_t base; intptr_t slide; uintptr_t textStart,textEnd,cfStart,cfEnd,cstrStart,cstrEnd; } HFA03134MenuLayout;
 static BOOL HFA03134MenuLayoutLoad(HFA03134MenuLayout *out){
     if(!out)return NO;memset(out,0,sizeof(*out));const char *want=HFAAppLocalPrimaryImage();if(!want||!*want)return NO;
@@ -37,40 +38,36 @@ if 'HFA03134RegistrationEvidence' not in s:
 
 old = 'NSMutableDictionary *clusterOwnerByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *clusterIdByBackend=[NSMutableDictionary dictionary];'
 new = 'NSMutableDictionary *clusterOwnerByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *clusterIdByBackend=[NSMutableDictionary dictionary];\n    NSMutableDictionary *registrationEvidenceByBackend=[NSMutableDictionary dictionary];\n    HFA03134MenuLayout registrationLayout={0};BOOL haveRegistrationLayout=HFA03134MenuLayoutLoad(&registrationLayout);'
-if old not in s:
-    raise SystemExit('cluster map anchor missing')
+if old not in s: raise SystemExit('cluster map anchor missing')
 s = s.replace(old,new,1)
 
 old = 'for(NSDictionary *backend in backends){uint64_t xr=HFA03134FirstXrefRVA(backend);if(xr)[ordered addObject:@{@"backend":backend,@"xref":@(xr)}];}'
 new = 'for(NSDictionary *backend in backends){uint64_t xr=HFA03134FirstXrefRVA(backend);if(xr){[ordered addObject:@{@"backend":backend,@"xref":@(xr)}];if(haveRegistrationLayout){NSDictionary *ev=HFA03134RegistrationEvidence(backend,registrationLayout);if(ev.count)registrationEvidenceByBackend[[backend[@"backendId"] description]?:@""]=ev;}}}'
-if old not in s:
-    raise SystemExit('ordered backend anchor missing')
+if old not in s: raise SystemExit('ordered backend anchor missing')
 s = s.replace(old,new,1)
 
-old = 'NSString *clusterId=[NSString stringWithFormat:@"xref-cluster-%lu",(unsigned long)clusterNo];NSString *status=owners.count==1?@"anchored":(owners.count?@"ambiguous":@"orphan");HFALog("[V03134-STATIC-CLUSTER] id=%s members=%u owners=%u status=%s gap=0x%llX learned=0x%llX first=%s last=%s\\n",clusterId.UTF8String?:"?",(unsigned)(end-clusterStart),(unsigned)owners.count,status.UTF8String?:"?",(unsigned long long)clusterGap,(unsigned long long)learnedGap,[[NSString stringWithFormat:@"0x%llX",(unsigned long long)[ordered[clusterStart][@"xref"] unsignedLongLongValue]] UTF8String],[[NSString stringWithFormat:@"0x%llX",(unsigned long long)[ordered[end-1][@"xref"] unsignedLongLongValue]] UTF8String]);\n        NSDictionary *only=owners.count==1?owners.allValues.firstObject:nil;for(NSUInteger i=clusterStart;i<end;i++){NSDictionary *be=ordered[i][@"backend"];NSString *bid=[be[@"backendId"] description]?:@"";clusterIdByBackend[bid]=clusterId;if(only)clusterOwnerByBackend[bid]=HFA03134ClusterOwnerRecord(only,clusterId);}'
-new = r'''NSString *clusterId=[NSString stringWithFormat:@"xref-cluster-%lu",(unsigned long)clusterNo];
+cluster_decl = 'NSString *clusterId=[NSString stringWithFormat:@"xref-cluster-%lu",(unsigned long)clusterNo];'
+status_decl = 'NSString *status=owners.count==1?@"anchored":(owners.count?@"ambiguous":@"orphan");'
+needle = cluster_decl + status_decl
+if needle not in s: raise SystemExit('cluster status small anchor missing')
+recovery = cluster_decl + r'''
         NSDictionary *recovered=nil;NSMutableOrderedSet *exactKeys=[NSMutableOrderedSet orderedSet];NSMutableOrderedSet *ownerFunctions=[NSMutableOrderedSet orderedSet];NSMutableOrderedSet *allHints=[NSMutableOrderedSet orderedSet];
-        if(owners.count==0){for(NSUInteger i=clusterStart;i<end;i++){NSDictionary *be=ordered[i][@"backend"];NSString *bid=[be[@"backendId"] description]?:@"";NSDictionary *ev=registrationEvidenceByBackend[bid];NSString *fn=[ev[@"ownerFunctionRVA"] description];if(fn.length)[ownerFunctions addObject:fn];for(NSString *k in [ev[@"exactSwitchKeys"] isKindOfClass:NSArray.class]?ev[@"exactSwitchKeys"]:@[])if(k.length)[exactKeys addObject:k];for(NSString *h in [ev[@"registrationHints"] isKindOfClass:NSArray.class]?ev[@"registrationHints"]:@[])if(h.length)[allHints addObject:h];}
+        if(owners.count==0){for(NSUInteger i=clusterStart;i<end;i++){NSDictionary *be=ordered[i][@"backend"];NSString *rbid=[be[@"backendId"] description]?:@"";NSDictionary *ev=registrationEvidenceByBackend[rbid];NSString *fn=[ev[@"ownerFunctionRVA"] description];if(fn.length)[ownerFunctions addObject:fn];for(NSString *k in [ev[@"exactSwitchKeys"] isKindOfClass:NSArray.class]?ev[@"exactSwitchKeys"]:@[])if(k.length)[exactKeys addObject:k];for(NSString *h in [ev[@"registrationHints"] isKindOfClass:NSArray.class]?ev[@"registrationHints"]:@[])if(h.length)[allHints addObject:h];}
             if(exactKeys.count==1){NSString *key=exactKeys.firstObject;NSString *fid=[key substringToIndex:key.length-7];if(fid.length)recovered=@{@"featureId":fid,@"title":fid,@"key":key,@"descriptorIndex":@(-1),@"source":@"static-registration-key",@"clusterId":clusterId,@"ownerFunctions":ownerFunctions.array?:@[],@"registrationHints":allHints.array?:@[]};}
         }
         if(recovered){owners[recovered[@"featureId"]]=recovered;HFALog("[V03134-ORPHAN-RECOVERY] cluster=%s status=recovered source=static-registration-key feature=%s key=%s functions=%u hints=%u\n",clusterId.UTF8String?:"?",[recovered[@"featureId"] UTF8String]?:"?",[recovered[@"key"] UTF8String]?:"?",(unsigned)ownerFunctions.count,(unsigned)allHints.count);}else if(owners.count==0){HFALog("[V03134-ORPHAN-RECOVERY] cluster=%s status=unresolved exactKeys=%u functions=%u hints=%u values=%s\n",clusterId.UTF8String?:"?",(unsigned)exactKeys.count,(unsigned)ownerFunctions.count,(unsigned)allHints.count,[[allHints.array componentsJoinedByString:@"|"] UTF8String]?:"");}
-        NSString *status=owners.count==1?(recovered?@"recovered":@"anchored"):(owners.count?@"ambiguous":@"orphan");HFALog("[V03134-STATIC-CLUSTER] id=%s members=%u owners=%u status=%s gap=0x%llX learned=0x%llX first=%s last=%s\n",clusterId.UTF8String?:"?",(unsigned)(end-clusterStart),(unsigned)owners.count,status.UTF8String?:"?",(unsigned long long)clusterGap,(unsigned long long)learnedGap,[[NSString stringWithFormat:@"0x%llX",(unsigned long long)[ordered[clusterStart][@"xref"] unsignedLongLongValue]] UTF8String],[[NSString stringWithFormat:@"0x%llX",(unsigned long long)[ordered[end-1][@"xref"] unsignedLongLongValue]] UTF8String]);
-        NSDictionary *only=owners.count==1?owners.allValues.firstObject:nil;for(NSUInteger i=clusterStart;i<end;i++){NSDictionary *be=ordered[i][@"backend"];NSString *bid=[be[@"backendId"] description]?:@"";clusterIdByBackend[bid]=clusterId;if(only)clusterOwnerByBackend[bid]=HFA03134ClusterOwnerRecord(only,clusterId);}'''
-if old not in s:
-    raise SystemExit('cluster status anchor missing')
-s = s.replace(old,new,1)
+        NSString *status=owners.count==1?(recovered?@"recovered":@"anchored"):(owners.count?@"ambiguous":@"orphan");'''
+s = s.replace(needle,recovery,1)
 
-# Preserve registration evidence in every bridged ledger row so device logs/JSON
-# can explain both successful and unresolved orphan recovery.
-old = 'NSString *cid=clusterIdByBackend[[be[@"backendId"] description]?:@""];if(cid.length)e[@"staticClusterId"]=cid;'
-new = 'NSString *bid=[be[@"backendId"] description]?:@"";NSString *cid=clusterIdByBackend[bid];if(cid.length)e[@"staticClusterId"]=cid;NSDictionary *regEv=registrationEvidenceByBackend[bid];if(regEv.count)e[@"staticRegistrationEvidence"]=regEv;'
-if old not in s:
-    raise SystemExit('ledger cluster evidence anchor missing')
-s = s.replace(old,new,1)
+# Attach evidence to all ledger rows without depending on whether they matched
+# the legacy signature bridge or entered the unowned path.
+ev_anchor = 'NSString *cid=clusterIdByBackend[[be[@"backendId"] description]?:@""];if(cid.length)e[@"staticClusterId"]=cid;'
+if ev_anchor not in s: raise SystemExit('ledger cluster evidence anchor missing')
+ev_new = 'NSString *regBid=[be[@"backendId"] description]?:@"";NSString *cid=clusterIdByBackend[regBid];if(cid.length)e[@"staticClusterId"]=cid;NSDictionary *regEv=registrationEvidenceByBackend[regBid];if(regEv.count)e[@"staticRegistrationEvidence"]=regEv;'
+s = s.replace(ev_anchor,ev_new)
 
 TRACE.write_text(s)
 out=TRACE.read_text()
 for marker in ['HFA03134RegistrationEvidence','[V03134-ORPHAN-RECOVERY]','static-registration-key','staticRegistrationEvidence','exactSwitchKeys']:
-    if marker not in out:
-        raise SystemExit('missing orphan recovery marker '+marker)
+    if marker not in out: raise SystemExit('missing orphan recovery marker '+marker)
 print('v0.3.13.4 generic static orphan feature recovery applied')
