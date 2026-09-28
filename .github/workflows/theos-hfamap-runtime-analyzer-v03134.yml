@@ -19,10 +19,12 @@ jobs:
             .github/scripts/hfamap_runtime_analyzer_v03134_class1_ownership_completion.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_static_ownership_fix.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_conflict_export_fix.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py \
             .github/scripts/apply_hfaruntime_v03133_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py
           TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
           FAMILY=hfamap/src/HFAMapFamilyRuntimeResolver.m
+          APPLOCAL=hfamap/src/HFAMapAppLocalResolver.m
           V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
           UI=hfamap/src/HFAMapCyberUI.m
           grep -Fq '[V03134-STATIC-FEATURE]' "$FAMILY"
@@ -30,6 +32,10 @@ jobs:
           grep -Fq 'static-wrapper-secret-rva' "$TRACE"
           grep -Fq 'static-singleton-feature-definition' "$TRACE"
           grep -Fq 'ownership=static-structural' "$TRACE"
+          grep -Fq '[AUTO-SELECT] candidates=1' "$APPLOCAL"
+          grep -Fq 'found.count == 1' "$APPLOCAL"
+          grep -Fq 'found.count > 1' "$APPLOCAL"
+          grep -Fq 'manualSelectionRequired=0' "$APPLOCAL"
           grep -Fq 'HFA03134WrapperSecretRVA' "$TRACE"
           grep -Fq 'HFA03134OwnershipForBackend' "$TRACE"
           grep -Fq '[V03134-OWNERSHIP-BRIDGE]' "$TRACE"
@@ -67,6 +73,7 @@ jobs:
           grep -Fq 'V03134-STATIC-FEATURE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-STATIC-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'static-singleton-feature-definition' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq '[AUTO-SELECT] candidates=1' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-OWNERSHIP-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
