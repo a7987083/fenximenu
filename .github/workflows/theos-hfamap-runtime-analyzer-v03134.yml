@@ -17,24 +17,33 @@ jobs:
           python3 -m py_compile \
             .github/scripts/apply_hfaruntime_v03134_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_class1_ownership_completion.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_static_ownership_fix.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_conflict_export_fix.py \
             .github/scripts/apply_hfaruntime_v03133_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py
           TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          FAMILY=hfamap/src/HFAMapFamilyRuntimeResolver.m
           V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
           UI=hfamap/src/HFAMapCyberUI.m
-          grep -Fq '[V03134-EVENT-OWNERSHIP]' "$TRACE"
+          grep -Fq '[V03134-STATIC-FEATURE]' "$FAMILY"
+          grep -Fq '[V03134-STATIC-OWNERSHIP]' "$TRACE"
+          grep -Fq 'static-wrapper-secret-rva' "$TRACE"
+          grep -Fq 'static-singleton-feature-definition' "$TRACE"
+          grep -Fq 'ownership=static-structural' "$TRACE"
           grep -Fq 'HFA03134WrapperSecretRVA' "$TRACE"
           grep -Fq 'HFA03134OwnershipForBackend' "$TRACE"
-          grep -Fq 'wrapper-secret-rva+event-identifier' "$TRACE"
           grep -Fq '[V03134-OWNERSHIP-BRIDGE]' "$TRACE"
           grep -Fq '[V03134-LEDGER-BRIDGE]' "$TRACE"
           grep -Fq '[V03134-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq '[V03134-CONFLICT-FILTER]' "$TRACE"
           grep -Fq 'HFAMap_StaticCanonical_v03134.json' "$TRACE"
           grep -Fq 'HFA03133CanonicalTarget' "$TRACE"
           grep -Fq 'realSegment=strcmp(seg->segname,"__PAGEZERO")!=0' "$TRACE"
           grep -Fq '[V03131-ANALYZER-GUARD] action=run' "$V02"
           grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
           grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion' "$UI"
+          if grep -Fq '[V03134-EVENT-OWNERSHIP]' "$TRACE"; then echo 'RUNTIME EVENT OWNERSHIP REGRESSION'; exit 1; fi
+          if grep -Fq 'wrapper-secret-rva+event-identifier' "$TRACE"; then echo 'RUNTIME EVENT OWNERSHIP SOURCE REGRESSION'; exit 1; fi
           if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03134_*.py; then echo 'FIXED RVA LEAKED INTO V03134 GENERIC LAYER'; exit 1; fi
           if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat|Heavenfall' .github/scripts/hfamap_runtime_analyzer_v03134_*.py; then echo 'SAMPLE NAME LEAKED INTO V03134 GENERIC LAYER'; exit 1; fi
           git diff --check
@@ -55,12 +64,14 @@ jobs:
           file "$out"
           shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.txt
           strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'V03134-EVENT-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-STATIC-FEATURE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-STATIC-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'static-singleton-feature-definition' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-OWNERSHIP-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'V03134-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
-          grep -Fq 'wrapper-secret-rva+event-identifier' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
           grep -Fq 'HFAMap_StaticCanonical_v03134.json' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          if grep -Fq 'V03134-EVENT-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt; then echo 'RUNTIME EVENT OWNERSHIP STRING REGRESSION'; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
           name: HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion
