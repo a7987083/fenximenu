@@ -1,0 +1,70 @@
+name: HFARuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.4-class1-ownership-completion]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v03134_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v03134_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_class1_ownership_completion.py \
+            .github/scripts/apply_hfaruntime_v03133_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V03134-EVENT-OWNERSHIP]' "$TRACE"
+          grep -Fq 'HFA03134WrapperSecretRVA' "$TRACE"
+          grep -Fq 'HFA03134OwnershipForBackend' "$TRACE"
+          grep -Fq 'wrapper-secret-rva+event-identifier' "$TRACE"
+          grep -Fq '[V03134-OWNERSHIP-BRIDGE]' "$TRACE"
+          grep -Fq '[V03134-LEDGER-BRIDGE]' "$TRACE"
+          grep -Fq '[V03134-STATIC-CANONICAL]' "$TRACE"
+          grep -Fq 'HFAMap_StaticCanonical_v03134.json' "$TRACE"
+          grep -Fq 'HFA03133CanonicalTarget' "$TRACE"
+          grep -Fq 'realSegment=strcmp(seg->segname,"__PAGEZERO")!=0' "$TRACE"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=run' "$V02"
+          grep -Fq '[V03131-ANALYZER-GUARD] action=reuse' "$V02"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.4 Class1OwnershipCompletion' "$UI"
+          if grep -Eq '0x2D98AC8|0x2D9887C|0x2E25904' .github/scripts/hfamap_runtime_analyzer_v03134_*.py; then echo 'FIXED RVA LEAKED INTO V03134 GENERIC LAYER'; exit 1; fi
+          if grep -Eiq 'Duck Survival|Aniimo|ProDragon|Dragon Fever|Random Dice|RogueLegend|Path of Kings|Archery Clash|Rise of Berk|Hello Kitty|Zombie Catchers|Legend of Survivors|PopIsland|MeChat|Heavenfall' .github/scripts/hfamap_runtime_analyzer_v03134_*.py; then echo 'SAMPLE NAME LEAKED INTO V03134 GENERIC LAYER'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          out=dist/HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.dylib
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          shasum -a 256 "$out" | tee dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.txt
+          strings "$out" > dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-EVENT-OWNERSHIP' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-OWNERSHIP-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-LEDGER-BRIDGE' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'V03134-STATIC-CANONICAL' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'wrapper-secret-rva+event-identifier' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+          grep -Fq 'HFAMap_StaticCanonical_v03134.json' dist/HFARuntimeAnalyzer-v0.3.13.4-strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.4-Class1OwnershipCompletion.txt
+          if-no-files-found: error
