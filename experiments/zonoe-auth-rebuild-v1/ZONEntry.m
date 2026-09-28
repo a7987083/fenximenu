@@ -115,21 +115,11 @@ static NSDictionary *ZONCenterObject(NSString *udid, NSDictionary *license, NSDi
     return out.copy;
 }
 
-static NSDictionary *ZONActivationSuccessObject(NSDictionary *raw, NSDictionary *license, NSDictionary *verify) {
-    NSMutableDictionary *out=[NSMutableDictionary dictionary];
-    id msg=raw[@"message"] ?: raw[@"msg"]; if(msg && msg!=NSNull.null) out[@"message"]=msg;
-    id expire=ZONFirstValueForKeys(license,@[@"expire",@"expires_at",@"expire_time"]);
-    double end=[ZONString(expire) doubleValue];
-    if(end>0) out[@"expires_at"]=ZONDateText(end);
-    id remaining=ZONFirstValueForKeys(license,@[@"remaining_seconds",@"remaining_time",@"remaining"]);
-    if(remaining) out[@"remaining_seconds"]=remaining;
-    else if(end>0) {
-        double now=[verify[@"server_time"] respondsToSelector:@selector(doubleValue)]?[verify[@"server_time"] doubleValue]:NSDate.date.timeIntervalSince1970;
-        out[@"remaining_seconds"]=@(MAX(0,end-now));
-    }
-    id level=verify[@"access_level"]; if(level && level!=NSNull.null) out[@"access_level"]=level;
-    id permissions=verify[@"permissions"]; if(permissions && permissions!=NSNull.null) out[@"permissions"]=permissions;
-    return out.copy;
+static NSString *ZONActivationSuccessText(NSDictionary *license, NSDictionary *verify) {
+    NSString *level=ZONString(verify[@"access_level"]);
+    id expireObj=ZONFirstValueForKeys(license,@[@"expire",@"expires_at",@"expire_time"]);
+    NSString *expireText=ZONDateText([ZONString(expireObj) doubleValue]);
+    return [NSString stringWithFormat:@"当前等级：%@\n到期时间：%@", level.length?level:@"-", expireText.length?expireText:@"-"];
 }
 
 static void ZONShowCenter(NSString *udid, NSDictionary *license, NSDictionary *verify) {
@@ -238,12 +228,9 @@ static void ZONPromptCard(NSString *udid, NSString *serverMessage) {
                         [ZONStorage setLastActivationObject:raw?:@{}];
                         [ZONStorage setLastVerify:verify];
 
-                        NSDictionary *success=ZONActivationSuccessObject(raw?:@{},afterLicense,verify);
-                        NSString *title=ZONString(raw[@"title"]);
-                        if(!title.length) title=@"激活成功";
-                        NSString *text=[ZONResponseFormatter displayTextForDictionary:success];
+                        NSString *text=ZONActivationSuccessText(afterLicense,verify);
                         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.25*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
-                            [ui showText:text title:title completion:^{ZONShowFirstActivationPostFlow(udid,afterLicense,verify);}];
+                            [ui showText:text title:@"激活成功" completion:^{ZONShowFirstActivationPostFlow(udid,afterLicense,verify);}];
                         });
                     }];
                 }];
