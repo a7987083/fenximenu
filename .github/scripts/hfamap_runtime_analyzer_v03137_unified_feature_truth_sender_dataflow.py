@@ -26,36 +26,28 @@ def function_span(text, signature):
             if depth==0:return start,i+1
     raise SystemExit('unterminated function: '+signature)
 
-# ---------------------------------------------------------------------------
-# 1) Export the in-memory HFAFeatureDefinition table as a read-only semantic
-#    title snapshot. This becomes the final title truth source for JSON export.
-# ---------------------------------------------------------------------------
+# 1) Export semantic title snapshot with lifetime valid for the caller.
 t=TRACE.read_text()
 a,b=function_span(t,'void HFARegisterFeatureDefinition(const char *label, const char *identifier)')
 if 'HFAFeatureDefinitionTitleSnapshot' not in t:
     snapshot=r'''
 NSDictionary *HFAFeatureDefinitionTitleSnapshot(void) {
-    @autoreleasepool {
-        NSMutableDictionary *out=[NSMutableDictionary dictionary];
-        for(unsigned i=0;i<gFeatureDefinitionCount;i++){
-            HFAFeatureDefinition *definition=&gFeatureDefinitions[i];
-            if(!definition->identifier[0]||!definition->label[0])continue;
-            NSString *identifier=[NSString stringWithUTF8String:definition->identifier];
-            NSString *title=[NSString stringWithUTF8String:definition->label];
-            if(identifier.length&&title.length)out[identifier]=title;
-        }
-        HFALog("[V03137-FEATURE-TRUTH] definitions=%u titles=%lu\n",gFeatureDefinitionCount,(unsigned long)out.count);
-        return [[out copy] autorelease];
+    NSMutableDictionary *out=[NSMutableDictionary dictionary];
+    for(unsigned i=0;i<gFeatureDefinitionCount;i++){
+        HFAFeatureDefinition *definition=&gFeatureDefinitions[i];
+        if(!definition->identifier[0]||!definition->label[0])continue;
+        NSString *identifier=[NSString stringWithUTF8String:definition->identifier];
+        NSString *title=[NSString stringWithUTF8String:definition->label];
+        if(identifier.length&&title.length)out[identifier]=title;
     }
+    HFALog("[V03137-FEATURE-TRUTH] definitions=%u titles=%lu\n",gFeatureDefinitionCount,(unsigned long)out.count);
+    return [[out copy] autorelease];
 }
 '''
     t=t[:b]+"\n"+snapshot+t[b:]
 TRACE.write_text(t)
 
-# ---------------------------------------------------------------------------
-# 2) Final JSON merge consults semantic title snapshot by identifier. Incoming
-#    observed/runtime metadata may enrich fields but cannot downgrade title.
-# ---------------------------------------------------------------------------
+# 2) Final JSON merge consults semantic title snapshot by identifier.
 e=EXPORTER.read_text()
 if 'extern NSDictionary *HFAFeatureDefinitionTitleSnapshot' not in e:
     insert=e.find('\n',e.find('#import'))
@@ -63,7 +55,6 @@ if 'extern NSDictionary *HFAFeatureDefinitionTitleSnapshot' not in e:
     e=e[:insert+1]+'extern NSDictionary *HFAFeatureDefinitionTitleSnapshot(void);\n'+e[insert+1:]
 
 a,b=function_span(e,'static void HFAJSONMergeFeatures(NSMutableArray *destination,')
-old=e[a:b]
 new=r'''static void HFAJSONMergeFeatures(NSMutableArray *destination,
                                  NSMutableSet<NSString *> *seenIDs,
                                  NSArray *incoming,
@@ -83,18 +74,17 @@ new=r'''static void HFAJSONMergeFeatures(NSMutableArray *destination,
             if([xid isEqualToString:identifier]){existingIndex=i;break;}
         }
         if(existingIndex==NSNotFound){
-            NSMutableDictionary *created=[[[feature mutableCopy] autorelease] mutableCopy];
+            NSMutableDictionary *created=[[feature mutableCopy] autorelease];
             NSString *candidate=[created[@"title"] isKindOfClass:[NSString class]]?created[@"title"]:@"";
             if(semanticTitle.length && HFA03136ObservedTitleScore(semanticTitle,identifier)>=HFA03136ObservedTitleScore(candidate,identifier)) created[@"title"]=semanticTitle;
             [seenIDs addObject:identifier];
             [destination addObject:created];
-            [created release];
             added++;
             HFAJSONLog([NSString stringWithFormat:@"[V03137-FEATURE-TRUTH-MERGE] id=%@ action=create title=%@ semantic=%@",identifier,[destination.lastObject objectForKey:@"title"]?:@"?",semanticTitle?:@""]);
             continue;
         }
         deduped++;
-        NSMutableDictionary *merged=[[[destination objectAtIndex:existingIndex] mutableCopy] autorelease];
+        NSMutableDictionary *merged=[[destination objectAtIndex:existingIndex] mutableCopy];
         NSString *oldTitle=[merged[@"title"] isKindOfClass:[NSString class]]?merged[@"title"]:@"";
         NSString *newTitle=[feature[@"title"] isKindOfClass:[NSString class]]?feature[@"title"]:@"";
         NSString *bestTitle=oldTitle;
@@ -107,12 +97,12 @@ new=r'''static void HFAJSONMergeFeatures(NSMutableArray *destination,
         }
         [destination replaceObjectAtIndex:existingIndex withObject:merged];
         HFAJSONLog([NSString stringWithFormat:@"[V03137-FEATURE-TRUTH-MERGE] id=%@ action=enrich title=%@ semantic=%@ control=%@ runtime=%@ patches=%lu",identifier,merged[@"title"]?:@"?",semanticTitle?:@"",merged[@"control"]?:@{},merged[@"runtimeEvidence"]?:@{},(unsigned long)([merged[@"patches"] isKindOfClass:[NSArray class]]?[(NSArray*)merged[@"patches"] count]:0)]);
+        [merged release];
     }
     if(addedOut)*addedOut=added;if(dedupedOut)*dedupedOut=deduped;
 }'''
 e=e[:a]+new+e[b:]
 
-# Preserve senderState from action JSON into final runtimeEvidence.
 a,b=function_span(e,'static NSArray *HFAJSONObservedFeatures(NSString *path, NSUInteger *recordCountOut)')
 fn=e[a:b]
 needle='NSDictionary *probe=[row[@"runtimeValueProbe"] isKindOfClass:[NSDictionary class]]?row[@"runtimeValueProbe"]:@{};'
@@ -124,10 +114,7 @@ fn=fn.replace(needle2,needle2+'if(senderState.count)runtime[@"senderState"]=send
 e=e[:a]+fn+e[b:]
 EXPORTER.write_text(e)
 
-# ---------------------------------------------------------------------------
-# 3) Sender-centric evidence. Read runtime ivars/scalars directly; do not call
-#    unknown game methods. This lets shared handlers be split by sender state.
-# ---------------------------------------------------------------------------
+# 3) Sender-centric evidence.
 g=GENERIC.read_text()
 anchor='void HFAGenericMenuObserveAction(id sender, id target, SEL action)'
 pos=g.find(anchor)
