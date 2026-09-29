@@ -10,6 +10,7 @@ subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_static_ow
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_orphan_caller_recovery.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_object_table_recovery.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_feature_catalog_startup.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 v02=(ROOT/'hfamap'/'src'/'HFAMapRuntimeAnalyzerV02.m').read_text()
@@ -30,9 +31,12 @@ for required in [
     '[V03134-ORPHAN-RECOVERY]',
     '[V03134-CALLER-RECOVERY]',
     '[V03134-OBJECT-TABLE]',
+    '[V03134-STARTUP-OWNERSHIP]',
     'static-caller-registration-key',
     'static-object-table-registration-key',
     'staticObjectTableEvidence',
+    'startup-static-support',
+    'mach-o-mod-init',
     'exported-with-conflicts-filtered',
     'HFAMap_StaticCanonical_v03134.json',
     'HFA03133CanonicalTarget',
@@ -43,8 +47,8 @@ if '[V03134-EVENT-OWNERSHIP]' in trace:
     raise SystemExit('v03134 runtime-event ownership regression')
 if 'status=@"blocked-conflict"' in trace:
     raise SystemExit('v03134 whole-package conflict block regression')
-for required in ['[V03134-STATIC-FEATURE]','identifier-fallback']:
-    if required not in family: raise SystemExit('v03134 family static-feature fallback missing '+required)
+for required in ['[V03134-STATIC-FEATURE]','identifier-fallback','[V03134-FEATURE-CATALOG]','hidden-or-not-instantiated','catalogFeatures','hiddenFeatures']:
+    if required not in family: raise SystemExit('v03134 family catalog missing '+required)
 for required in ['[AUTO-SELECT] candidates=1','found.count == 1','found.count > 1','manualSelectionRequired=0']:
     if required not in applocal: raise SystemExit('v03134 unique candidate auto-select missing '+required)
 for required in ['HFAAnalyzerV02BeginExportEpoch','HFAAnalyzerV02ScanSelectedImageImpl','[V03131-ANALYZER-GUARD] action=run','[V03131-ANALYZER-GUARD] action=reuse']:
