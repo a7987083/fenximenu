@@ -23,6 +23,7 @@ jobs:
             .github/scripts/hfamap_runtime_analyzer_v03134_orphan_feature_recovery.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_orphan_caller_recovery.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_object_table_recovery.py \
+            .github/scripts/hfamap_runtime_analyzer_v03134_feature_catalog_startup.py \
             .github/scripts/hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py \
             .github/scripts/apply_hfaruntime_v03133_chain.py \
             .github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py
@@ -32,13 +33,21 @@ jobs:
           V02=hfamap/src/HFAMapRuntimeAnalyzerV02.m
           UI=hfamap/src/HFAMapCyberUI.m
           grep -Fq '[V03134-STATIC-FEATURE]' "$FAMILY"
+          grep -Fq '[V03134-FEATURE-CATALOG]' "$FAMILY"
+          grep -Fq 'hidden-or-not-instantiated' "$FAMILY"
+          grep -Fq 'catalogFeatures' "$FAMILY"
+          grep -Fq 'hiddenFeatures' "$FAMILY"
           grep -Fq '[V03134-STATIC-OWNERSHIP]' "$TRACE"
           grep -Fq '[V03134-STATIC-CLUSTER]' "$TRACE"
           grep -Fq '[V03134-ORPHAN-RECOVERY]' "$TRACE"
           grep -Fq '[V03134-CALLER-RECOVERY]' "$TRACE"
           grep -Fq '[V03134-OBJECT-TABLE]' "$TRACE"
+          grep -Fq '[V03134-STARTUP-OWNERSHIP]' "$TRACE"
+          grep -Fq 'startup-static-support' "$TRACE"
+          grep -Fq 'mach-o-mod-init' "$TRACE"
           grep -Fq 'HFA03134RegistrationEvidence' "$TRACE"
           grep -Fq 'HFA03134ObjectTableEvidence' "$TRACE"
+          grep -Fq 'HFA03134StartupOwnership' "$TRACE"
           grep -Fq 'static-registration-key' "$TRACE"
           grep -Fq 'static-caller-registration-key' "$TRACE"
           grep -Fq 'static-object-table-registration-key' "$TRACE"
@@ -93,11 +102,16 @@ jobs:
           shasum -a 256 "$out" | tee "$sha_file"
           strings "$out" > "$strings_file"
           grep -Fq 'V03134-STATIC-FEATURE' "$strings_file"
+          grep -Fq 'V03134-FEATURE-CATALOG' "$strings_file"
+          grep -Fq 'hidden-or-not-instantiated' "$strings_file"
           grep -Fq 'V03134-STATIC-OWNERSHIP' "$strings_file"
           grep -Fq 'V03134-STATIC-CLUSTER' "$strings_file"
           grep -Fq 'V03134-ORPHAN-RECOVERY' "$strings_file"
           grep -Fq 'V03134-CALLER-RECOVERY' "$strings_file"
           grep -Fq 'V03134-OBJECT-TABLE' "$strings_file"
+          grep -Fq 'V03134-STARTUP-OWNERSHIP' "$strings_file"
+          grep -Fq 'startup-static-support' "$strings_file"
+          grep -Fq 'mach-o-mod-init' "$strings_file"
           grep -Fq 'static-registration-key' "$strings_file"
           grep -Fq 'static-caller-registration-key' "$strings_file"
           grep -Fq 'static-object-table-registration-key' "$strings_file"
