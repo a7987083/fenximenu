@@ -49,7 +49,6 @@ if 'HFAFamilyCatalogObject' not in f:
     pos=f.find(owner_sig);brace=f.find('{',pos)
 entry='\n    if (!context || !owner) return;\n    HFAFamilyCatalogObject(context, owner, origin ?: "owner", 0);'
 f=f[:brace+1]+entry+f[brace+1:]
-
 anchor='            HFAGenericMenuObserveObject(view, "family-ui-control");'
 if anchor not in f: raise SystemExit('catalog UI observe anchor missing')
 f=f.replace(anchor,'            HFAFamilyCatalogObject(context, view, "family-ui-control", 0);\n'+anchor,1)
@@ -75,10 +74,12 @@ if 'HFA03134StartupOwnership' not in t:t=t[:pos]+helpers+'\n'+t[pos:]
 anchor='    NSArray *objectTableRanges=haveRegistrationLayout?HFA03134StaticDataRanges(registrationLayout):@[];'
 if anchor not in t: raise SystemExit('startup objectTableRanges anchor missing')
 t=t.replace(anchor,anchor+'\n    NSSet *modInitFunctions=haveRegistrationLayout?HFA03134ModInitFunctions(registrationLayout):[NSSet set];',1)
-old='''        else{if([reason isEqual:@"unowned-static-backend"]&&cid.length)reason=@"orphan-static-feature-cluster";e[@"status"]=@"excluded";e[@"reason"]=reason;[ledger addObject:e];HFALog("[STATIC-BRIDGE] backend=%u family=%s cluster=%s target=%s offset=%s canonicalRVA=%s status=excluded reason=%s\\n",[e[@"analyzerBackendId"] unsignedIntValue],[e[@"family"] UTF8String]?:"?",cid.UTF8String?:"-",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?",[e[@"canonicalRVA"] UTF8String]?:"?",reason.UTF8String?:"?");}'''
-new='''        else{NSDictionary *startupRegEv=registrationEvidenceByBackend[[be[@"backendId"] description]?:@""];NSDictionary *startup=nil;if([reason isEqual:@"unowned-static-backend"]||[reason isEqual:@"orphan-static-feature-cluster"])startup=HFA03134StartupOwnership(be,startupRegEv,registrationLayout,modInitFunctions);if(startup){e[@"ownershipSource"]=@"mach-o-mod-init";e[@"ownerClass"]=@"startup-owned";e[@"ownershipEvidence"]=startup;e[@"status"]=@"owned-support";e[@"reason"]=@"startup-static-support";[ledger addObject:e];HFALog("[V03134-STARTUP-OWNERSHIP] backend=%u constructor=%s target=%s offset=%s status=startup-owned\\n",[e[@"analyzerBackendId"] unsignedIntValue],[[startup[@"constructorRVA"] description] UTF8String]?:"?",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?");}else{if([reason isEqual:@"unowned-static-backend"]&&cid.length)reason=@"orphan-static-feature-cluster";e[@"status"]=@"excluded";e[@"reason"]=reason;[ledger addObject:e];HFALog("[STATIC-BRIDGE] backend=%u family=%s cluster=%s target=%s offset=%s canonicalRVA=%s status=excluded reason=%s\\n",[e[@"analyzerBackendId"] unsignedIntValue],[e[@"family"] UTF8String]?:"?",cid.UTF8String?:"-",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?",[e[@"canonicalRVA"] UTF8String]?:"?",reason.UTF8String?:"?");}}'''
-if old not in t: raise SystemExit('startup exclusion anchor missing')
-t=t.replace(old,new,1)
+
+# Insert startup classification immediately before the existing feature-owner branch.
+anchor='        NSUInteger li=ledger.count;\n        if(owner){'
+if anchor not in t: raise SystemExit('startup owner-branch anchor missing')
+replace='''        NSUInteger li=ledger.count;\n        NSDictionary *startupOwner=nil;if(!owner&&[reason isEqual:@"unowned-static-backend"]){NSDictionary *startupRegEv=registrationEvidenceByBackend[[be[@"backendId"] description]?:@""];startupOwner=HFA03134StartupOwnership(be,startupRegEv,registrationLayout,modInitFunctions);}\n        if(startupOwner){e[@"ownershipSource"]=@"mach-o-mod-init";e[@"ownerClass"]=@"startup-owned";e[@"ownershipEvidence"]=startupOwner;e[@"status"]=@"owned-support";e[@"reason"]=@"startup-static-support";[ledger addObject:e];HFALog("[V03134-STARTUP-OWNERSHIP] backend=%u constructor=%s target=%s offset=%s status=startup-owned\\n",[e[@"analyzerBackendId"] unsignedIntValue],[[startupOwner[@"constructorRVA"] description] UTF8String]?:"?",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?");}\n        else if(owner){'''
+t=t.replace(anchor,replace,1)
 TRACE.write_text(t)
 for path,markers in [(FAMILY,['[V03134-FEATURE-CATALOG]','hidden-or-not-instantiated','catalogFeatures','hiddenFeatures']),(TRACE,['HFA03134ModInitFunctions','HFA03134StartupOwnership','[V03134-STARTUP-OWNERSHIP]','startup-static-support'])]:
     out=path.read_text()
