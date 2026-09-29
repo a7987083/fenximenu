@@ -1,0 +1,78 @@
+name: HFARuntimeAnalyzer v0.3.13.6 UnifiedRuntimeValueBridge
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.6-unified-runtime-value-bridge-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v03136_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v03136_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v03136_unified_runtime_value_bridge.py \
+            .github/scripts/apply_hfaruntime_v03135_chain.py
+          PROFILER=hfamap/src/HFAMapJailpatchRuntimeProfiler.m
+          EXPORTER=hfamap/src/HFAMapJSONExport.m
+          GENERIC=hfamap/src/HFAMapGenericMenuResolver.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V03136-JAILPATCH-DEFINITION-BRIDGE]' "$PROFILER"
+          grep -Fq '[V03136-RUNTIME-MERGE]' "$EXPORTER"
+          grep -Fq 'HFA03136ObservedTitleScore' "$EXPORTER"
+          grep -Fq 'runtimeValueProbe' "$EXPORTER"
+          grep -Fq 'currentValue' "$EXPORTER"
+          grep -Fq '[V03136-RUNTIME-VALUE]' "$GENERIC"
+          grep -Fq '[V03136-RUNTIME-CALL]' "$GENERIC"
+          grep -Fq '[V03136-RUNTIME-MEM]' "$GENERIC"
+          grep -Fq 'HFA03136ProbeImplementation' "$GENERIC"
+          grep -Fq 'indirectCalls' "$GENERIC"
+          grep -Fq 'candidateOnly' "$GENERIC"
+          grep -Fq 'HFAMap RuntimeAnalyzer v0.3.13.6 UnifiedRuntimeValueBridge' "$UI"
+          if grep -Eiq 'MeChat|RoyalDice|RandomDice|Hello Kitty|Relationship Points|Damage Multiplier|CO-OP SP|PVP SP|Merge Any Dice' .github/scripts/hfamap_runtime_analyzer_v03136_*.py; then echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V03136'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.6-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.6-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.6-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.6-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V03136-JAILPATCH-DEFINITION-BRIDGE' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-MERGE' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-VALUE' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-CALL' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-MEM' "$strings_file"
+          grep -Fq 'runtimeValueProbe' "$strings_file"
+          grep -Fq 'currentValue' "$strings_file"
+          grep -Fq 'indirectCalls' "$strings_file"
+          grep -Fq 'candidateOnly' "$strings_file"
+          grep -Fq 'v0.3.13.6 UnifiedRuntimeValueBridge' "$strings_file"
+          grep -Fq 'V03134-STARTUP-OWNERSHIP' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.6-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.6-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.6-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.6-*.txt
+          if-no-files-found: error
