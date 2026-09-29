@@ -5,15 +5,16 @@ TRACE=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
 
 f=FAMILY.read_text()
 
-# Extend context with a separate catalog-object visited set and counters.
-old='''    NSMutableSet<NSValue *> *seenTargets;\n    unsigned controls;\n    unsigned featureControls;\n    unsigned actionTargets;\n    unsigned actions;\n    unsigned igmmArrays;\n    unsigned legacyProfiles;\n} HFAFamilyContext;'''
-new='''    NSMutableSet<NSValue *> *seenTargets;\n    NSMutableSet<NSValue *> *seenCatalogObjects;\n    unsigned controls;\n    unsigned featureControls;\n    unsigned catalogFeatures;\n    unsigned hiddenFeatures;\n    unsigned actionTargets;\n    unsigned actions;\n    unsigned igmmArrays;\n    unsigned legacyProfiles;\n} HFAFamilyContext;'''
-if old not in f: raise SystemExit('catalog context anchor missing')
-f=f.replace(old,new,1)
+# Small, stable field anchors: prior generators may reformat or extend the context.
+anchor='    NSMutableSet<NSValue *> *seenTargets;'
+if anchor not in f: raise SystemExit('catalog seenTargets anchor missing')
+f=f.replace(anchor,anchor+'\n    NSMutableSet<NSValue *> *seenCatalogObjects;',1)
+anchor='    unsigned featureControls;'
+if anchor not in f: raise SystemExit('catalog featureControls anchor missing')
+f=f.replace(anchor,anchor+'\n    unsigned catalogFeatures;\n    unsigned hiddenFeatures;',1)
 
-# Insert generic feature-object/container catalog before owner profiling.
-anchor='''static void HFAFamilyProfileOwner(HFAFamilyContext *context, id owner, const char *origin) {'''
-if anchor not in f: raise SystemExit('catalog owner anchor missing')
+owner_sig='static void HFAFamilyProfileOwner(HFAFamilyContext *context, id owner, const char *origin) {'
+if owner_sig not in f: raise SystemExit('catalog owner signature missing')
 helpers=r'''static BOOL HFAFamilyCatalogMark(HFAFamilyContext *context,id object){
     if(!context||!object)return NO;NSValue *key=[NSValue valueWithPointer:(__bridge const void *)object];
     if([context->seenCatalogObjects containsObject:key])return NO;[context->seenCatalogObjects addObject:key];return YES;
@@ -41,36 +42,30 @@ static void HFAFamilyCatalogObject(HFAFamilyContext *context,id object,const cha
     }
 }
 '''
-f=f.replace(anchor,helpers+'\n'+anchor,1)
+if 'HFAFamilyCatalogObject' not in f:f=f.replace(owner_sig,helpers+'\n'+owner_sig,1)
 
-# Make every profiled owner feed the catalog first.
 old='''static void HFAFamilyProfileOwner(HFAFamilyContext *context, id owner, const char *origin) {\n    if (!context || !owner || !HFAFamilyMarkTarget(context, owner)) return;'''
 new='''static void HFAFamilyProfileOwner(HFAFamilyContext *context, id owner, const char *origin) {\n    if (!context || !owner) return;\n    HFAFamilyCatalogObject(context, owner, origin ?: "owner", 0);\n    if (!HFAFamilyMarkTarget(context, owner)) return;'''
-if old not in f: raise SystemExit('catalog profile anchor missing')
+if old not in f: raise SystemExit('catalog profile body anchor missing')
 f=f.replace(old,new,1)
 
-# Visible UI controls also use the same catalog path, which preserves a single
-# registration API while allowing visibility classification.
-old='''            if (identifier.length && label.length)\n                HFARegisterFeatureDefinition(label.UTF8String, identifier.UTF8String);'''
-new='''            if (identifier.length) {\n                NSString *stableLabel = label.length ? label : identifier;\n                HFARegisterFeatureDefinition(stableLabel.UTF8String, identifier.UTF8String);\n                HFAFamilyCatalogObject(context, view, "family-ui-control", 0);\n            }'''
-if old not in f: raise SystemExit('visible feature registration anchor missing')
-f=f.replace(old,new,1)
+# UI controls feed the same catalog. Existing normal + identifier-fallback
+# registration remains untouched.
+anchor='            HFAGenericMenuObserveObject(view, "family-ui-control");'
+if anchor not in f: raise SystemExit('catalog UI observe anchor missing')
+f=f.replace(anchor,'            HFAFamilyCatalogObject(context, view, "family-ui-control", 0);\n'+anchor,1)
 
-old='''        context.seenTargets = [NSMutableSet set];'''
-new='''        context.seenTargets = [NSMutableSet set];\n        context.seenCatalogObjects = [NSMutableSet set];'''
-if old not in f: raise SystemExit('catalog init anchor missing')
-f=f.replace(old,new,1)
+anchor='        context.seenTargets = [NSMutableSet set];'
+if anchor not in f: raise SystemExit('catalog init anchor missing')
+f=f.replace(anchor,anchor+'\n        context.seenCatalogObjects = [NSMutableSet set];',1)
 
-old='''        HFAFamilyLog([NSString stringWithFormat:@"[FAMILY-RESOLVE-END] family=%s image=%s windows=%lu controls=%u featureControls=%u targets=%u actions=%u igmmArrays=%u legacyProfiles=%u",\n                      family, image, (unsigned long)windowCount, context.controls,\n                      context.featureControls, context.actionTargets, context.actions,\n                      context.igmmArrays, context.legacyProfiles]);'''
-new='''        HFAFamilyLog([NSString stringWithFormat:@"[FAMILY-RESOLVE-END] family=%s image=%s windows=%lu controls=%u featureControls=%u catalogFeatures=%u hiddenFeatures=%u targets=%u actions=%u igmmArrays=%u legacyProfiles=%u",\n                      family, image, (unsigned long)windowCount, context.controls,\n                      context.featureControls, context.catalogFeatures, context.hiddenFeatures, context.actionTargets, context.actions,\n                      context.igmmArrays, context.legacyProfiles]);'''
-if old not in f: raise SystemExit('catalog end-log anchor missing')
-f=f.replace(old,new,1)
-
+# Additional summary line avoids relying on the exact legacy end-log format.
+anchor='        HFACyberUIAppendLog([NSString stringWithFormat:@"✅ 扫描完成：菜单控件 %u，动作 %u",'
+if anchor not in f: raise SystemExit('catalog summary anchor missing')
+f=f.replace(anchor,'        HFAFamilyLog([NSString stringWithFormat:@"[V03134-FEATURE-CATALOG-SUMMARY] catalogFeatures=%u hiddenFeatures=%u", context.catalogFeatures, context.hiddenFeatures]);\n'+anchor,1)
 FAMILY.write_text(f)
 
-# Startup/static-support ownership for canonical backends whose owner function is
-# listed in Mach-O __mod_init_func. This is structural provenance, not a game or
-# fixed-RVA rule.
+# Startup/static-support ownership from Mach-O __mod_init_func provenance.
 t=TRACE.read_text()
 sig='static void HFA0313BridgeAnalyzerStaticBackends(NSArray *backends,NSMutableArray *ledger,NSMutableArray *candidates)'
 pos=t.find(sig)
@@ -86,18 +81,14 @@ static NSDictionary *HFA03134StartupOwnership(NSDictionary *backend,NSDictionary
 '''
 if 'HFA03134StartupOwnership' not in t:t=t[:pos]+helpers+'\n'+t[pos:]
 
-anchor='''NSArray *objectTableRanges=haveRegistrationLayout?HFA03134StaticDataRanges(registrationLayout):@[];\n    NSMutableDictionary *objectTableEvidenceByBackend=[NSMutableDictionary dictionary];'''
-replace='''NSArray *objectTableRanges=haveRegistrationLayout?HFA03134StaticDataRanges(registrationLayout):@[];\n    NSSet *modInitFunctions=haveRegistrationLayout?HFA03134ModInitFunctions(registrationLayout):[NSSet set];\n    NSMutableDictionary *objectTableEvidenceByBackend=[NSMutableDictionary dictionary];'''
-if anchor not in t: raise SystemExit('startup declaration anchor missing')
-t=t.replace(anchor,replace,1)
+anchor='    NSArray *objectTableRanges=haveRegistrationLayout?HFA03134StaticDataRanges(registrationLayout):@[];'
+if anchor not in t: raise SystemExit('startup objectTableRanges anchor missing')
+t=t.replace(anchor,anchor+'\n    NSSet *modInitFunctions=haveRegistrationLayout?HFA03134ModInitFunctions(registrationLayout):[NSSet set];',1)
 
-# Replace only the final unowned/excluded branch. Startup-owned rows stay in the
-# ledger for completeness but are not exported as user-toggle feature candidates.
 old='''        else{if([reason isEqual:@"unowned-static-backend"]&&cid.length)reason=@"orphan-static-feature-cluster";e[@"status"]=@"excluded";e[@"reason"]=reason;[ledger addObject:e];HFALog("[STATIC-BRIDGE] backend=%u family=%s cluster=%s target=%s offset=%s canonicalRVA=%s status=excluded reason=%s\\n",[e[@"analyzerBackendId"] unsignedIntValue],[e[@"family"] UTF8String]?:"?",cid.UTF8String?:"-",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?",[e[@"canonicalRVA"] UTF8String]?:"?",reason.UTF8String?:"?");}'''
-new='''        else{NSDictionary *regEv=registrationEvidenceByBackend[[be[@"backendId"] description]?:@""];NSDictionary *startup=nil;if([reason isEqual:@"unowned-static-backend"]||[reason isEqual:@"orphan-static-feature-cluster"])startup=HFA03134StartupOwnership(be,regEv,registrationLayout,modInitFunctions);if(startup){e[@"ownershipSource"]=@"mach-o-mod-init";e[@"ownerClass"]=@"startup-owned";e[@"ownershipEvidence"]=startup;e[@"status"]=@"owned-support";e[@"reason"]=@"startup-static-support";[ledger addObject:e];HFALog("[V03134-STARTUP-OWNERSHIP] backend=%u constructor=%s target=%s offset=%s status=startup-owned\\n",[e[@"analyzerBackendId"] unsignedIntValue],[[startup[@"constructorRVA"] description] UTF8String]?:"?",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?");}else{if([reason isEqual:@"unowned-static-backend"]&&cid.length)reason=@"orphan-static-feature-cluster";e[@"status"]=@"excluded";e[@"reason"]=reason;[ledger addObject:e];HFALog("[STATIC-BRIDGE] backend=%u family=%s cluster=%s target=%s offset=%s canonicalRVA=%s status=excluded reason=%s\\n",[e[@"analyzerBackendId"] unsignedIntValue],[e[@"family"] UTF8String]?:"?",cid.UTF8String?:"-",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?",[e[@"canonicalRVA"] UTF8String]?:"?",reason.UTF8String?:"?");}}'''
+new='''        else{NSDictionary *startupRegEv=registrationEvidenceByBackend[[be[@"backendId"] description]?:@""];NSDictionary *startup=nil;if([reason isEqual:@"unowned-static-backend"]||[reason isEqual:@"orphan-static-feature-cluster"])startup=HFA03134StartupOwnership(be,startupRegEv,registrationLayout,modInitFunctions);if(startup){e[@"ownershipSource"]=@"mach-o-mod-init";e[@"ownerClass"]=@"startup-owned";e[@"ownershipEvidence"]=startup;e[@"status"]=@"owned-support";e[@"reason"]=@"startup-static-support";[ledger addObject:e];HFALog("[V03134-STARTUP-OWNERSHIP] backend=%u constructor=%s target=%s offset=%s status=startup-owned\\n",[e[@"analyzerBackendId"] unsignedIntValue],[[startup[@"constructorRVA"] description] UTF8String]?:"?",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?");}else{if([reason isEqual:@"unowned-static-backend"]&&cid.length)reason=@"orphan-static-feature-cluster";e[@"status"]=@"excluded";e[@"reason"]=reason;[ledger addObject:e];HFALog("[STATIC-BRIDGE] backend=%u family=%s cluster=%s target=%s offset=%s canonicalRVA=%s status=excluded reason=%s\\n",[e[@"analyzerBackendId"] unsignedIntValue],[e[@"family"] UTF8String]?:"?",cid.UTF8String?:"-",[e[@"target"] UTF8String]?:"?",[e[@"offset"] UTF8String]?:"?",[e[@"canonicalRVA"] UTF8String]?:"?",reason.UTF8String?:"?");}}'''
 if old not in t: raise SystemExit('startup exclusion anchor missing')
 t=t.replace(old,new,1)
-
 TRACE.write_text(t)
 
 for path,markers in [(FAMILY,['[V03134-FEATURE-CATALOG]','hidden-or-not-instantiated','catalogFeatures','hiddenFeatures']),(TRACE,['HFA03134ModInitFunctions','HFA03134StartupOwnership','[V03134-STARTUP-OWNERSHIP]','startup-static-support'])]:
