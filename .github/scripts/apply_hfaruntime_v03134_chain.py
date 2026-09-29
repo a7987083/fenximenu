@@ -9,6 +9,7 @@ subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_conflict_
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_static_ownership_fix.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_auto_select_unique_candidate.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_orphan_caller_recovery.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03134_object_table_recovery.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 v02=(ROOT/'hfamap'/'src'/'HFAMapRuntimeAnalyzerV02.m').read_text()
@@ -28,7 +29,10 @@ for required in [
     '[V03134-CONFLICT-FILTER]',
     '[V03134-ORPHAN-RECOVERY]',
     '[V03134-CALLER-RECOVERY]',
+    '[V03134-OBJECT-TABLE]',
     'static-caller-registration-key',
+    'static-object-table-registration-key',
+    'staticObjectTableEvidence',
     'exported-with-conflicts-filtered',
     'HFAMap_StaticCanonical_v03134.json',
     'HFA03133CanonicalTarget',
