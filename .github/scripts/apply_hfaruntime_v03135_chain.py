@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[2]
 S=ROOT/'.github'/'scripts'
 subprocess.check_call(['python3',str(S/'apply_hfaruntime_v03134_chain.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03135_runtime_value_resolver.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v03135_compile_fix.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 generic=(ROOT/'hfamap'/'src'/'HFAMapGenericMenuResolver.m').read_text()
