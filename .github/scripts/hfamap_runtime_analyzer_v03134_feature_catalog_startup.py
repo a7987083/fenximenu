@@ -4,7 +4,6 @@ FAMILY=Path('hfamap/src/HFAMapFamilyRuntimeResolver.m')
 TRACE=Path('hfamap/src/HFAMapPatchExecutionTrace.m')
 
 f=FAMILY.read_text()
-
 anchor='    NSMutableSet<NSValue *> *seenTargets;'
 if anchor not in f: raise SystemExit('catalog seenTargets anchor missing')
 f=f.replace(anchor,anchor+'\n    NSMutableSet<NSValue *> *seenCatalogObjects;',1)
@@ -57,9 +56,6 @@ f=f.replace(anchor,'            HFAFamilyCatalogObject(context, view, "family-ui
 anchor='        context.seenTargets = [NSMutableSet set];'
 if anchor not in f: raise SystemExit('catalog init anchor missing')
 f=f.replace(anchor,anchor+'\n        context.seenCatalogObjects = [NSMutableSet set];',1)
-anchor='        HFACyberUIAppendLog([NSString stringWithFormat:@"✅ 扫描完成：菜单控件 %u，动作 %u",'
-if anchor not in f: raise SystemExit('catalog summary anchor missing')
-f=f.replace(anchor,'        HFAFamilyLog([NSString stringWithFormat:@"[V03134-FEATURE-CATALOG-SUMMARY] catalogFeatures=%u hiddenFeatures=%u", context.catalogFeatures, context.hiddenFeatures]);\n'+anchor,1)
 FAMILY.write_text(f)
 
 t=TRACE.read_text()
