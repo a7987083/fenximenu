@@ -54,5 +54,5 @@ NSDictionary *HFAC4M0ConfigOwnerResolve(void){
 NSDictionary *HFAC4M0ConfigOwnerStatus(void){return gStatus?:@{@"available":@NO,@"reason":@"not-run"};}
 
 __attribute__((constructor)) static void HFAC4M0OwnerInit(void){
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{@autoreleasepool{NSDictionary *r=HFAC4M0ConfigOwnerResolve();NSString *bid=[[NSBundle mainBundle] bundleIdentifier]?:@"unknown";NSString *p=[NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents/HFAMap_%@_C4M0ConfigOwner.json",bid]];NSData *d=[NSJSONSerialization dataWithJSONObject:r options:NSJSONWritingPrettyPrinted error:nil];if(d)[d writeToFile:p atomically:YES];}});
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{@autoreleasepool{HFAC4M0ConfigOwnerResolve();}});
 }
