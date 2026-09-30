@@ -1,0 +1,79 @@
+name: HFARuntimeAnalyzer v0.3.13.14 ModificationSemanticResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.14-modification-semantic-resolver-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031314_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v031314_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v031314_modification_semantic.py \
+            .github/scripts/apply_hfaruntime_v031313_chain.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          TRUTH=hfamap/src/HFAMapRuntimeModificationTruth.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V031314-TRUTH-FILE]' "$TRACE"
+          grep -Fq '[V031314-TRUTH-SUMMARY]' "$TRACE"
+          grep -Fq '[V031314-MOD-SEMANTIC]' "$TRACE"
+          grep -Fq '[V031314-IL2CPP-TARGET]' "$TRUTH"
+          grep -Fq 'HFAIL2CPPResolveNativeAddress' "$TRUTH"
+          grep -Fq 'HFAMap_RuntimeModificationTruth_v031314.json' "$TRACE"
+          grep -Fq 'discoveredFeatureCount' "$TRUTH"
+          grep -Fq 'startupOwnedFeatureCount' "$TRUTH"
+          grep -Fq 'startupAppliedFeatureCount' "$TRUTH"
+          grep -Fq 'installedModificationCount' "$TRUTH"
+          grep -Fq 'activeFeatureStateComplete' "$TRUTH"
+          grep -Fq 'effectiveFeatureCountDeprecated' "$TRUTH"
+          grep -Fq 'v0.3.13.14 ModificationSemanticResolver' "$UI"
+          if grep -Eiq 'Hello.?Kitty|MeChat|RandomDice|RoyalDice|Relationship Points|Damage Multiplier|CO-OP SP|PVP SP|Merge Any Dice|0x2073498|0x1E38F40|0x1E19A58|0x65958E4|0x30E9C64|0x2884188|0x1F711C8' \
+             .github/scripts/hfamap_runtime_analyzer_v031314_modification_semantic.py \
+             hfamap/src/HFAMapRuntimeModificationTruth.m; then
+            echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031314'; exit 1
+          fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.14-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.14-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.14-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.14-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V031314-IL2CPP-TARGET' "$strings_file"
+          grep -Fq 'V031314-TRUTH-SUMMARY' "$strings_file"
+          grep -Fq 'V031314-MOD-SEMANTIC' "$strings_file"
+          grep -Fq 'HFAMap_RuntimeModificationTruth_v031314.json' "$strings_file"
+          grep -Fq 'V031312-CROSSIMAGE' "$strings_file"
+          grep -Fq 'V031311-IL2CPP-HIT' "$strings_file"
+          grep -Fq 'V031310-RETURN' "$strings_file"
+          grep -Fq 'V03139-STACK' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.14-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.14-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.14-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.14-*.txt
+          if-no-files-found: error
