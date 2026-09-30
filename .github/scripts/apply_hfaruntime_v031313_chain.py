@@ -6,12 +6,13 @@ S=ROOT/'.github'/'scripts'
 subprocess.check_call(['python3',str(S/'apply_hfaruntime_v031312_chain.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v031313_runtime_modification_truth.py')],cwd=ROOT)
 subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v031313_truth_semantics_fix.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v031313_bundle_log_bridge.py')],cwd=ROOT)
 
 trace=(ROOT/'hfamap'/'src'/'HFAMapPatchExecutionTrace.m').read_text()
 truth=(ROOT/'hfamap'/'src'/'HFAMapRuntimeModificationTruth.m').read_text()
 ui=(ROOT/'hfamap'/'src'/'HFAMapCyberUI.m').read_text()
 make=(ROOT/'hfamap'/'Makefile').read_text()
-for token in ['[V031313-TRUTH-FILE]','runtimeModificationTruth','HFARuntimeModificationTruthBuild']:
+for token in ['[V031313-TRUTH-FILE]','runtimeModificationTruth','HFARuntimeModificationTruthBuild','startupMods=%u']:
     if token not in trace: raise SystemExit('missing generated trace token '+token)
 for token in ['[V031313-PATCH-STATE]','[V031313-HOOK-STATE]','[V031313-TRUTH-SUMMARY]','runtime-semantic','originalSlotRVA','menuFeatureCount','startupFeatureCount','startupModificationCount','effectiveFeatureCount','startupGroups']:
     if token not in truth: raise SystemExit('missing truth token '+token)
