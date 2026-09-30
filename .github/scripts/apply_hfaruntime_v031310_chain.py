@@ -4,7 +4,7 @@ import subprocess
 ROOT=Path(__file__).resolve().parents[2]
 S=ROOT/'.github'/'scripts'
 subprocess.check_call(['python3',str(S/'apply_hfaruntime_v03139_chain.py')],cwd=ROOT)
-subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v031310_object_return_taint.py')],cwd=ROOT)
+subprocess.check_call(['python3',str(S/'hfamap_runtime_analyzer_v031310_object_return_taint_v2.py')],cwd=ROOT)
 
 generic=(ROOT/'hfamap'/'src'/'HFAMapGenericMenuResolver.m').read_text()
 exporter=(ROOT/'hfamap'/'src'/'HFAMapJSONExport.m').read_text()
