@@ -3,6 +3,7 @@ from pathlib import Path
 GENERIC=Path('hfamap/src/HFAMapGenericMenuResolver.m')
 EXPORTER=Path('hfamap/src/HFAMapJSONExport.m')
 MAKEFILE=Path('hfamap/Makefile')
+CROSS=Path('hfamap/src/HFAMapCrossImageResolver.m')
 UI=Path('hfamap/src/HFAMapCyberUI.m')
 
 
@@ -93,6 +94,39 @@ if 'src/HFAMapCrossImageResolver.m' not in m:
     if needle not in m: raise SystemExit('Makefile IL2CPP anchor missing')
     m=m.replace(needle,'src/HFAMapCrossImageResolver.m '+needle,1)
 MAKEFILE.write_text(m)
+
+c=CROSS.read_text()
+c=c.replace('#import <mach/mach.h>\n#import <mach/mach_vm.h>\n#import <mach-o/dyld.h>', '#import <mach-o/dyld.h>\n#import <mach-o/loader.h>\n#import <mach/vm_prot.h>', 1)
+a,b=function_span(c,'static BOOL HFAXReadable(uintptr_t address, size_t size)')
+readable=r'''static BOOL HFAXReadable(uintptr_t address, size_t size) {
+    if(!address||!size)return NO;
+    uint64_t end=(uint64_t)address+(uint64_t)size;
+    uint32_t count=_dyld_image_count();
+    for(uint32_t i=0;i<count;i++){
+        const struct mach_header *mh0=_dyld_get_image_header(i);
+        if(!mh0||mh0->magic!=MH_MAGIC_64)continue;
+        const struct mach_header_64 *mh=(const struct mach_header_64 *)mh0;
+        intptr_t slide=_dyld_get_image_vmaddr_slide(i);
+        const uint8_t *cursor=(const uint8_t *)(mh+1),*limit=cursor+mh->sizeofcmds;
+        for(uint32_t n=0;n<mh->ncmds;n++){
+            if(cursor+sizeof(struct load_command)>limit)break;
+            const struct load_command *lc=(const struct load_command *)cursor;
+            if(lc->cmdsize<sizeof(*lc)||cursor+lc->cmdsize>limit)break;
+            if(lc->cmd==LC_SEGMENT_64&&lc->cmdsize>=sizeof(struct segment_command_64)){
+                const struct segment_command_64 *seg=(const struct segment_command_64 *)cursor;
+                if(seg->initprot&VM_PROT_READ){
+                    uint64_t start=(uint64_t)((int64_t)seg->vmaddr+(int64_t)slide);
+                    uint64_t finish=start+seg->vmsize;
+                    if((uint64_t)address>=start&&end<=finish)return YES;
+                }
+            }
+            cursor+=lc->cmdsize;
+        }
+    }
+    return NO;
+}'''
+c=c[:a]+readable+c[b:]
+CROSS.write_text(c)
 
 u=UI.read_text()
 u=u.replace('HFAMap RuntimeAnalyzer v0.3.13.11 HybridIL2CPPRuntimeResolver','HFAMap RuntimeAnalyzer v0.3.13.12 CrossImageCallResolver')
