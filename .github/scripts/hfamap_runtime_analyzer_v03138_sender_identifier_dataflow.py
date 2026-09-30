@@ -56,30 +56,23 @@ static NSDictionary *HFA03138SenderIdentifierDataflow(Method method, NSDictionar
     if(!method||![discriminator isKindOfClass:[NSDictionary class]]||!discriminator.count)return @{};
     uintptr_t start=(uintptr_t)method_getImplementation(method);if(!start)return @{};
     NSUInteger wanted=[[discriminator objectForKey:@"offsetValue"] unsignedIntegerValue];
-    BOOL tainted[32]={0};uint64_t addend[32]={0};tainted[2]=YES; // ObjC third arg: sender
+    BOOL tainted[32]={0};uint64_t addend[32]={0};tainted[2]=YES;
     NSMutableArray *loads=[NSMutableArray array],*branches=[NSMutableArray array],*calls=[NSMutableArray array];
     BOOL matched=NO;unsigned matchedOff=0;unsigned scanLimit=0x300;
     for(unsigned off=0;off<scanLimit;off+=4){
         uint32_t ins=0;memcpy(&ins,(void*)(start+off),4);uintptr_t pc=start+off;
-        // MOV Xd, Xn alias of ORR Xd, XZR, Xn
-        if((ins&0xFFE0FC00u)==0xAA0003E0u){unsigned rd=ins&31,rn=(ins>>16)&31;tainted[rd]=tainted[rn];addend[rd]=addend[rn];continue;}
-        // ADD Xd, Xn, #imm
+        if((ins&0xFFE0FFE0u)==0xAA0003E0u){unsigned rd=ins&31,rn=(ins>>16)&31;tainted[rd]=tainted[rn];addend[rd]=addend[rn];continue;}
         if((ins&0xFF000000u)==0x91000000u){unsigned rd=ins&31,rn=(ins>>5)&31;uint64_t imm=(ins>>10)&0xFFF;if((ins>>22)&1)imm<<=12;tainted[rd]=tainted[rn];addend[rd]=tainted[rn]?addend[rn]+imm:0;continue;}
-        // LDR/STR unsigned immediate family. Track loads based on sender-derived base.
         if((ins&0x3B000000u)==0x39000000u){unsigned rn=(ins>>5)&31,rt=ins&31;unsigned size=(ins>>30)&3;uint64_t imm=((ins>>10)&0xFFFULL)<<size;BOOL isLoad=((ins>>22)&1)!=0;
             if(tainted[rn]){uint64_t effective=addend[rn]+imm;if(isLoad){NSDictionary *r=@{@"insnRVA":[NSString stringWithFormat:@"0x%X",off],@"baseRegister":@(rn),@"destRegister":@(rt),@"fieldOffset":[NSString stringWithFormat:@"0x%llX",(unsigned long long)effective],@"fieldOffsetValue":@(effective),@"matchesIdentifierField":@(effective==wanted)};if(loads.count<48)[loads addObject:r];if(effective==wanted){matched=YES;matchedOff=off;tainted[rt]=YES;addend[rt]=0;HFAGenericLog("[V03138-IDFIELD-LOAD] off=0x%X senderReg=x%u dst=x%u field=0x%llX match=1\n",off,rn,rt,(unsigned long long)effective);}else{tainted[rt]=NO;addend[rt]=0;}}}
             continue;
         }
         if(matched && off>=matchedOff && off<=matchedOff+0xA0){
-            // CBZ/CBNZ
             if((ins&0x7E000000u)==0x34000000u){int64_t imm=HFA03135SignExtend((ins>>5)&0x7FFFF,19)<<2;uintptr_t target=(uintptr_t)((int64_t)pc+imm);NSDictionary *ai=HFAAddressInfo((void*)target);NSMutableDictionary *r=[NSMutableDictionary dictionaryWithObjectsAndKeys:@"CBZ/CBNZ",@"type",[NSString stringWithFormat:@"0x%X",off],@"insnRVA",nil];if(ai)[r addEntriesFromDictionary:ai];if(branches.count<32)[branches addObject:r];HFAGenericLog("[V03138-IDFIELD-BRANCH] type=CBZ off=0x%X target=%s+%s\n",off,[ai[@"image"] UTF8String]?:"?",[ai[@"rva"] UTF8String]?:"?");}
-            // TBZ/TBNZ
             else if((ins&0x7E000000u)==0x36000000u){int64_t imm=HFA03135SignExtend((ins>>5)&0x3FFF,14)<<2;uintptr_t target=(uintptr_t)((int64_t)pc+imm);NSDictionary *ai=HFAAddressInfo((void*)target);NSMutableDictionary *r=[NSMutableDictionary dictionaryWithObjectsAndKeys:@"TBZ/TBNZ",@"type",[NSString stringWithFormat:@"0x%X",off],@"insnRVA",nil];if(ai)[r addEntriesFromDictionary:ai];if(branches.count<32)[branches addObject:r];HFAGenericLog("[V03138-IDFIELD-BRANCH] type=TBZ off=0x%X target=%s+%s\n",off,[ai[@"image"] UTF8String]?:"?",[ai[@"rva"] UTF8String]?:"?");}
-            // B.cond
             else if((ins&0xFF000010u)==0x54000000u){int64_t imm=HFA03135SignExtend((ins>>5)&0x7FFFF,19)<<2;uintptr_t target=(uintptr_t)((int64_t)pc+imm);NSDictionary *ai=HFAAddressInfo((void*)target);NSMutableDictionary *r=[NSMutableDictionary dictionaryWithObjectsAndKeys:@"B.cond",@"type",[NSString stringWithFormat:@"0x%X",off],@"insnRVA",nil];if(ai)[r addEntriesFromDictionary:ai];if(branches.count<32)[branches addObject:r];HFAGenericLog("[V03138-IDFIELD-BRANCH] type=B.cond off=0x%X target=%s+%s\n",off,[ai[@"image"] UTF8String]?:"?",[ai[@"rva"] UTF8String]?:"?");}
             if((ins&0xFC000000u)==0x94000000u){int64_t d=HFA03135SignExtend(ins&0x03FFFFFFu,26)<<2;uintptr_t target=(uintptr_t)((int64_t)pc+d);NSDictionary *ai=HFAAddressInfo((void*)target);if(ai&&calls.count<32){NSMutableDictionary *r=[ai mutableCopy];r[@"callsiteRVA"]=[NSString stringWithFormat:@"0x%X",off];[calls addObject:r];[r release];HFAGenericLog("[V03138-IDFIELD-CALL] off=0x%X image=%s rva=%s\n",off,[ai[@"image"] UTF8String]?:"?",[ai[@"rva"] UTF8String]?:"?");}}
         }
-        // Conservative clobber for common integer-register writers.
         if((ins&0x7F800000u)==0x52800000u || (ins&0x7F800000u)==0x12800000u){unsigned rd=ins&31;tainted[rd]=NO;addend[rd]=0;}
     }
     return @{@"candidateOnly":@YES,@"discriminator":discriminator,@"identifierFieldLoads":loads,@"matchedIdentifierFieldLoad":@(matched),@"nearbyBranches":branches,@"nearbyCalls":calls,@"scanBytes":@(scanLimit)};
@@ -103,7 +96,6 @@ fn=fn.replace(json_anchor,'@"senderState":senderState?:@{},@"identifierDiscrimin
 g=g[:a]+fn+g[b:]
 GENERIC.write_text(g)
 
-# Preserve v0.3.13.8 evidence into final runtimeEvidence.
 e=EXPORTER.read_text()
 a,b=function_span(e,'static NSArray *HFAJSONObservedFeatures(NSString *path, NSUInteger *recordCountOut)')
 fn=e[a:b]
