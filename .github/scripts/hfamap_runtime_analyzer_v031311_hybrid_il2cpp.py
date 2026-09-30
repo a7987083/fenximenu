@@ -1,6 +1,7 @@
 from pathlib import Path
 
 GENERIC=Path('hfamap/src/HFAMapGenericMenuResolver.m')
+EXPORTER=Path('hfamap/src/HFAMapJSONExport.m')
 MAKEFILE=Path('hfamap/Makefile')
 UI=Path('hfamap/src/HFAMapCyberUI.m')
 
@@ -40,6 +41,18 @@ new='''static NSDictionary *HFAAddressInfo(const void *address) {
 if old not in g: raise SystemExit('HFAAddressInfo anchor missing')
 g=g.replace(old,new,1)
 GENERIC.write_text(g)
+
+x=EXPORTER.read_text()
+if '#import "HFAMapIL2CPPRuntimeResolver.h"' not in x:
+    x=x.replace('#import <Foundation/Foundation.h>','#import <Foundation/Foundation.h>\n#import "HFAMapIL2CPPRuntimeResolver.h"',1)
+needle='''        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;
+        if (haveIdentity) root[@"identityFile"] = identityName;'''
+replacement='''        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;
+        root[@"il2cppRuntime"] = HFAIL2CPPResolverStatus();
+        if (haveIdentity) root[@"identityFile"] = identityName;'''
+if needle not in x: raise SystemExit('exporter root anchor missing')
+x=x.replace(needle,replacement,1)
+EXPORTER.write_text(x)
 
 m=MAKEFILE.read_text()
 needle='src/HFAMapGenericMenuResolver.m'
