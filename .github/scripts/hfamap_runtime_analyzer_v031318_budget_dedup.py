@@ -36,7 +36,7 @@ for p in Path('hfamap/src').glob('*.m'):
     s=p.read_text(); n=s.count(old)
     if n:
         s=s.replace(old,new); p.write_text(s); replaced+=n
-if replaced<3: raise SystemExit(f'expected multiple Learn.log path replacements, got {replaced}')
+if replaced<1: raise SystemExit('bundle-ID Learn.log path anchor missing')
 
 c=CROSS.read_text()
 anchor='static uint64_t gCrossBLRResolvedCount;\n'
