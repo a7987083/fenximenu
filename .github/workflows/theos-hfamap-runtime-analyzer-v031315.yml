@@ -1,0 +1,81 @@
+name: HFARuntimeAnalyzer v0.3.13.15 MethodContainmentResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.15-method-containment-resolver-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031315_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v031315_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v031315_method_containment.py \
+            .github/scripts/apply_hfaruntime_v031314_chain.py
+          TRACE=hfamap/src/HFAMapPatchExecutionTrace.m
+          TRUTH=hfamap/src/HFAMapRuntimeModificationTruth.m
+          IL2CPP=hfamap/src/HFAMapIL2CPPRuntimeResolver.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V031315-TRUTH-FILE]' "$TRACE"
+          grep -Fq '[V031315-TRUTH-SUMMARY]' "$TRACE"
+          grep -Fq '[V031315-MOD-SEMANTIC]' "$TRACE"
+          grep -Fq '[V031315-IL2CPP-TARGET]' "$TRUTH"
+          grep -Fq '[V031315-IL2CPP-CONTAINMENT]' "$IL2CPP"
+          grep -Fq 'HFAIL2CPPResolveContainingAddress' "$IL2CPP"
+          grep -Fq 'offsetInMethod' "$IL2CPP"
+          grep -Fq 'boundedByNextMethod' "$IL2CPP"
+          grep -Fq 'candidateOnly' "$IL2CPP"
+          grep -Fq 'containmentResolveCount' "$IL2CPP"
+          grep -Fq 'HFAMap_RuntimeModificationTruth_v031315.json' "$TRACE"
+          grep -Fq 'v0.3.13.15 MethodContainmentResolver' "$UI"
+          if grep -Eiq 'Hello.?Kitty|MeChat|RandomDice|RoyalDice|Relationship Points|Damage Multiplier|CO-OP SP|PVP SP|Merge Any Dice|0x2073498|0x1E38F40|0x1E19A58|0x65958E4|0x30E9C64|0x2884188|0x1F711C8|0x1CD3264' \
+             .github/scripts/hfamap_runtime_analyzer_v031315_method_containment.py \
+             hfamap/src/HFAMapIL2CPPRuntimeResolver.m \
+             hfamap/src/HFAMapRuntimeModificationTruth.m; then
+            echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031315'; exit 1
+          fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.15-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.15-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.15-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.15-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V031315-IL2CPP-CONTAINMENT' "$strings_file"
+          grep -Fq 'V031315-IL2CPP-TARGET' "$strings_file"
+          grep -Fq 'V031315-TRUTH-SUMMARY' "$strings_file"
+          grep -Fq 'V031315-MOD-SEMANTIC' "$strings_file"
+          grep -Fq 'HFAMap_RuntimeModificationTruth_v031315.json' "$strings_file"
+          grep -Fq 'V031312-CROSSIMAGE' "$strings_file"
+          grep -Fq 'V031311-IL2CPP-HIT' "$strings_file"
+          grep -Fq 'V031310-RETURN' "$strings_file"
+          grep -Fq 'V03139-STACK' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.15-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.15-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.15-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.15-*.txt
+          if-no-files-found: error
