@@ -45,13 +45,9 @@ GENERIC.write_text(g)
 x=EXPORTER.read_text()
 if '#import "HFAMapIL2CPPRuntimeResolver.h"' not in x:
     x=x.replace('#import <Foundation/Foundation.h>','#import <Foundation/Foundation.h>\n#import "HFAMapIL2CPPRuntimeResolver.h"',1)
-needle='''        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;
-        if (haveIdentity) root[@"identityFile"] = identityName;'''
-replacement='''        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;
-        root[@"il2cppRuntime"] = HFAIL2CPPResolverStatus();
-        if (haveIdentity) root[@"identityFile"] = identityName;'''
+needle='        if (targetIdentities.count) root[@"targetIdentities"] = targetIdentities;'
 if needle not in x: raise SystemExit('exporter root anchor missing')
-x=x.replace(needle,replacement,1)
+x=x.replace(needle,needle+'\n        root[@"il2cppRuntime"] = HFAIL2CPPResolverStatus();',1)
 EXPORTER.write_text(x)
 
 m=MAKEFILE.read_text()
