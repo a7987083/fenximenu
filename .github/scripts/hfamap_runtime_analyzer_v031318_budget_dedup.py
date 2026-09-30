@@ -79,7 +79,7 @@ fn=fn.replace('if(size==3){uint8_t nd=(uint8_t)MIN((unsigned)derivedDepth[rn]+1u
 fn=fn.replace('if(hasTaintedArg){uint8_t nd=(uint8_t)MIN((unsigned)argDepth+1u,15u);tainted[0]=YES;','if(hasTaintedArg&&argDepth<6){uint8_t nd=(uint8_t)MIN((unsigned)argDepth+1u,6u);tainted[0]=YES;')
 if '15u);tainted[0]=YES;' in fn:
     fn=fn.replace('if(hasTaintedArg){uint8_t nd=(uint8_t)MIN((unsigned)argDepth+1u,15u);tainted[0]=YES;','if(hasTaintedArg&&argDepth<6){uint8_t nd=(uint8_t)MIN((unsigned)argDepth+1u,6u);tainted[0]=YES;')
-loop='for(unsigned off=0;off+4<=scanLimit;off+=4){'
+loop='for(unsigned off=0;off<scanLimit;off+=4){'
 if loop not in fn: raise SystemExit('dataflow loop anchor missing')
 pre='BOOL hfa031318BudgetExceeded=NO;CFAbsoluteTime hfa031318Started=CFAbsoluteTimeGetCurrent();const CFTimeInterval hfa031318Budget=0.75;const uint8_t hfa031318DepthCap=6;'
 fn=fn.replace(loop,pre+'\n    '+loop+'if((off&0x3FFu)==0&&CFAbsoluteTimeGetCurrent()-hfa031318Started>hfa031318Budget){hfa031318BudgetExceeded=YES;HFAGenericLog("[V031318-BUDGET] stage=sender-dataflow off=0x%X budgetMs=750 action=fail-soft\\n",off);break;}',1)
