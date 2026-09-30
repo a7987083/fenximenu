@@ -41,7 +41,8 @@ jobs:
           shasum -a 256 "$out" | tee "dist/SHA256_HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.txt"
           strings "$out" > dist/strings.txt
           grep -Fq 'com.hfa.c4m0-config-owner/v0.3.13.19' dist/strings.txt
-          grep -Fq 'HFAMap_%@_C4M0ConfigOwner.json' dist/strings.txt
+          grep -Fq 'loadConfig:' dist/strings.txt
+          grep -Fq 'loadPolicies' dist/strings.txt
           grep -Fq 'V031318-BUDGET' dist/strings.txt
       - uses: actions/upload-artifact@v4
         with:
