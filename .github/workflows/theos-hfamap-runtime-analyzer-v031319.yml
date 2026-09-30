@@ -1,0 +1,53 @@
+name: HFARuntimeAnalyzer v0.3.13.19 C4M0ConfigOwnerResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.19-c4m0-config-owner-resolver-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031319_chain.py
+          python3 -m py_compile .github/scripts/apply_hfaruntime_v031319_chain.py .github/scripts/hfamap_runtime_analyzer_v031319_c4m0_config_owner.py
+          grep -Fq 'src/HFAMapC4M0ConfigOwnerResolver.m' hfamap/Makefile
+          grep -Fq 'loadConfig:' hfamap/src/HFAMapC4M0ConfigOwnerResolver.m
+          grep -Fq 'loadPolicies' hfamap/src/HFAMapC4M0ConfigOwnerResolver.m
+          grep -Fq 'com.hfa.c4m0-config-owner/v0.3.13.19' hfamap/src/HFAMapC4M0ConfigOwnerResolver.m
+          grep -Fq 'v0.3.13.19 C4M0ConfigOwnerResolver' hfamap/src/HFAMapCyberUI.m
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.dylib"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "dist/SHA256_HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.txt"
+          strings "$out" > dist/strings.txt
+          grep -Fq 'com.hfa.c4m0-config-owner/v0.3.13.19' dist/strings.txt
+          grep -Fq 'HFAMap_%@_C4M0ConfigOwner.json' dist/strings.txt
+          grep -Fq 'V031318-BUDGET' dist/strings.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.19-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.19-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.19-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.19-*.txt
+          if-no-files-found: error
