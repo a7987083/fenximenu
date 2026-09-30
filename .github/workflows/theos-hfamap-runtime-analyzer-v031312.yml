@@ -1,0 +1,80 @@
+name: HFARuntimeAnalyzer v0.3.13.12 CrossImageCallResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.12-cross-image-call-resolver-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031312_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v031312_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v031312_cross_image.py \
+            .github/scripts/apply_hfaruntime_v031311_chain.py
+          GENERIC=hfamap/src/HFAMapGenericMenuResolver.m
+          CROSS=hfamap/src/HFAMapCrossImageResolver.m
+          IL2CPP=hfamap/src/HFAMapIL2CPPRuntimeResolver.m
+          EXPORTER=hfamap/src/HFAMapJSONExport.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V031312-CROSSIMAGE]' "$GENERIC"
+          grep -Fq '[V031312-BLR]' "$GENERIC"
+          grep -Fq 'crossImageCall' "$GENERIC"
+          grep -Fq 'ADRP+LDR+BR' "$CROSS"
+          grep -Fq 'ADRP+ADD+LDR+BR' "$CROSS"
+          grep -Fq 'LDR-literal+BR' "$CROSS"
+          grep -Fq 'ADRP+LDR+BLR' "$CROSS"
+          grep -Fq 'crossImageRuntime' "$EXPORTER"
+          grep -Fq '[V031311-IL2CPP-HIT]' "$IL2CPP"
+          grep -Fq '[V031311-HYBRID]' "$GENERIC"
+          grep -Fq '[V031310-RETURN]' "$GENERIC"
+          grep -Fq '[V03139-STACK]' "$GENERIC"
+          grep -Fq 'v0.3.13.12 CrossImageCallResolver' "$UI"
+          if grep -Eiq 'MeChat|RoyalDice|RandomDice|Hello Kitty|Relationship Points|Damage Multiplier|CO-OP SP|PVP SP|Merge Any Dice|0x399608|0x392D10|0x395094|0x3AE0|0x1F0|0x420' .github/scripts/hfamap_runtime_analyzer_v031312_*.py hfamap/src/HFAMapCrossImageResolver.m; then echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031312'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.12-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.12-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.12-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.12-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V031312-CROSSIMAGE' "$strings_file"
+          grep -Fq 'V031312-BLR' "$strings_file"
+          grep -Fq 'ADRP+LDR+BR' "$strings_file"
+          grep -Fq 'crossImageRuntime' "$strings_file"
+          grep -Fq 'V031311-IL2CPP-HIT' "$strings_file"
+          grep -Fq 'V031311-HYBRID' "$strings_file"
+          grep -Fq 'V031310-RETURN' "$strings_file"
+          grep -Fq 'V03139-STACK' "$strings_file"
+          grep -Fq 'V03137-FEATURE-TRUTH' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-VALUE' "$strings_file"
+          grep -Fq 'V03134-STARTUP-OWNERSHIP' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.12-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.12-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.12-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.12-*.txt
+          if-no-files-found: error
