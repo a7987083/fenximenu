@@ -1,0 +1,74 @@
+name: HFARuntimeAnalyzer v0.3.13.10 ObjectReturnTaintResolver
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.10-object-return-taint-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031310_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v031310_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v031310_object_return_taint.py \
+            .github/scripts/apply_hfaruntime_v03139_chain.py
+          GENERIC=hfamap/src/HFAMapGenericMenuResolver.m
+          EXPORTER=hfamap/src/HFAMapJSONExport.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq '[V031310-DERIVED]' "$GENERIC"
+          grep -Fq '[V031310-RETURN]' "$GENERIC"
+          grep -Fq '[V031310-IDFIELD-LOAD]' "$GENERIC"
+          grep -Fq '[V031310-OBJECT-SUMMARY]' "$GENERIC"
+          grep -Fq 'derivedObjectEvents' "$GENERIC"
+          grep -Fq '@"objectReturnAware":@YES' "$GENERIC"
+          grep -Fq '[V03139-STACK]' "$GENERIC"
+          grep -Fq '[V03139-STACK-SUMMARY]' "$GENERIC"
+          grep -Fq 'senderIdentifierDataflow' "$EXPORTER"
+          grep -Fq 'v0.3.13.10 ObjectReturnTaintResolver' "$UI"
+          if grep -Eiq 'MeChat|RoyalDice|RandomDice|Hello Kitty|Relationship Points|Damage Multiplier|CO-OP SP|PVP SP|Merge Any Dice|0x399608|0x392D10|0x395094|0x3AE0|0x1F0|0x420' .github/scripts/hfamap_runtime_analyzer_v031310_*.py; then echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031310'; exit 1; fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.10-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.10-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.10-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.10-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V031310-DERIVED' "$strings_file"
+          grep -Fq 'V031310-RETURN' "$strings_file"
+          grep -Fq 'V031310-IDFIELD-LOAD' "$strings_file"
+          grep -Fq 'V031310-OBJECT-SUMMARY' "$strings_file"
+          grep -Fq 'derivedObjectEvents' "$strings_file"
+          grep -Fq 'objectReturnAware' "$strings_file"
+          grep -Fq 'V03139-STACK' "$strings_file"
+          grep -Fq 'V03137-FEATURE-TRUTH' "$strings_file"
+          grep -Fq 'V03136-RUNTIME-VALUE' "$strings_file"
+          grep -Fq 'V03134-STARTUP-OWNERSHIP' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.10-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.10-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.10-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.10-*.txt
+          if-no-files-found: error
