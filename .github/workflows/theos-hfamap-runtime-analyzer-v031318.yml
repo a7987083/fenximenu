@@ -1,0 +1,78 @@
+name: HFARuntimeAnalyzer v0.3.13.18 AnalysisBudgetAndDedup
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.18-analysis-budget-dedup-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031318_chain.py
+          python3 -m py_compile \
+            .github/scripts/apply_hfaruntime_v031318_chain.py \
+            .github/scripts/hfamap_runtime_analyzer_v031318_budget_dedup.py \
+            .github/scripts/hfamap_runtime_analyzer_v031318_replay.py
+          python3 .github/scripts/hfamap_runtime_analyzer_v031318_replay.py --self-test
+          CROSS=hfamap/src/HFAMapCrossImageResolver.m
+          GENERIC=hfamap/src/HFAMapGenericMenuResolver.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'gCrossTargetCache' "$CROSS"
+          grep -Fq 'uniqueResolveCount' "$CROSS"
+          grep -Fq 'cacheHitCount' "$CROSS"
+          grep -Fq 'gCrossBLRCache' "$CROSS"
+          grep -Fq '[V031318-BUDGET]' "$GENERIC"
+          grep -Fq 'hfa031318DepthCap' "$GENERIC"
+          grep -Fq 'HFA031318CrossLogOnce' "$GENERIC"
+          grep -Fq 'v0.3.13.18 AnalysisBudgetAndDedup' "$UI"
+          if grep -R -Fq 'Documents/HFAMap_Learn.log' hfamap/src/*.m; then
+            echo 'legacy non-bundle Learn.log path remains'; exit 1
+          fi
+          if grep -Eiq 'Hello.?Kitty|MeChat|RandomDice|RoyalDice|WayOfKings|PathOfKings|0x2073498|0x65958E4|0x2884188' \
+             .github/scripts/hfamap_runtime_analyzer_v031318_budget_dedup.py \
+             hfamap/src/HFAMapCrossImageResolver.m \
+             hfamap/src/HFAMapGenericMenuResolver.m; then
+            echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031318'; exit 1
+          fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.18-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.18-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.18-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "dist/SIZE_HFARuntimeAnalyzer-v0.3.13.18-${SHORT_SHA}.txt"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'V031318-BUDGET' "$strings_file"
+          grep -Fq 'uniqueResolveCount' "$strings_file"
+          grep -Fq 'cacheHitCount' "$strings_file"
+          grep -Fq 'HFAMap_%@_Learn.log' "$strings_file"
+          grep -Fq 'V031317-NATIVE-ENTRY' "$strings_file"
+          grep -Fq 'V031316-HOOK-INGEST' "$strings_file"
+          grep -Fq 'V031315-IL2CPP-CONTAINMENT' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.18-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.18-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.18-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.18-*.txt
+          if-no-files-found: error
