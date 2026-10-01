@@ -6,7 +6,6 @@
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
 #import <mach/mach.h>
-#import <mach/mach_vm.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -79,9 +78,9 @@ static BOOL HFARTDAppLocalPath(const char *path){
 
 static BOOL HFARTDReadable(uintptr_t address,size_t size){
     if(!address||!size||address+size<address)return NO;
-    mach_vm_address_t r=(mach_vm_address_t)address;mach_vm_size_t rs=0;vm_region_basic_info_data_64_t info={0};
+    vm_address_t r=(vm_address_t)address;vm_size_t rs=0;vm_region_basic_info_data_64_t info={0};
     mach_msg_type_number_t count=VM_REGION_BASIC_INFO_COUNT_64;mach_port_t object=MACH_PORT_NULL;
-    if(mach_vm_region(mach_task_self(),&r,&rs,VM_REGION_BASIC_INFO_64,(vm_region_info_t)&info,&count,&object)!=KERN_SUCCESS)return NO;
+    if(vm_region_64(mach_task_self(),&r,&rs,VM_REGION_BASIC_INFO_64,(vm_region_info_t)&info,&count,&object)!=KERN_SUCCESS)return NO;
     return (info.protection&VM_PROT_READ)&&r<=address&&address+size<=r+(uintptr_t)rs;
 }
 
