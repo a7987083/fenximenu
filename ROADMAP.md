@@ -1,5 +1,67 @@
 # HFAMap Roadmap
 
+## Current phase — HFARuntimeAnalyzer v0.3.13.19 RuntimeTargetDecrypt
+
+Branch: `feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1`
+
+Stable baseline: v0.3.13.18 `d9bf9dfbba4b81a32ba8bfc7ba86693e032393a6`
+
+Build-tested commit: `d3754015e32c11ed514dddc90edbdb823d121b6a`
+
+CI run: `36818369097` — success
+
+Artifact: `HFARuntimeAnalyzer-v0.3.13.19-36818369097` (`11141648675`)
+
+Binary: `HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib` — arm64, 417680 bytes
+
+Binary SHA256: `5343df6ca28f7a09ad118a7c2ba915acf25529b02c3c9e363321146238432a4e`
+
+Mach-O UUID: `8F08F0C9-BE3D-3E54-9BFE-536E6F635BB8`
+
+### Goal
+
+Close the remaining runtime-only/native-hook backends without confusing menu RVAs, replacement RVAs, descriptor addresses, or ObjC ivar offsets with the actual game target.
+
+The v0.3.13.19 probe performs a read-only runtime target-record pass:
+
+`loaded menu image -> encrypted target record -> installer xref -> replacement/original slot -> scratch-copy decrypt using the menu's initialized runtime key table -> strict plaintext target -> unique executable-image mapping -> semantic/IL2CPP enrichment`
+
+### Implemented / CI passed
+
+- generic target-record families `0x031201 / 0x031211`;
+- unique decrypt fingerprint discovery in the selected loaded image;
+- encrypted record copy to scratch memory before invoking the menu's own decrypt routine;
+- no target/menu image writes and no hook installation;
+- installer xref recovery and X3/X4 materialization for replacement/original slot;
+- existing `HFASemanticAnalyzeReplacement` and IL2CPP owner enrichment reuse;
+- strict hex plaintext parsing;
+- unique executable-range target mapping with fail-closed ambiguity handling;
+- target entry-byte capture;
+- JSONL records: `runtime-target-decrypt-begin`, `runtime-target-image`, `runtime-target-backend`, `runtime-target-decrypt-end`;
+- sample-specific names/RVAs prohibited by CI.
+
+### Device acceptance order
+
+1. **MeChat** — oracle: historical same-build target `0x65958E4`; this validates runtime key initialization + scratch decrypt.
+2. **RogueLegend** — close Damage/Defence/God Mode shared native target.
+3. **Aniimo** — decrypt both native records, then bind the 12 runtime identifiers to the recovered backends.
+4. **Duck Survival** — decrypt the two native records and finish `dmgMul/god/nocd` backend binding.
+5. **Path of Kings** — decrypt all three records; keep Debug Menu as runtime action unless downstream evidence proves otherwise.
+6. **Random Dice 2** — decrypt all seven native records, including the four previously unbound support/backend records.
+7. **Dragon Fever TD** — decrypt the single native target record and bind its runtime definitions.
+8. **Whisper Castle** — expected zero target records; continue descriptor-less ObjC action/Block analysis separately.
+
+### Next task
+
+Inject exactly `HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib`, run **Scan Menu** after the menu/runtime key table has initialized, and archive:
+
+- `Documents/HFARTD_<bundle-id>_RuntimeTargetDecrypt.jsonl`;
+- the existing `Documents/HFAMap_<bundle-id>/` analyzer folder.
+
+Do not promote any runtime target to a static patch unless target identity, current original bytes, and an equivalent fixed byte transformation are independently proven.
+
+---
+
 ## Current phase — HFARuntimeAnalyzer v0.3.4 SemanticBackend
 
 Branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
