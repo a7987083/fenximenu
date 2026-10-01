@@ -6,6 +6,7 @@
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
 #import <mach/mach.h>
+#import <mach/mach_vm.h>
 
 #include <stdint.h>
 #include <stdlib.h>
