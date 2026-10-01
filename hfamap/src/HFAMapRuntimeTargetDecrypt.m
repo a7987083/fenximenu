@@ -90,7 +90,7 @@ static NSString *HFARTDHex(const uint8_t *b,size_t n){
 
 static NSString *HFARTDLogPath(void){
     NSString *bid=[[NSBundle mainBundle] bundleIdentifier]?:@"unknown";
-    return [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents/HFAMap_%@_RuntimeTargetDecrypt.jsonl",bid]];
+    return [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents/HFARTD_%@_RuntimeTargetDecrypt.jsonl",bid]];
 }
 
 static void HFARTDEmit(NSDictionary *record){
