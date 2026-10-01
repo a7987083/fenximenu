@@ -1,5 +1,52 @@
 # Known Issues
 
+## HFARuntimeAnalyzer v0.3.13.19 RuntimeTargetDecrypt
+
+### Physical-device target decryption is the current gate
+
+Status: open / primary gate.
+
+The v0.3.13.19 arm64 dylib is CI-built and independently re-hashed, but no new iPhone run has yet proven the scratch decrypt path against the runtime-initialized key table. The first acceptance oracle is MeChat, where historical same-build evidence already identifies plaintext target `0x65958E4`.
+
+### Runtime key IDs 1/2 are not static Mach-O constants
+
+Status: confirmed architecture boundary.
+
+Static reverse analysis found a registration path that consumes an external 64 × 16-byte key table and registers IDs 0..63. Key IDs 1/2 therefore cannot be reliably reconstructed from the menu Mach-O alone. Do not hardcode inferred keys.
+
+### Decrypt timing can legitimately fail before key initialization
+
+Status: expected fail-closed condition.
+
+If Scan Menu runs before the menu/runtime key table is initialized, `decryptRC` may fail or plaintext may not resolve. The probe must report failure/ambiguity rather than inventing a target. Re-run after the menu is fully initialized before treating the sample as unresolved.
+
+### Whisper Castle has no matching native target record
+
+Status: open / separate backend family.
+
+Matching static analysis found zero target records and zero patch records for Whisper Castle. Energy/Currency menu controls and action evidence exist, but v0.3.13.19 target-record decryption cannot manufacture a backend. Continue bounded descriptor-less ObjC action / Block invoke analysis.
+
+### Decrypted target does not imply a static patch
+
+Status: permanent truth rule.
+
+A recovered `gameTargetRVA` proves the runtime hook target, not an equivalent fixed byte patch. RuntimeValue/runtimeToggle/runtimeAction semantics may remain runtime-only. Static canonical promotion still requires unique target identity, current original bytes, and independently proven enabled bytes/equivalence.
+
+### Current CI delivery
+
+- branch: `feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1`
+- build-tested commit: `d3754015e32c11ed514dddc90edbdb823d121b6a`
+- run: `36818369097`
+- artifact ID: `11141648675`
+- binary: `HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib`
+- UUID: `8F08F0C9-BE3D-3E54-9BFE-536E6F635BB8`
+- size: `417680`
+- SHA256: `5343df6ca28f7a09ad118a7c2ba915acf25529b02c3c9e363321146238432a4e`
+- compile/link/sign: passed
+- device runtime decrypt: pending
+
+---
+
 ## HFARuntimeAnalyzer v0.3.4 SemanticBackend
 
 ### Physical-device semantic validation is pending
