@@ -1,5 +1,58 @@
 # Development Changelog
 
+## HFARuntimeAnalyzer v0.3.13.19 — Runtime Target Decrypt
+
+Branch: `feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1`
+
+Baseline: v0.3.13.18 `d9bf9dfbba4b81a32ba8bfc7ba86693e032393a6`
+
+Build-tested commit: `d3754015e32c11ed514dddc90edbdb823d121b6a`
+
+GitHub Actions run: `36818369097` — **success**
+
+Artifact ID: `11141648675`
+
+Artifact ZIP SHA256: `0a78628bec9eeda6fbd8f556e7cb843c822eced62f52e377e239120719f75916`
+
+Binary: `HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib`
+
+Binary size: `417680` bytes
+
+Binary UUID: `8F08F0C9-BE3D-3E54-9BFE-536E6F635BB8`
+
+Binary SHA256: `5343df6ca28f7a09ad118a7c2ba915acf25529b02c3c9e363321146238432a4e`
+
+### Changed
+
+- Added `HFAMapRuntimeTargetDecrypt` as a read-only runtime target-record resolver.
+- Added unique loaded-image decrypt fingerprint discovery for the existing target-record family.
+- Added scratch-copy decryption so the original encrypted descriptor is never modified.
+- Added installer xref analysis to recover replacement and original-slot provenance.
+- Reused the existing runtime semantic analyzer and IL2CPP owner enrichment instead of inventing a second semantic engine.
+- Added strict plaintext parsing and unique executable-image mapping before a decrypted value can be called `gameTargetRVA`.
+- Added target-entry byte capture and explicit confidence/ambiguity fields.
+- Integrated the scan into the existing Generic Menu rescan path.
+- Added CI genericity gates rejecting known sample names and fixed sample RVAs.
+- Added the dedicated `theos-hfamap-runtime-analyzer-v031319.yml` workflow.
+
+### First real CI errors and fixes
+
+1. Generation audit rejected a direct `Documents/HFAMap_*`-style output path. The new probe was moved to `Documents/HFARTD_<bundle>_RuntimeTargetDecrypt.jsonl`.
+2. `mach_vm_region` was undeclared; adding `<mach/mach_vm.h>` exposed that iPhoneOS 18.5 marks the header unsupported. The final implementation uses the project's already-supported `vm_region_64` path. No SDK/compiler upgrade was used.
+
+### Verification
+
+- generated-source chain: passed;
+- generic/sample-specific leak gates: passed;
+- iPhoneOS arm64 compile/link/strip/sign: passed;
+- final marker checks: passed;
+- Actions artifact upload: passed;
+- downloaded artifact SHA256 re-check: passed;
+- Mach-O architecture/UUID/build-version inspection: passed;
+- physical-device runtime target decryption: **pending**.
+
+---
+
 ## HFARuntimeAnalyzer v0.3.4 — Semantic Backend Analyzer Phase 1
 
 Branch: `feature/hfaruntime-v0.3.4-semantic-backend-analyzer`
