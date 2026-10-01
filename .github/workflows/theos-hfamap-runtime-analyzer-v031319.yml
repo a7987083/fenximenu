@@ -1,0 +1,65 @@
+name: HFARuntimeAnalyzer v0.3.13.19 RuntimeTargetDecrypt
+
+on:
+  push:
+    branches: [feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and verify
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_hfaruntime_v031319_chain.py
+          python3 -m py_compile .github/scripts/apply_hfaruntime_v031319_chain.py
+          SRC=hfamap/src/HFAMapRuntimeTargetDecrypt.m
+          GENERIC=hfamap/src/HFAMapGenericMenuResolver.m
+          UI=hfamap/src/HFAMapCyberUI.m
+          grep -Fq 'runtime-target-backend' "$SRC"
+          grep -Fq 'scratchCopyDecrypt' "$SRC"
+          grep -Fq 'runtime-decrypted-unique-exec-range' "$SRC"
+          grep -Fq 'D105C3FF' "$SRC"
+          grep -Fq 'HFARuntimeTargetDecryptScan();' "$GENERIC"
+          grep -Fq 'src/HFAMapRuntimeTargetDecrypt.m' hfamap/Makefile
+          grep -Fq 'v0.3.13.19 RuntimeTargetDecrypt' "$UI"
+          if grep -Eiq 'MeChat|RogueLegend|Aniimo|RandomDice|PathOfKings|Duck|DragonFever|0x65958E4|0xBBE458|0x4B68C0' "$SRC"; then
+            echo 'SAMPLE-SPECIFIC STRING LEAKED INTO V031319'; exit 1
+          fi
+          git diff --check
+      - name: Install dependencies
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd hfamap
+          make clean
+          make FINALPACKAGE=1
+          mkdir -p dist
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          out="dist/HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.dylib"
+          sha_file="dist/SHA256_HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.txt"
+          size_file="dist/SIZE_HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}.txt"
+          strings_file="dist/HFARuntimeAnalyzer-v0.3.13.19-${SHORT_SHA}-strings.txt"
+          cp .theos/obj/HFAMapUniversal.dylib "$out"
+          file "$out"
+          wc -c "$out" | tee "$size_file"
+          shasum -a 256 "$out" | tee "$sha_file"
+          strings "$out" > "$strings_file"
+          grep -Fq 'runtime-target-backend' "$strings_file"
+          grep -Fq 'runtime-target-decrypt-end' "$strings_file"
+          grep -Fq 'scratchCopyDecrypt' "$strings_file"
+          grep -Fq 'V031318-BUDGET' "$strings_file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HFARuntimeAnalyzer-v0.3.13.19-${{ github.run_id }}
+          path: |
+            hfamap/dist/HFARuntimeAnalyzer-v0.3.13.19-*.dylib
+            hfamap/dist/SHA256_HFARuntimeAnalyzer-v0.3.13.19-*.txt
+            hfamap/dist/SIZE_HFARuntimeAnalyzer-v0.3.13.19-*.txt
+          if-no-files-found: error
