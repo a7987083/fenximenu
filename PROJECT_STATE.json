@@ -1,91 +1,83 @@
 {
   "project": "HFARuntimeAnalyzer",
-  "version": "0.3.13.3",
-  "phase": "pagezero-rva-fix-ci-passed-device-validation-pending",
+  "version": "0.3.13.19",
+  "phase": "runtime-target-decrypt-ci-passed-device-validation-pending",
   "repository": "a7987083/fenximenu",
-  "branch": "feature/hfaruntime-v0.3.13.3-pagezero-rva-fix",
-  "scope": {
-    "priority": "Class 1 Static Patch only",
-    "runtime_semantic_hook": "paused until Class 1 static export completeness and stability are proven",
-    "runtime_action_descriptorless": "frozen",
-    "generic_only": true,
-    "fail_closed": true,
-    "fixed_rva_policy": "sample names and sample fixed RVAs are prohibited from the v0.3.13.3 generic layer"
-  },
+  "branch": "feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1",
   "baseline": {
-    "v0312": "16-game matrix: RuntimeAnalyzer static=72, canonical ledger=59, gap=13, silentlyDropped=0",
-    "v03131": "per-export analyzer epoch guard fixed repeat-scan device crashes; main executable identity remained unresolved",
-    "v03132": "main executable path/UUID resolution succeeded on device, but analyzer RVA inputs below 0x100000000 were incorrectly classified as preferred VM addresses because __PAGEZERO was included in the range test"
+    "version": "0.3.13.18",
+    "commit": "d9bf9dfbba4b81a32ba8bfc7ba86693e032393a6"
   },
-  "v03132_device_result": {
-    "status": "main-image-identity-passed-pagezero-rva-bug-found",
-    "main_image_identity": "passed; real NSBundle executable path and runtime LC_UUID matched analyzer target identity",
-    "single_pass": "passed; one action=run with same-epoch action=reuse",
-    "failure": "canonical RVA underflow for already-RVA analyzer inputs",
-    "evidence_pattern": "analyzer RVA such as 0x45099C or 0x7E5390 was treated as lying in __PAGEZERO and normalized by subtracting main preferred VM base, yielding 0xFFFFFFFF00...",
-    "package_result": "ledger parity remained false, so hfapatch export was correctly blocked fail-closed"
-  },
-  "implementation_v03133": {
-    "build_tested_commit": "bebd3a39bcc98e27652879e26a4ed5949c9c1f55",
-    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v03133.yml",
-    "generator_chain": ".github/scripts/apply_hfaruntime_v03133_chain.py",
-    "pagezero_fix_script": ".github/scripts/hfamap_runtime_analyzer_v03133_pagezero_rva_fix.py",
-    "canonicalizer": "HFA03133CanonicalTarget",
-    "segment_policy": "__PAGEZERO is excluded from both minVM selection and preferred-address range classification",
-    "preferred_range_policy": "only non-PAGEZERO, non-empty LC_SEGMENT_64 ranges can classify raw input as a preferred VM address",
-    "already_rva_policy": "if raw input does not lie in a real Mach-O segment preferred range, preserve it unchanged as RVA",
-    "preferred_vm_policy": "if raw input lies in a real preferred VM segment, subtract minimum non-PAGEZERO VM address",
-    "match_key": "runtime target UUID + canonical RVA + original bytes + enabled bytes",
-    "main_image_policy": "v0.3.13.2 NSBundle executable image resolver retained unchanged",
-    "single_pass_policy": "v0.3.13.1 per-export analyzer epoch guard retained unchanged",
-    "audit_file": "HFAMap_StaticCanonical_v03133.json",
-    "audit_schema": "com.hfa.static-canonical-audit/v0.3.13.3",
-    "markers": [
-      "[V03133-RVA-NORMALIZE]",
-      "[V03133-MAIN-IMAGE]",
-      "[V03133-ANALYZER-PREPASS]",
-      "[V03133-LEDGER-BRIDGE]",
-      "[V03133-STATIC-CANONICAL]",
-      "[V03131-ANALYZER-GUARD]"
-    ]
+  "implementation": {
+    "build_tested_commit": "d3754015e32c11ed514dddc90edbdb823d121b6a",
+    "module": "hfamap/src/HFAMapRuntimeTargetDecrypt.m",
+    "workflow": ".github/workflows/theos-hfamap-runtime-analyzer-v031319.yml",
+    "generator_chain": ".github/scripts/apply_hfaruntime_v031319_chain.py",
+    "target_record_families": [
+      "0x031201",
+      "0x031211"
+    ],
+    "policy": "scratch-copy decrypt with menu-owned runtime decrypt function; never write original record or target image",
+    "output": "Documents/HFARTD_<CFBundleIdentifier>_RuntimeTargetDecrypt.jsonl",
+    "generic_only": true,
+    "sample_specific_names_and_fixed_rvas_prohibited": true
   },
   "build": {
-    "ci": "success",
-    "run_id": 36359023065,
-    "artifact_id": 10943974843,
-    "artifact": "HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix",
-    "artifact_zip_sha256": "52af8a291f4cafc392eee8340551289cbf4324d0498790da13b45f72fcf74d29",
-    "binary": "HFARuntimeAnalyzer-v0.3.13.3-PageZeroRVAFix.dylib",
+    "status": "success",
+    "run_id": 36818369097,
+    "artifact_id": 11141648675,
+    "artifact_zip_sha256": "0a78628bec9eeda6fbd8f556e7cb843c822eced62f52e377e239120719f75916",
+    "binary": "HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib",
     "architecture": "arm64",
-    "size_bytes": 333296,
-    "binary_sha256": "7ccf339dd35a2d6608960afd64e7f0a0a1453f42b3120538ecca09a209d691ae"
+    "min_os": "12.0.0",
+    "sdk": "18.5.0",
+    "macho_uuid": "8F08F0C9-BE3D-3E54-9BFE-536E6F635BB8",
+    "size_bytes": 417680,
+    "binary_sha256": "5343df6ca28f7a09ad118a7c2ba915acf25529b02c3c9e363321146238432a4e"
   },
   "verification": {
-    "generator_chain": "passed",
-    "pagezero_canonicalizer_gate": "passed",
-    "stale_main_index0_gate": "passed",
-    "generic_fixed_rva_gate": "passed",
-    "generic_sample_name_gate": "passed",
-    "ios_compile_link_sign": "passed",
+    "generated_source_chain": "passed",
+    "genericity_gate": "passed",
+    "ios_compile_link_strip_sign": "passed",
     "binary_marker_gate": "passed",
     "artifact_upload": "passed",
     "artifact_download_rehash": "passed",
-    "device_rva_normalization": "pending",
-    "device_analyzer_ledger_parity": "pending",
-    "device_hfapatch_emission": "pending",
-    "device_apply_restore": "not started"
+    "local_macho_inspection": "passed",
+    "physical_device_runtime_decrypt": "pending",
+    "full_runtime_feature_binding": "pending",
+    "static_patch_equivalence_for_runtime_backends": "not implied"
   },
-  "device_acceptance_gates": [
-    "[V03133-RVA-NORMALIZE] reports mode=rva and canonical equal to raw for already-RVA analyzer offsets",
-    "[V03133-RVA-NORMALIZE] reports mode=preferred and subtracts the non-PAGEZERO preferred VM base for full preferred VM addresses",
-    "Rise of Berk reaches analyzer=15 and ledger=15 with ledgerParity=true; historical expectation matched=8 and bridged=7 is advisory only",
-    "Zombie Catchers reaches analyzer=4 and ledger=4 with ledgerParity=true; historical expectation matched=4 and bridged=0 is advisory only",
-    "affected Class-1 sample emits and mirrors an actual .hfapatch.json only after parity and canonical validation pass",
-    "v0.3.13.1 single-pass guard remains one action=run per export epoch with later same-epoch entries action=reuse",
-    "v0.3.13.2 main executable path/UUID identity remains correct",
-    "silentlyDropped remains zero",
-    "shared-target conflicts remain fail-closed",
-    "no Runtime Semantic feature is promoted into a Static canonical patch"
-  ],
-  "next_task": "Device-test v0.3.13.3 first on Rise of Berk and Zombie Catchers. Verify V03133-RVA-NORMALIZE modes, analyzer-to-ledger parity, and physical hfapatch emission. If both pass, rerun the full Class-1 matrix before Apply -> enabled readback -> Restore -> original readback verification."
+  "known_runtime_matrix": {
+    "mechat": {
+      "target_records": 8,
+      "native_bound": 1,
+      "oracle_game_target_rva": "0x65958E4"
+    },
+    "rogue_legend": {
+      "target_records": 3,
+      "native_bound": 1
+    },
+    "aniimo": {
+      "target_records": 2
+    },
+    "duck_survival": {
+      "target_records": 2
+    },
+    "path_of_kings": {
+      "target_records": 3,
+      "descriptorless_actions": 1
+    },
+    "random_dice_2": {
+      "target_records": 7,
+      "previously_feature_bound": 3
+    },
+    "dragon_fever_td": {
+      "target_records": 1
+    },
+    "whisper_castle": {
+      "target_records": 0,
+      "descriptorless_action_required": true
+    }
+  },
+  "next_task": "Inject v0.3.13.19 on device, validate MeChat oracle first, then collect HFARTD JSONL + matching HFAMap folders for RogueLegend, Aniimo, Duck, Path, RandomDice, Dragon, and Whisper."
 }
