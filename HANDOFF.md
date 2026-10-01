@@ -1,5 +1,79 @@
 # HFAMap Handoff
 
+## Active work — HFARuntimeAnalyzer v0.3.13.19 RuntimeTargetDecrypt
+
+- repository: `a7987083/fenximenu`;
+- branch: `feature/hfaruntime-v0.3.13.19-runtime-target-decrypt-v1`;
+- stable baseline: v0.3.13.18 `d9bf9dfbba4b81a32ba8bfc7ba86693e032393a6`;
+- build-tested commit: `d3754015e32c11ed514dddc90edbdb823d121b6a`;
+- GitHub Actions run: `36818369097` — success;
+- artifact ID: `11141648675`;
+- binary: `HFARuntimeAnalyzer-v0.3.13.19-d3754015.dylib`;
+- architecture: arm64;
+- minimum OS / SDK: iOS 12.0 / iPhoneOS 18.5;
+- size: `417680` bytes;
+- Mach-O UUID: `8F08F0C9-BE3D-3E54-9BFE-536E6F635BB8`;
+- SHA256: `5343df6ca28f7a09ad118a7c2ba915acf25529b02c3c9e363321146238432a4e`.
+
+### Why this version exists
+
+The remaining runtime corpus contains encrypted native target records. Static analysis can recover the record RVA, replacement RVA, original slot, and replacement semantics, but key IDs 1/2 are populated from a runtime-registered 64 × 16-byte key table. Therefore a Mach-O-only decoder cannot truthfully recover every plaintext target.
+
+v0.3.13.19 resolves that boundary generically on-device: after the target menu has initialized its key table, it copies each eligible encrypted target record to scratch memory and invokes the menu's own verified decrypt routine on the copy. The original record and target image are not written.
+
+### Important truth boundary
+
+Keep these distinct:
+
+- `targetRecordRVA`: encrypted descriptor location in the menu dylib;
+- `replacementRVA`: native replacement implementation in the menu dylib;
+- `originalSlotRVA`: storage for the original function pointer;
+- `menuActionRVA`: UI/action handler;
+- `gameTargetRVA`: decrypted target only after strict parsing and unique executable-image resolution.
+
+Only the last one is the actual game target. None of the others may be relabeled as a game offset.
+
+### Current static corpus facts feeding the probe
+
+- MeChat: target record `0xBBE458`, replacement `0xB8AFD4`, original slot `0xD30F40`; historical plaintext target `0x65958E4` is the device oracle.
+- RogueLegend: shared record `0xBBE5A0`, replacement `0xB8AC84`, slot `0xD30F40`; Damage/Defence/God Mode semantics already recovered.
+- Aniimo: 2 native target records.
+- Duck Survival: 2 native target records.
+- Path of Kings: 3 native target records plus descriptor-less Debug Menu action.
+- Random Dice 2: 7 native target records; only 3 were previously feature-bound.
+- Dragon Fever TD: 1 native target record.
+- Whisper Castle: 0 target records; must stay on the descriptor-less action/Block path.
+
+### Output
+
+Runtime decrypt evidence is written to:
+
+`Documents/HFARTD_<CFBundleIdentifier>_RuntimeTargetDecrypt.jsonl`
+
+Key records:
+
+- `runtime-target-image`
+- `runtime-target-backend`
+- `runtime-target-decrypt-end`
+
+Every backend record retains `analysisOnly=true`, `memoryWritten=false`, and `scratchCopyDecrypt=true`.
+
+### Build status vs runtime status
+
+- modified: yes;
+- committed: yes;
+- compiled: yes;
+- CI: yes;
+- artifact: yes;
+- run on iPhone: **not yet**;
+- remaining runtime targets fully closed: **not yet**.
+
+### Next task
+
+Run this exact dylib on the acceptance matrix beginning with MeChat. Return the HFARTD JSONL plus the matching HFAMap app folder. Use MeChat's historical `0x65958E4` as the first positive control before trusting newly decrypted targets.
+
+---
+
 ## Active work — HFARuntimeAnalyzer v0.3.4 SemanticBackend Phase 1
 
 - repository: `a7987083/fenximenu`;
