@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FAST = (ROOT / "hfamap/src/HFAMapFastDiscovery.mm").read_text()
 CORE = (ROOT / "hfamap/src/HFAMapCore.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
+CYBER = (ROOT / "hfamap/src/HFAMapCyberUI.m").read_text()
 MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 
 
@@ -26,11 +27,14 @@ class DecoupledDiscoveryAnalysisTests(unittest.TestCase):
         self.assertIn('@NO', CORE)
         self.assertIn('run-discovery-first', CORE)
 
-    def test_ui_has_static_catalog_button_without_changing_three_runtime_phases(self):
-        self.assertIn('1. Search Menu', ENTRY)
-        self.assertIn('2. Deep Analyze Menu', ENTRY)
-        self.assertIn('3. Runtime Probe (8s)', ENTRY)
-        self.assertIn('4. Static Analyze Dylib', ENTRY)
+    def test_ui_exposes_two_button_flow_while_backend_keeps_three_phases(self):
+        self.assertIn('扫描菜单模块', CYBER)
+        self.assertIn('解析并导出', CYBER)
+        self.assertIn('HFAMapRunMenuDiscovery', CYBER)
+        self.assertIn('HFAMapRunSelectedDeepAnalysis', CYBER)
+        self.assertIn('HFAMapArmLastSelectedRuntimeProbe', CYBER)
+        self.assertNotIn('1. Search Menu', ENTRY)
+        self.assertNotIn('4. Static Analyze Dylib', ENTRY)
 
     def test_fast_module_is_compiled(self):
         self.assertIn('src/HFAMapFastDiscovery.mm', MAKEFILE)
