@@ -61,10 +61,7 @@ jobs:
           strings "$out" > "$RUNNER_TEMP/hfamap2524.strings"
           file "$out" | grep -q arm64
           grep -q '2.5.24-dev-two-button-unified-ui' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q '扫描菜单模块' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q '解析并导出' "$RUNNER_TEMP/hfamap2524.strings"
           ! grep -q 'HFAMap v2.5.9-dev' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q '2.5.22-dev-feature-dispatcher-slicing' "$RUNNER_TEMP/hfamap2524.strings"
           grep -q 'eventTime>=interactionTime&&delta<=500ms' "$RUNNER_TEMP/hfamap2524.strings"
           grep -q 'real-CFBundleExecutable-never-@main' "$RUNNER_TEMP/hfamap2524.strings"
           grep -q 'READ-ONLY-ENTRY-SENDER-FEATURE-SLICING-NO-REEXECUTION' "$RUNNER_TEMP/hfamap2524.strings"
