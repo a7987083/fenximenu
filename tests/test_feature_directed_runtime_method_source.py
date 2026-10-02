@@ -4,6 +4,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 IL2CPP = (ROOT / "hfamap/src/HFAIL2CPPRuntimeProbeSafe.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
+CYBER = (ROOT / "hfamap/src/HFAMapCyberUI.m").read_text()
 DIAG = (ROOT / "hfamap/src/HFAMapDiagnostics.mm").read_text()
 
 
@@ -40,7 +41,7 @@ class FeatureDirectedRuntimeMethodTests(unittest.TestCase):
 
     def test_version_metadata_exists_without_pin_to_old_release(self):
         self.assertIn('@"version": @"', DIAG)
-        self.assertIn('featureDirectedCorrelationCount', ENTRY)
+        self.assertIn('featureDirectedCorrelationCount', CYBER)
 
 
 if __name__ == '__main__':
