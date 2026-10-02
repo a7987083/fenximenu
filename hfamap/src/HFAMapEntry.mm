@@ -2,9 +2,11 @@
 #import <UIKit/UIKit.h>
 #import "HFAMapBuildInfo.h"
 
-extern id HFACyberUICreatePanel(id hostWindow);
-extern void HFACyberUIToggle(void);
-extern void HFACyberUIBringToFront(id hostWindow);
+extern "C" {
+id HFACyberUICreatePanel(id hostWindow);
+void HFACyberUIToggle(void);
+void HFACyberUIBringToFront(id hostWindow);
+}
 
 static UIButton *gHFAMapButton = nil;
 
