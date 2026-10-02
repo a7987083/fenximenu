@@ -1,9 +1,10 @@
-name: HFAMapUniversal v1.9.37.10 UnifiedFeatureModel
+name: HFAMapUniversal v1.9.37.11 Unified IL2CPP Runtime Resolver
 
 on:
   push:
     branches:
       - feature/hfamap-v193710-unified-feature-model
+      - feature/hfamap-v193711-unified-il2cpp-runtime-resolver
     paths:
       - 'hfamap/**'
       - '.github/scripts/hfamap_v*.py'
@@ -47,6 +48,7 @@ jobs:
           cp hfamap/src/HFAMap5MDispatcherResolver.m /tmp/dispatch.before193710
           python3 .github/scripts/hfamap_v193710_unified_feature_model.py
           python3 .github/scripts/hfamap_v193710_earntodie_verified_profile.py
+          python3 .github/scripts/hfamap_v193711_unified_il2cpp_runtime_resolver.py
           git diff --check
 
       - name: Verify unified feature catalog
@@ -162,34 +164,37 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Build HFAMapUniversal v1.9.37.10
+      - name: Build HFAMapUniversal v1.9.37.11
         run: |
           set -euo pipefail
           cd hfamap
           make clean
           make FINALPACKAGE=1
           mkdir -p dist
-          out='dist/HFAMapUniversal_v1.9.37.10_UnifiedFeatureModel.dylib'
+          out='dist/HFAMapUniversal_v1.9.37.11_UnifiedIL2CPPRuntimeResolver.dylib'
           cp .theos/obj/HFAMapUniversal.dylib "$out"
           file "$out"
-          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.10.txt
-          strings "$out" > dist/strings_v1.9.37.10.txt
-          nm -u "$out" > dist/nm_undefined_v1.9.37.10.txt
-          grep -q 'v1.9.37.10 UnifiedFeatureModel' dist/strings_v1.9.37.10.txt
-          grep -q 'FEATURE-CATALOG-APPEND' dist/strings_v1.9.37.10.txt
-          grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.10.txt
-          grep -q 'runtime-feature-no-static-mapping' dist/strings_v1.9.37.10.txt
-          grep -q 'earntodie-1.28.251-1' dist/strings_v1.9.37.10.txt
-          grep -q 'VERIFIED-PROFILE-PATCH' dist/strings_v1.9.37.10.txt
-          if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.10.txt; then
+          shasum -a 256 "$out" | tee dist/SHA256_v1.9.37.11.txt
+          strings "$out" > dist/strings_v1.9.37.11.txt
+          nm -u "$out" > dist/nm_undefined_v1.9.37.11.txt
+          grep -q 'v1.9.37.10 UnifiedFeatureModel' dist/strings_v1.9.37.11.txt
+          grep -q 'UnifiedIL2CPPRuntimeResolver' dist/strings_v1.9.37.11.txt
+          grep -q 'post-interaction-only' dist/strings_v1.9.37.11.txt
+          grep -q 'futureInteractionAssociation' dist/strings_v1.9.37.11.txt
+          grep -q 'FEATURE-CATALOG-APPEND' dist/strings_v1.9.37.11.txt
+          grep -q 'ARTIFACT-CLEANUP' dist/strings_v1.9.37.11.txt
+          grep -q 'runtime-feature-no-static-mapping' dist/strings_v1.9.37.11.txt
+          grep -q 'earntodie-1.28.251-1' dist/strings_v1.9.37.11.txt
+          grep -q 'VERIFIED-PROFILE-PATCH' dist/strings_v1.9.37.11.txt
+          if grep -Eq '_objc_getClassList|_objc_copyClassList|_dyld_register_func_for_add_image' dist/nm_undefined_v1.9.37.11.txt; then
             echo 'forbidden symbol leaked into final dylib'; exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v1.9.37.10-UnifiedFeatureModel
+          name: HFAMapUniversal-v1.9.37.11-UnifiedIL2CPPRuntimeResolver
           path: |
-            hfamap/dist/HFAMapUniversal_v1.9.37.10_UnifiedFeatureModel.dylib
-            hfamap/dist/SHA256_v1.9.37.10.txt
+            hfamap/dist/HFAMapUniversal_v1.9.37.11_UnifiedIL2CPPRuntimeResolver.dylib
+            hfamap/dist/SHA256_v1.9.37.11.txt
           if-no-files-found: error
