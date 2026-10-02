@@ -2,6 +2,12 @@
 
 #ifdef __OBJC__
 #import <Foundation/Foundation.h>
+#ifdef __cplusplus
+extern "C" {
+#ifdef __cplusplus
+}
+#endif
+#endif
 void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary));
 void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary));
 // Compatibility alias retained for older callers/tests; maps to discovery only in v2.4.6.
