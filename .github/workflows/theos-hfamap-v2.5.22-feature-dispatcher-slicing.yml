@@ -1,9 +1,10 @@
-name: HFAMap v2.5.22 Feature Dispatcher Slicing
+name: HFAMap v2.5.23 Exact Runtime Method Trace
 
 on:
   push:
     branches:
       - feature/hfamap-v2.5.22-feature-dispatcher-slicing
+      - feature/hfamap-v2.5.23-exact-runtime-method-trace
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -21,7 +22,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_*.py' -v
           python3 -m py_compile tests/*.py
-      - name: Check v2.5.22 invariants
+      - name: Check v2.5.23 invariants
         run: |
           set -euo pipefail
           grep -q 'FeatureDispatcherSlices.json' hfamap/src/HFAMapFeatureDispatcherSliceResolver.mm
@@ -29,6 +30,9 @@ jobs:
           grep -q 'HFAIL2CPPMethodContainingRuntimeAddress' hfamap/src/HFAMapFeatureDispatcherSliceResolver.mm
           ! grep -q 'HFAMapAnalyzeStrippedActionIMP(' hfamap/src/HFAMapFeatureDispatcherSliceResolver.mm
           ! grep -q 'DobbyHook' hfamap/src/HFAMapFeatureDispatcherSliceResolver.mm
+          grep -q 'eventTime>=interactionTime&&delta<=500ms' hfamap/src/HFAExactRuntimeMethodTrace.mm
+          grep -q 'futureInteractionAssociation' hfamap/src/HFAExactRuntimeMethodTrace.mm
+          grep -q 'CFBundleExecutable' hfamap/src/HFAExactRuntimeMethodTrace.mm
       - name: Install Theos
         run: |
           set -euo pipefail
@@ -41,19 +45,22 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.22-dev
-          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.22-dev/HFAMapUniversal-v2.5.22-dev.dylib
-          out=hfamap/dist/v2.5.22-dev/HFAMapUniversal-v2.5.22-dev.dylib
-          strings "$out" > "$RUNNER_TEMP/hfamap2522.strings"
+          mkdir -p hfamap/dist/v2.5.23-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.23-dev/HFAMapUniversal-v2.5.23-dev.dylib
+          out=hfamap/dist/v2.5.23-dev/HFAMapUniversal-v2.5.23-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2523.strings"
           file "$out" | grep -q arm64
-          grep -q '2.5.22-dev-feature-dispatcher-slicing' "$RUNNER_TEMP/hfamap2522.strings"
-          grep -q 'READ-ONLY-ENTRY-SENDER-FEATURE-SLICING-NO-REEXECUTION' "$RUNNER_TEMP/hfamap2522.strings"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.22-dev/SHA256SUMS.txt
+          grep -q '2.5.23-dev-exact-runtime-method-trace' "$RUNNER_TEMP/hfamap2523.strings"
+          grep -q '2.5.22-dev-feature-dispatcher-slicing' "$RUNNER_TEMP/hfamap2523.strings"
+          grep -q 'eventTime>=interactionTime&&delta<=500ms' "$RUNNER_TEMP/hfamap2523.strings"
+          grep -q 'real-CFBundleExecutable-never-@main' "$RUNNER_TEMP/hfamap2523.strings"
+          grep -q 'READ-ONLY-ENTRY-SENDER-FEATURE-SLICING-NO-REEXECUTION' "$RUNNER_TEMP/hfamap2523.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.23-dev/SHA256SUMS.txt
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.22-FeatureDispatcherSlicing
+          name: HFAMapUniversal-v2.5.23-ExactRuntimeMethodTrace
           path: |
-            hfamap/dist/v2.5.22-dev/HFAMapUniversal-v2.5.22-dev.dylib
-            hfamap/dist/v2.5.22-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.23-dev/HFAMapUniversal-v2.5.23-dev.dylib
+            hfamap/dist/v2.5.23-dev/SHA256SUMS.txt
           if-no-files-found: error
