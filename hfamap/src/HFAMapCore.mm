@@ -89,6 +89,23 @@ BOOL HFAMapRuntimeProbeIsActive(void) {
     return HFAMapRuntimeProbeIsArmed();
 }
 
+BOOL HFAMapSelectMenuCandidate(NSDictionary *candidate) {
+    if (![candidate isKindOfClass:NSDictionary.class]) return NO;
+    NSString *image = [candidate[@"image"] isKindOfClass:NSString.class] ? candidate[@"image"] : @"";
+    NSString *path = [candidate[@"path"] isKindOfClass:NSString.class] ? candidate[@"path"] : @"";
+    if (!image.length && !path.length) return NO;
+    @synchronized(NSObject.class) {
+        [gHFALastSelectedCandidate release];
+        gHFALastSelectedCandidate = [candidate copy];
+    }
+    HFADiagnosticsLog(@"menu-discovery", @"manually-selected-after-ambiguity", @{
+        @"image": image ?: @"",
+        @"path": path ?: @"",
+        @"score": candidate[@"score"] ?: @0
+    });
+    return YES;
+}
+
 void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
     @synchronized(NSObject.class) {
         if (gHFADiscovering) { if (completion) completion(@{ @"status": @"busy" }); return; }
