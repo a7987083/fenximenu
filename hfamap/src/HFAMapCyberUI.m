@@ -1,8 +1,8 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
-
-extern unsigned HFAAppLocalScanCandidates(void);
-extern unsigned HFAAppLocalExecuteParser(void);
+#import "HFAMapCore.h"
+#import "HFAMapBuildInfo.h"
+#import "HFAMapOutputName.h"
 
 static UIView *gHFACyberPanel = nil;
 static UITextView *gHFACyberLogTextView = nil;
@@ -12,23 +12,38 @@ static UIColor *HFACyberColor(CGFloat r, CGFloat g, CGFloat b, CGFloat a) {
     return [UIColor colorWithRed:r green:g blue:b alpha:a];
 }
 
+static NSString *HFARealMainExecutable(void) {
+    NSString *name = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleExecutable"];
+    if (![name isKindOfClass:NSString.class] || !name.length)
+        name = NSBundle.mainBundle.executablePath.lastPathComponent;
+    return name.length ? name : @"MainExecutable";
+}
+
 void HFACyberUIAppendLog(NSString *text) {
-    if (![text isKindOfClass:[NSString class]] || !text.length) return;
+    if (![text isKindOfClass:NSString.class] || !text.length) return;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (!gHFACyberLogTextView) return;
         NSString *line = [text hasSuffix:@"\n"] ? text : [text stringByAppendingString:@"\n"];
-        NSAttributedString *chunk = [[NSAttributedString alloc] initWithString:line attributes:@{
+        NSAttributedString *chunk = [[[NSAttributedString alloc] initWithString:line attributes:@{
             NSForegroundColorAttributeName: HFACyberColor(0.90, 0.93, 0.96, 1.0),
-            NSFontAttributeName: [UIFont fontWithName:@"CourierNewPSMT" size:11.0] ?: [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular]
-        }];
+            NSFontAttributeName: [UIFont fontWithName:@"CourierNewPSMT" size:11.0]
+                ?: [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular]
+        }] autorelease];
         [gHFACyberLogTextView.textStorage appendAttributedString:chunk];
-        if (gHFACyberLogTextView.textStorage.length > 120000) {
-            NSUInteger trim = MIN((NSUInteger)30000, gHFACyberLogTextView.textStorage.length);
-            [gHFACyberLogTextView.textStorage deleteCharactersInRange:NSMakeRange(0, trim)];
-        }
-        NSRange end = NSMakeRange(gHFACyberLogTextView.textStorage.length, 0);
-        [gHFACyberLogTextView scrollRangeToVisible:end];
+        if (gHFACyberLogTextView.textStorage.length > 120000)
+            [gHFACyberLogTextView.textStorage deleteCharactersInRange:NSMakeRange(0, MIN((NSUInteger)30000, gHFACyberLogTextView.textStorage.length))];
+        [gHFACyberLogTextView scrollRangeToVisible:NSMakeRange(gHFACyberLogTextView.textStorage.length, 0)];
     });
+}
+
+static UIViewController *HFATopController(void) {
+    UIWindow *window = UIApplication.sharedApplication.keyWindow;
+    if (!window) for (UIWindow *w in UIApplication.sharedApplication.windows) if (w.isKeyWindow) { window = w; break; }
+    UIViewController *vc = window.rootViewController;
+    while (vc.presentedViewController) vc = vc.presentedViewController;
+    if ([vc isKindOfClass:UINavigationController.class]) vc = [(UINavigationController *)vc topViewController];
+    if ([vc isKindOfClass:UITabBarController.class]) vc = [(UITabBarController *)vc selectedViewController];
+    return vc;
 }
 
 @interface HFACyberUIController : NSObject
@@ -37,49 +52,112 @@ void HFACyberUIAppendLog(NSString *text) {
 @implementation HFACyberUIController
 
 - (void)handleCyberPan:(UIPanGestureRecognizer *)gesture {
-    UIView *target = gesture.view;
-    UIView *superview = target.superview;
+    UIView *target = gesture.view, *superview = target.superview;
     if (!target || !superview) return;
-    if (gesture.state == UIGestureRecognizerStateBegan ||
-        gesture.state == UIGestureRecognizerStateChanged) {
-        CGPoint trans = [gesture translationInView:superview];
-        CGPoint center = target.center;
-        center.x += trans.x;
-        center.y += trans.y;
-        CGRect bounds = superview.bounds;
-        CGFloat halfW = target.bounds.size.width * 0.5;
-        CGFloat halfH = target.bounds.size.height * 0.5;
-        center.x = MAX(MIN(center.x, CGRectGetMaxX(bounds) - 18.0), CGRectGetMinX(bounds) + 18.0);
-        center.y = MAX(MIN(center.y, CGRectGetMaxY(bounds) - 18.0), CGRectGetMinY(bounds) + 18.0);
-        if (halfW < bounds.size.width * 0.5) center.x = MAX(MIN(center.x, CGRectGetMaxX(bounds) - halfW), CGRectGetMinX(bounds) + halfW);
-        if (halfH < bounds.size.height * 0.5) center.y = MAX(MIN(center.y, CGRectGetMaxY(bounds) - halfH), CGRectGetMinY(bounds) + halfH);
-        target.center = center;
+    if (gesture.state == UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
+        CGPoint t = [gesture translationInView:superview], c = target.center;
+        c.x += t.x; c.y += t.y;
+        CGFloat hw = target.bounds.size.width * 0.5, hh = target.bounds.size.height * 0.5;
+        c.x = MAX(hw, MIN(superview.bounds.size.width - hw, c.x));
+        c.y = MAX(hh, MIN(superview.bounds.size.height - hh, c.y));
+        target.center = c;
         [gesture setTranslation:CGPointZero inView:superview];
     }
+}
+
+- (void)presentAmbiguousCandidates:(NSArray *)candidates {
+    UIViewController *vc = HFATopController();
+    if (!vc || !candidates.count) {
+        HFACyberUIAppendLog(@"[SELECT] ambiguous candidates; UI picker unavailable");
+        return;
+    }
+    UIAlertController *picker = [UIAlertController alertControllerWithTitle:@"检测到多个菜单候选"
+        message:@"仅在候选证据接近时需要人工选择。主程序和 UnityFramework 不需要选择。"
+        preferredStyle:UIAlertControllerStyleActionSheet];
+    NSUInteger limit = MIN((NSUInteger)8, candidates.count);
+    for (NSUInteger i=0;i<limit;i++) {
+        NSDictionary *candidate = candidates[i];
+        NSString *title = [NSString stringWithFormat:@"%@  score=%@",
+                           candidate[@"image"] ?: @"?", candidate[@"score"] ?: @0];
+        [picker addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
+            if (HFAMapSelectMenuCandidate(candidate)) {
+                HFACyberUIAppendLog([NSString stringWithFormat:@"[SELECT] manual menu=%@", candidate[@"image"] ?: @"?"]);
+                HFACyberUIAppendLog(@"[NEXT] 点击“解析并导出”");
+            }
+        }]];
+    }
+    [picker addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    UIPopoverPresentationController *pop = picker.popoverPresentationController;
+    if (pop) { pop.sourceView = gHFACyberPanel; pop.sourceRect = gHFACyberPanel.bounds; }
+    [vc presentViewController:picker animated:YES completion:nil];
 }
 
 - (void)actionCyberScan:(UIButton *)sender {
     sender.enabled = NO;
     HFACyberUIAppendLog(@"\n[COMMAND] 扫描菜单模块");
-    HFACyberUIAppendLog(@"[DISCOVERY] scanning app root + Frameworks ...");
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        unsigned count = HFAAppLocalScanCandidates();
-        HFACyberUIAppendLog([NSString stringWithFormat:@"[DISCOVERY-END] candidates=%u", count]);
-        dispatch_async(dispatch_get_main_queue(), ^{ sender.enabled = YES; });
+    HFACyberUIAppendLog([NSString stringWithFormat:@"[HOST] main=%@ bundle=%@",
+                         HFARealMainExecutable(), NSBundle.mainBundle.bundleIdentifier ?: @"?"]);
+    HFACyberUIAppendLog(@"[DISCOVERY] 主程序/UnityFramework 自动识别；扫描菜单候选...");
+    HFAMapRunMenuDiscovery(^(NSDictionary *summary) {
+        sender.enabled = YES;
+        NSString *status = summary[@"status"] ?: @"?";
+        if ([status isEqualToString:@"selected"]) {
+            NSDictionary *selected = summary[@"selected"] ?: @{};
+            HFACyberUIAppendLog([NSString stringWithFormat:@"[SELECT] %@ score=%@ candidates=%@",
+                                 selected[@"image"] ?: @"?", selected[@"score"] ?: @0,
+                                 summary[@"candidateCount"] ?: @0]);
+            HFACyberUIAppendLog(@"[NEXT] 点击“解析并导出”");
+            return;
+        }
+        NSString *reason = summary[@"reason"] ?: @"";
+        HFACyberUIAppendLog([NSString stringWithFormat:@"[DISCOVERY-END] incomplete reason=%@", reason]);
+        if ([reason isEqualToString:@"ambiguous-top-candidates"])
+            [self presentAmbiguousCandidates:summary[@"candidates"] ?: @[]];
     });
 }
 
 - (void)actionCyberExport:(UIButton *)sender {
     sender.enabled = NO;
     HFACyberUIAppendLog(@"\n[COMMAND] 解析并导出");
-    HFACyberUIAppendLog(@"[RESOLVE] image-local parser starting ...");
-    dispatch_async(dispatch_get_main_queue(), ^{
-        unsigned valid = HFAAppLocalExecuteParser();
-        HFACyberUIAppendLog([NSString stringWithFormat:@"[EXPORT-END] validMappings=%u", valid]);
-        sender.enabled = YES;
+    HFACyberUIAppendLog(@"[ANALYZE] ownership → handler → dispatcher → IL2CPP method index...");
+    HFAMapRunSelectedDeepAnalysis(^(NSDictionary *summary) {
+        NSString *status = summary[@"status"] ?: @"?";
+        if ([status isEqualToString:@"no-selected-menu"]) {
+            HFACyberUIAppendLog(@"[ERROR] 尚未选择菜单，请先点击“扫描菜单模块”");
+            sender.enabled = YES;
+            return;
+        }
+        NSArray *features = summary[@"features"] ?: @[];
+        NSArray *runtime = summary[@"runtimeRecords"] ?: @[];
+        NSArray *unresolved = summary[@"unresolved"] ?: @[];
+        HFACyberUIAppendLog([NSString stringWithFormat:@"[ANALYZE-END] status=%@ features=%lu runtime=%lu unresolved=%lu",
+                             status, (unsigned long)features.count, (unsigned long)runtime.count,
+                             (unsigned long)unresolved.count]);
+        HFACyberUIAppendLog([NSString stringWithFormat:@"[EXPORT] %@ / %@ / %@",
+                             HFAOutputFileName(@"Analysis.json"),
+                             HFAOutputFileName(@"FeatureRegistry.json"),
+                             HFAOutputFileName(@"Patches.json")]);
+
+        if (runtime.count || unresolved.count) {
+            HFACyberUIAppendLog(@"[RUNTIME] 自动进入 8s Trace；只操作一次目标功能（如 Damage Multiplier）");
+            HFAMapArmLastSelectedRuntimeProbe(^(NSDictionary *probe) {
+                HFACyberUIAppendLog([NSString stringWithFormat:@"[RUNTIME-END] status=%@ events=%@ links=%@",
+                                     probe[@"status"] ?: @"?",
+                                     probe[@"eventCount"] ?: @0,
+                                     probe[@"featureDirectedCorrelationCount"] ?: @0]);
+                NSDictionary *exact = probe[@"il2cppRuntimeProbe"][@"exactRuntimeMethodTrace"];
+                if ([exact isKindOfClass:NSDictionary.class])
+                    HFACyberUIAppendLog([NSString stringWithFormat:@"[METHOD] exact events=%@ output=%@",
+                                         exact[@"eventCount"] ?: @0,
+                                         HFAOutputFileName(@"ExactRuntimeMethods.json")]);
+                sender.enabled = YES;
+            });
+        } else {
+            HFACyberUIAppendLog(@"[DONE] 静态证据已闭环，无需 Runtime Trace");
+            sender.enabled = YES;
+        }
     });
 }
-
 @end
 
 static UIButton *HFACyberButton(NSString *title, UIColor *accent, CGRect frame, SEL action) {
@@ -87,89 +165,64 @@ static UIButton *HFACyberButton(NSString *title, UIColor *accent, CGRect frame, 
     button.frame = frame;
     [button setTitle:title forState:UIControlStateNormal];
     [button setTitleColor:accent forState:UIControlStateNormal];
-    button.titleLabel.font = [UIFont boldSystemFontOfSize:12.5];
+    button.titleLabel.font = [UIFont boldSystemFontOfSize:13.0];
     button.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.50];
-    button.layer.cornerRadius = 6.0;
+    button.layer.cornerRadius = 7.0;
     button.layer.borderWidth = 1.2;
     button.layer.borderColor = accent.CGColor;
-    button.layer.shadowColor = accent.CGColor;
-    button.layer.shadowRadius = 6.0;
-    button.layer.shadowOpacity = 0.80;
-    button.layer.shadowOffset = CGSizeZero;
     [button addTarget:gHFACyberController action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
 
 id HFACyberUICreatePanel(id hostWindow) {
     if (gHFACyberPanel) return gHFACyberPanel;
-    UIWindow *window = [hostWindow isKindOfClass:[UIWindow class]] ? (UIWindow *)hostWindow : nil;
+    UIWindow *window = [hostWindow isKindOfClass:UIWindow.class] ? hostWindow : nil;
     if (!window) return nil;
     if (!gHFACyberController) gHFACyberController = [HFACyberUIController new];
 
     CGRect wb = window.bounds;
-    CGFloat winWidth = MIN(460.0, MAX(300.0, wb.size.width - 20.0));
-    CGFloat winHeight = MIN(320.0, MAX(240.0, wb.size.height - 90.0));
-    CGFloat originX = MAX(10.0, (wb.size.width - winWidth) * 0.5);
-    CGFloat originY = MAX(50.0, MIN(90.0, wb.size.height - winHeight - 20.0));
-    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(originX, originY, winWidth, winHeight)];
-    panel.backgroundColor = HFACyberColor(0.02, 0.02, 0.05, 0.91);
-    panel.layer.cornerRadius = 8.0;
+    CGFloat w = MIN(500.0, MAX(320.0, wb.size.width - 20.0));
+    CGFloat h = MIN(330.0, MAX(250.0, wb.size.height - 100.0));
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(MAX(10.0,(wb.size.width-w)*0.5), MAX(55.0,(wb.size.height-h)*0.20), w, h)];
+    panel.backgroundColor = HFACyberColor(0.02,0.02,0.05,0.94);
+    panel.layer.cornerRadius = 10.0;
     panel.layer.borderWidth = 1.5;
-    panel.layer.borderColor = HFACyberColor(0.0, 1.0, 1.0, 0.80).CGColor;
-    panel.layer.shadowColor = [UIColor cyanColor].CGColor;
-    panel.layer.shadowRadius = 10.0;
-    panel.layer.shadowOpacity = 0.90;
-    panel.layer.shadowOffset = CGSizeZero;
-    panel.clipsToBounds = NO;
+    panel.layer.borderColor = HFACyberColor(0.0,1.0,1.0,0.75).CGColor;
+    panel.hidden = YES;
+    [panel addGestureRecognizer:[[[UIPanGestureRecognizer alloc] initWithTarget:gHFACyberController action:@selector(handleCyberPan:)] autorelease]];
 
-    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:gHFACyberController action:@selector(handleCyberPan:)];
-    pan.cancelsTouchesInView = NO;
-    [panel addGestureRecognizer:pan];
-
-    UILabel *header = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, winWidth, 35.0)];
-    header.text = @"  HFAMap AppLocalMenuResolver";
-    header.textColor = HFACyberColor(0.2, 1.0, 0.2, 1.0);
-    header.font = [UIFont fontWithName:@"CourierNewPS-BoldMT" size:13.0] ?: [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightBold];
-    header.backgroundColor = [UIColor clearColor];
-    CALayer *bottomBorder = [CALayer layer];
-    bottomBorder.frame = CGRectMake(0, 34.0, winWidth, 1.5);
-    bottomBorder.backgroundColor = HFACyberColor(0.0, 1.0, 1.0, 0.60).CGColor;
-    bottomBorder.shadowColor = [UIColor cyanColor].CGColor;
-    bottomBorder.shadowRadius = 4.0;
-    bottomBorder.shadowOpacity = 0.8;
-    [header.layer addSublayer:bottomBorder];
+    UILabel *header = [[UILabel alloc] initWithFrame:CGRectMake(12,6,w-24,30)];
+    header.text = [NSString stringWithFormat:@"HFAMap %@ · Unified Resolver", HFAMapBuildVersion()];
+    header.textColor = HFACyberColor(0.2,1.0,0.2,1.0);
+    header.font = [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightBold];
     [panel addSubview:header];
 
-    CGFloat leftWidth = MIN(140.0, MAX(110.0, winWidth * 0.32));
-    UIView *leftPanel = [[UIView alloc] initWithFrame:CGRectMake(0, 35.0, leftWidth, winHeight - 35.0)];
-    leftPanel.backgroundColor = [UIColor clearColor];
-    CALayer *rightBorder = [CALayer layer];
-    rightBorder.frame = CGRectMake(leftWidth - 1.0, 0, 1.5, winHeight - 35.0);
-    rightBorder.backgroundColor = HFACyberColor(0.0, 1.0, 1.0, 0.40).CGColor;
-    [leftPanel.layer addSublayer:rightBorder];
+    CGFloat left = MIN(155.0, MAX(125.0, w*0.33));
+    UIView *leftPanel = [[UIView alloc] initWithFrame:CGRectMake(0,40,left,h-40)];
     [panel addSubview:leftPanel];
 
-    UIButton *scan = HFACyberButton(@"扫描菜单模块", [UIColor magentaColor], CGRectMake(10.0, 20.0, leftWidth - 20.0, 36.0), @selector(actionCyberScan:));
-    [leftPanel addSubview:scan];
-    UIButton *exportButton = HFACyberButton(@"解析并导出", [UIColor cyanColor], CGRectMake(10.0, 75.0, leftWidth - 20.0, 36.0), @selector(actionCyberExport:));
-    [leftPanel addSubview:exportButton];
+    [leftPanel addSubview:HFACyberButton(@"扫描菜单模块", UIColor.magentaColor, CGRectMake(10,24,left-20,42), @selector(actionCyberScan:))];
+    [leftPanel addSubview:HFACyberButton(@"解析并导出", UIColor.cyanColor, CGRectMake(10,86,left-20,42), @selector(actionCyberExport:))];
 
-    UITextView *logView = [[UITextView alloc] initWithFrame:CGRectMake(leftWidth + 2.0, 37.0, winWidth - leftWidth - 4.0, winHeight - 39.0)];
-    logView.backgroundColor = [UIColor clearColor];
-    logView.textColor = HFACyberColor(0.90, 0.93, 0.96, 1.0);
-    logView.font = [UIFont fontWithName:@"CourierNewPSMT" size:11.0] ?: [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular];
-    logView.editable = NO;
-    logView.selectable = YES;
-    logView.layoutManager.allowsNonContiguousLayout = NO;
-    logView.textContainerInset = UIEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
-    [panel addSubview:logView];
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(10,150,left-20,70)];
+    hint.text = @"主程序：自动\nUnityFramework：自动\n菜单：自动，歧义才选择";
+    hint.numberOfLines = 3;
+    hint.textColor = [UIColor colorWithWhite:0.75 alpha:1.0];
+    hint.font = [UIFont systemFontOfSize:10.5];
+    [leftPanel addSubview:hint];
 
-    gHFACyberPanel = panel;
-    gHFACyberLogTextView = logView;
+    UITextView *log = [[UITextView alloc] initWithFrame:CGRectMake(left+2,40,w-left-4,h-42)];
+    log.backgroundColor = UIColor.clearColor;
+    log.editable = NO; log.selectable = YES;
+    log.textColor = [UIColor colorWithWhite:0.92 alpha:1.0];
+    log.font = [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular];
+    [panel addSubview:log];
+
+    gHFACyberPanel = panel; gHFACyberLogTextView = log;
     [window addSubview:panel];
-    panel.hidden = YES;
-    HFACyberUIAppendLog(@"[System] HFAMap AppLocalMenuResolver ready.");
-    HFACyberUIAppendLog(@"[System] 先扫描菜单模块，再解析并导出。");
+    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] %@ ready", HFAMapDisplayVersion()]);
+    HFACyberUIAppendLog([NSString stringWithFormat:@"[System] main executable=%@", HFARealMainExecutable()]);
+    HFACyberUIAppendLog(@"[System] 两步流程：扫描菜单模块 → 解析并导出");
     return panel;
 }
 
@@ -182,11 +235,8 @@ void HFACyberUIToggle(void) {
 }
 
 void HFACyberUIBringToFront(id hostWindow) {
-    UIWindow *window = [hostWindow isKindOfClass:[UIWindow class]] ? (UIWindow *)hostWindow : nil;
+    UIWindow *window = [hostWindow isKindOfClass:UIWindow.class] ? hostWindow : nil;
     if (!window || !gHFACyberPanel) return;
-    if (gHFACyberPanel.superview != window) {
-        [gHFACyberPanel removeFromSuperview];
-        [window addSubview:gHFACyberPanel];
-    }
+    if (gHFACyberPanel.superview != window) { [gHFACyberPanel removeFromSuperview]; [window addSubview:gHFACyberPanel]; }
     if (!gHFACyberPanel.hidden) [window bringSubviewToFront:gHFACyberPanel];
 }
