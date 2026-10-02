@@ -4,16 +4,17 @@
 #import <Foundation/Foundation.h>
 #ifdef __cplusplus
 extern "C" {
-#ifdef __cplusplus
-}
 #endif
-#endif
+
 void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary));
 void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary));
-// Compatibility alias retained for older callers/tests; maps to discovery only in v2.4.6.
 void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary));
 void HFAMapArmLastSelectedRuntimeProbe(void (^completion)(NSDictionary *summary));
 void HFAMapStopActiveRuntimeProbe(NSString *reason);
 BOOL HFAMapRuntimeProbeIsActive(void);
 BOOL HFAMapSelectMenuCandidate(NSDictionary *candidate);
+
+#ifdef __cplusplus
+}
+#endif
 #endif
