@@ -7,6 +7,7 @@ RESOLVER = (ROOT / "hfamap/src/HFAMapResolver.mm").read_text()
 PROBE = (ROOT / "hfamap/src/HFAMapRuntimeProbe.mm").read_text()
 CORE = (ROOT / "hfamap/src/HFAMapCore.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
+CYBER = (ROOT / "hfamap/src/HFAMapCyberUI.m").read_text()
 MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 
 
@@ -30,11 +31,11 @@ class RuntimeProbeSourceTests(unittest.TestCase):
         for token in (
             "kHFAProbeMaxViews = 768", "kHFAProbeMaxControls = 128",
             "kHFAProbeMaxEvents = 32", "MAX(2.0, MIN(duration, 15.0))",
-            "3. Runtime Probe (8s)", "targetListModifiedTemporarily",
+            "HFAMapArmLastSelectedRuntimeProbe", "targetListModifiedTemporarily",
             "targetListRestored", "removeTarget:target",
             "RuntimeProbe.json", "runtime-probe-event",
         ):
-            self.assertIn(token, PROBE + ENTRY)
+            self.assertIn(token, PROBE + ENTRY + CYBER)
 
     def test_probe_distinguishes_and_bounds_click_switch_and_slider_events(self):
         for token in (
