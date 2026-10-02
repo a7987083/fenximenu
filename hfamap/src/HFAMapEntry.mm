@@ -60,7 +60,7 @@ static BOOL HFAMapInstallFloatingUI(void) {
     [window addSubview:button];
     [window bringSubviewToFront:button];
     gHFAMapButton = button;
-    NSLog(@"[HFAMap] %@ two-button UI installed", HFAMapBuildVersion());
+    NSLog(@"[HFAMap] %@ two-button UI installed", HFAMapDisplayVersion());
     return YES;
 }
 
@@ -75,7 +75,7 @@ static void HFAMapScheduleInstall(NSUInteger attempt) {
 
 __attribute__((constructor)) static void HFAMapConstructor(void) {
     @autoreleasepool {
-        NSLog(@"[HFAMap] %@ entry loaded", HFAMapBuildVersion());
+        NSLog(@"[HFAMap] %@ entry loaded", HFAMapDisplayVersion());
         HFAMapScheduleInstall(0);
     }
 }
