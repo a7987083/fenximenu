@@ -2,6 +2,7 @@
 #import "HFAMapDiagnostics.h"
 #import "HFAMapStrippedActionAnalyzer.h"
 #import "HFAMapFeatureContextAnalyzer.h"
+#import "HFAExactRuntimeMethodTrace.h"
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -156,6 +157,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
     gHFASafeInteractions = [[NSMutableArray alloc] init];
     gHFASafeFeatureAnalyses = [[NSMutableArray alloc] init];
 
+    NSDictionary *exactTrace = HFAExactRuntimeMethodTraceArm(duration);
     NSDictionary *result = @{
         @"schema": @"com.hfa.il2cpp-runtime-probe/v2",
         @"version": @"2.5.7-dev-crash-safe-runtime-probe",
@@ -165,6 +167,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeArm(NSDictionary *candidate, NSTimeInterval d
         @"featureDirectedAnalysisEnabled": @YES,
         @"featureDirectedAnalysisRequiresHook": @NO,
         @"featureContextSeededAnalysisEnabled": @YES,
+        @"exactRuntimeMethodTrace": exactTrace ?: @{},
         @"installedSymbols": @[],
         @"il2cppExportsHooked": @[],
         @"runtimeInvokeHooked": @NO,
@@ -198,6 +201,7 @@ void HFAIL2CPPRuntimeProbeMarkInteraction(NSString *label, NSString *controlToke
         contextResolved += [context[@"resolvedConditionalCount"] unsignedIntegerValue];
     }
 
+    HFAExactRuntimeMethodTraceMarkInteraction(label, controlToken);
     NSDictionary *interaction = @{
         @"time": @(HFASafeNow()),
         @"label": label ?: @"",
@@ -276,6 +280,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
         : (contextResolved ? @"feature-context-branch-correlation-observed"
                            : @"no-method-chain-read-only");
 
+    NSDictionary *exactTrace = HFAExactRuntimeMethodTraceStop(reason ?: @"stopped");
     NSDictionary *summary = @{
         @"schema": @"com.hfa.il2cpp-runtime-probe/v2",
         @"version": @"2.5.7-dev-crash-safe-runtime-probe",
@@ -294,6 +299,7 @@ NSDictionary *HFAIL2CPPRuntimeProbeStop(NSString *reason) {
         @"featureDirectedCorrelationCount": @(featureCorrelations),
         @"contextResolvedConditionalCount": @(contextResolved),
         @"featureDirectedAnalysisRequiresHook": @NO,
+        @"exactRuntimeMethodTrace": exactTrace ?: @{},
         @"classification": classification,
         @"originalCallsContinued": @YES,
         @"hookInstalled": @NO,
