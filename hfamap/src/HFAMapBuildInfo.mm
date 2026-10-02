@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.22-dev";
+    return @"2.5.24-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.22-dev-feature-dispatcher-slicing";
+    return @"2.5.24-dev-two-button-unified-ui";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"READ-ONLY-FAST-UI-ASYNC-FEATURE-DISPATCHER-SLICING";
+    return @"AUTO-HOST-AUTO-UNITY-TWO-BUTTON-UNIFIED-RESOLUTION";
 }
 
 NSString *HFAMapDisplayVersion(void) {
