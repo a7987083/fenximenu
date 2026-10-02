@@ -4,6 +4,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE_PROBE = (ROOT / "hfamap/src/HFAMapImageProbe.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
+CYBER = (ROOT / "hfamap/src/HFAMapCyberUI.m").read_text()
 IL2CPP = (ROOT / "hfamap/src/HFAIL2CPPRuntimeProbe.mm").read_text()
 
 
@@ -33,10 +34,11 @@ class MenuBinaryEvidenceSourceTests(unittest.TestCase):
         self.assertNotIn('DobbyInstrument', IL2CPP)
         self.assertNotIn('direct-method-entry', IL2CPP)
 
-    def test_ui_controls_are_present(self):
-        self.assertIn('1. Search Menu', ENTRY)
-        self.assertIn('2. Deep Analyze Menu', ENTRY)
-        self.assertIn('4. Static Analyze Dylib', ENTRY)
+    def test_two_button_ui_controls_are_present(self):
+        self.assertIn('扫描菜单模块', CYBER)
+        self.assertIn('解析并导出', CYBER)
+        self.assertNotIn('1. Search Menu', ENTRY)
+        self.assertNotIn('4. Static Analyze Dylib', ENTRY)
 
 
 if __name__ == "__main__":
