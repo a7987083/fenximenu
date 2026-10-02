@@ -9,4 +9,5 @@ void HFAMapRunBoundedScan(void (^completion)(NSDictionary *summary));
 void HFAMapArmLastSelectedRuntimeProbe(void (^completion)(NSDictionary *summary));
 void HFAMapStopActiveRuntimeProbe(NSString *reason);
 BOOL HFAMapRuntimeProbeIsActive(void);
+BOOL HFAMapSelectMenuCandidate(NSDictionary *candidate);
 #endif
