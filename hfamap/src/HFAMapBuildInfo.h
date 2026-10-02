@@ -13,6 +13,7 @@ NSString *HFAMapBuildPolicy(void);
 NSString *HFAMapDisplayVersion(void);
 NSDictionary *HFAMapBuildIdentity(void);
 NS_ASSUME_NONNULL_END
+
 #ifdef __cplusplus
 }
 #endif
