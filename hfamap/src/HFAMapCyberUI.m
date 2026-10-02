@@ -27,7 +27,7 @@ void HFACyberUIAppendLog(NSString *text) {
         NSAttributedString *chunk = [[[NSAttributedString alloc] initWithString:line attributes:@{
             NSForegroundColorAttributeName: HFACyberColor(0.90, 0.93, 0.96, 1.0),
             NSFontAttributeName: [UIFont fontWithName:@"CourierNewPSMT" size:11.0]
-                ?: [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular]
+                ?: [UIFont systemFontOfSize:11.0]
         }] autorelease];
         [gHFACyberLogTextView.textStorage appendAttributedString:chunk];
         if (gHFACyberLogTextView.textStorage.length > 120000)
@@ -194,7 +194,7 @@ id HFACyberUICreatePanel(id hostWindow) {
     UILabel *header = [[UILabel alloc] initWithFrame:CGRectMake(12,6,w-24,30)];
     header.text = [NSString stringWithFormat:@"HFAMap %@ · Unified Resolver", HFAMapBuildVersion()];
     header.textColor = HFACyberColor(0.2,1.0,0.2,1.0);
-    header.font = [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightBold];
+    header.font = [UIFont fontWithName:@"CourierNewPS-BoldMT" size:13.0] ?: [UIFont boldSystemFontOfSize:13.0];
     [panel addSubview:header];
 
     CGFloat left = MIN(155.0, MAX(125.0, w*0.33));
@@ -215,7 +215,7 @@ id HFACyberUICreatePanel(id hostWindow) {
     log.backgroundColor = UIColor.clearColor;
     log.editable = NO; log.selectable = YES;
     log.textColor = [UIColor colorWithWhite:0.92 alpha:1.0];
-    log.font = [UIFont monospacedSystemFontOfSize:11.0 weight:UIFontWeightRegular];
+    log.font = [UIFont fontWithName:@"CourierNewPSMT" size:11.0] ?: [UIFont systemFontOfSize:11.0];
     [panel addSubview:log];
 
     gHFACyberPanel = panel; gHFACyberLogTextView = log;
