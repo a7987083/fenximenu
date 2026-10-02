@@ -82,10 +82,10 @@ static NSString *HFAString(const char *text) {
 
 static BOOL HFAReadPointer(const void *base, uintptr_t *value) {
     if (!base || !value) return NO;
-    mach_vm_size_t outSize = 0;
-    kern_return_t kr = mach_vm_read_overwrite(mach_task_self(), (mach_vm_address_t)base,
-                                               sizeof(uintptr_t),
-                                               (mach_vm_address_t)value, &outSize);
+    vm_size_t outSize = 0;
+    kern_return_t kr = vm_read_overwrite(mach_task_self(), (vm_address_t)base,
+                                         sizeof(uintptr_t),
+                                         (vm_address_t)value, &outSize);
     return kr == KERN_SUCCESS && outSize == sizeof(uintptr_t);
 }
 
