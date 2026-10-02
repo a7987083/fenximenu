@@ -1,9 +1,10 @@
-name: HFAMap v2.3.8 Dual Runtime Probe
+name: HFAMap v2.3.8 Method Resolver
 
 on:
   push:
     branches:
       - feature/hfamap-v2-bounded-universal-analyzer
+      - feature/hfamap-v238-method-resolver-v1
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -50,22 +51,23 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.3.8-dev
+          mkdir -p hfamap/dist/v2.3.8-method-resolver
           cp hfamap/.theos/obj/HFAMapUniversal.dylib \
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          file hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_class_from_name'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q 'il2cpp_runtime_invoke'
-          strings hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib | grep -q '2.3.8-dev-dual-runtime-probe'
-          shasum -a 256 hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib \
-            | tee hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib
+          file hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib
+          strings hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib | grep -q 'com.hfa.il2cpp-runtime-probe/v1'
+          strings hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib | grep -q 'il2cpp_class_from_name'
+          strings hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib | grep -q 'il2cpp_runtime_invoke'
+          strings hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib | grep -q '2.3.8-dev-dual-runtime-probe'
+          strings hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib | grep -q 'il2cppMethodEvidence'
+          shasum -a 256 hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib \
+            | tee hfamap/dist/v2.3.8-method-resolver/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.3.8-DualRuntimeProbe
+          name: HFAMapUniversal-v2.3.8-MethodResolver
           path: |
-            hfamap/dist/v2.3.8-dev/HFAMapUniversal-v2.3.8-dev.dylib
-            hfamap/dist/v2.3.8-dev/SHA256SUMS.txt
+            hfamap/dist/v2.3.8-method-resolver/HFAMapUniversal-v2.3.8-MethodResolver.dylib
+            hfamap/dist/v2.3.8-method-resolver/SHA256SUMS.txt
           if-no-files-found: error
