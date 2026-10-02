@@ -1,6 +1,7 @@
 #import "HFAMapResolver.h"
 #import "HFAMapDiagnostics.h"
 #import "HFAMapHookSemantic.h"
+#import "HFAMapIL2CPPResolver.h"
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <mach-o/dyld.h>
@@ -1656,6 +1657,16 @@ NSDictionary *HFAMapResolveFeatureSeeds(NSDictionary *candidate, NSDictionary *s
     unresolved = remainingUnresolved;
     HFADiagnosticsLog(@"menu-hook-semantic", hookSemantic[@"status"] ?: @"unknown", hookSemantic);
 
+    NSDictionary *il2cppMethodEvidence = HFAMapResolveIL2CPPMethods(features, execImages, deadline);
+    NSArray *methodResolvedRecords = il2cppMethodEvidence[@"records"];
+    if ([methodResolvedRecords isKindOfClass:NSArray.class] &&
+        methodResolvedRecords.count == features.count) {
+        features = [NSMutableArray arrayWithArray:methodResolvedRecords];
+    }
+    HFADiagnosticsLog(@"il2cpp-method-resolver",
+                      il2cppMethodEvidence[@"status"] ?: @"unknown",
+                      il2cppMethodEvidence);
+
     NSString *status = [NSDate.date timeIntervalSince1970] > deadline ? @"timeout" : @"complete";
     NSDictionary *snapshotMetrics = snapshot[@"metrics"] ?: @{};
     HFAResolveEvent(events, status, @{ @"views": snapshotMetrics[@"views"] ?: @0,
@@ -1683,5 +1694,6 @@ NSDictionary *HFAMapResolveFeatureSeeds(NSDictionary *candidate, NSDictionary *s
               @"runtimeEvidence": runtimeEvidence, @"hookSemanticEvidence": hookSemantic,
               @"blockProvenanceEvidence": blockProvenance,
               @"actionProvenanceEvidence": actionProvenance,
+              @"il2cppMethodEvidence": il2cppMethodEvidence ?: @{},
               @"metrics": metrics };
 }
