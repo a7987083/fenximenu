@@ -8,23 +8,20 @@ BRIDGE = (ROOT / "hfamap/src/HFAMapStaticCatalogBridge.mm").read_text()
 DESC = (ROOT / "hfamap/src/HFAMapDescriptorStaticCallbackResolver.mm").read_text()
 CORE = (ROOT / "hfamap/src/HFAMapCore.mm").read_text()
 ENTRY = (ROOT / "hfamap/src/HFAMapEntry.mm").read_text()
+CYBER = (ROOT / "hfamap/src/HFAMapCyberUI.m").read_text()
 MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 
 
 class StaticCatalogSourceTests(unittest.TestCase):
-    def test_game_root_picker_and_offline_read_only_analysis(self):
+    def test_offline_read_only_analysis_remains_available_without_main_ui_button(self):
         for token in (
-            'HFAMapListSandboxRootDylibs',
-            'NSHomeDirectory()',
-            'enumerationRoot',
-            'game root',
             'HFAMapStaticCatalogAnalyzeFile',
             'NSDataReadingMappedIfSafe',
             'analysisMode',
             'offline-file-read-only-no-dlopen',
-            '4. Static Analyze Dylib',
         ):
-            self.assertIn(token, SOURCE + HEADER + ENTRY)
+            self.assertIn(token, SOURCE + HEADER)
+        self.assertNotIn('4. Static Analyze Dylib', ENTRY + CYBER)
         self.assertNotIn('dlopen(', SOURCE)
         self.assertNotIn('NSBundle bundleWithPath', SOURCE)
 
