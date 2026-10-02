@@ -20,9 +20,10 @@ class BuildIdentity25201Tests(unittest.TestCase):
         self.assertIn('HFAMapBuildComponent(void)', BUILD)
         self.assertIn('HFAMapBuildPolicy(void)', BUILD)
         self.assertIn('HFAMapDisplayVersion()', self.entry)
-        self.assertIn('HFAMapBuildVersion()', self.entry)
         self.assertNotIn('HFAMap v2.5.7-dev', self.entry)
+        self.assertIn('HFAMapBuildVersion(void)', BUILD)
         self.assertNotIn('[HFAMap] v2.5.7', self.entry)
+        self.assertIn('HFAMapDisplayVersion()', self.entry)
 
     def test_diagnostics_use_current_build_identity(self):
         for token in ('HFAMapBuildVersion()', 'HFAMapBuildComponent()', 'HFAMapBuildPolicy()'):
