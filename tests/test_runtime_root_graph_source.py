@@ -46,7 +46,8 @@ class RuntimeRootGraphSourceTests(unittest.TestCase):
         self.assertIn("HFAMapPersistRuntimeRootGraph", BUNDLE)
         self.assertIn("RuntimeRootGraph.json", SRC)
         self.assertIn("HFAMapRuntimeRootGraphResolver.mm", MAKEFILE)
-        self.assertIn("HFAMapVersion259.mm", MAKEFILE)
+        self.assertNotIn("HFAMapVersion259.mm", MAKEFILE)
+        self.assertIn("HFAMapVersion2524.mm", MAKEFILE)
 
 
 if __name__ == "__main__":
