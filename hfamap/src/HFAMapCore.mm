@@ -22,10 +22,6 @@ static dispatch_queue_t HFAWorker(void) {
     return queue;
 }
 
-static NSString *HFADocuments(void) {
-    return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-}
-
 static NSString *HFAOutputPath(NSString *name) {
     return [HFAOutputDirectoryPath() stringByAppendingPathComponent:name];
 }
