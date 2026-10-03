@@ -247,6 +247,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
                 @"staticNativeConsumerEvidence": staticConsumers ?: @{},
+                @"nativeConsumerTargetEvidence": consumerTargets ?: @{},
                 @"unresolved": resolved[@"unresolved"] ?: @[],
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"metrics": resolved[@"metrics"] ?: @{}
@@ -283,6 +284,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
                 @"staticNativeConsumerEvidence": staticConsumers ?: @{},
+                @"nativeConsumerTargetEvidence": consumerTargets ?: @{},
                 @"status": resolved[@"status"] ?: @"complete"
             }, HFAOutputFileName(@"FeatureRegistry.json"));
             HFAWriteJSON(@{
@@ -301,7 +303,9 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"unresolved": @([resolved[@"unresolved"] count]),
                 @"runtimeMethodCandidates": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
                 @"staticCatalogMatchedBlockCount": handlerGraph[@"staticCatalogMatchedBlockCount"] ?: @0,
-                @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,\n                @"nativeConsumerTargetGroups": consumerTargets[@"groupCount"] ?: @0,\n                @"nativeConsumerIL2CPPResolved": consumerTargets[@"il2cppResolved"] ?: @0,
+                @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,
+                @"nativeConsumerTargetGroups": consumerTargets[@"groupCount"] ?: @0,
+                @"nativeConsumerIL2CPPResolved": consumerTargets[@"il2cppResolved"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
