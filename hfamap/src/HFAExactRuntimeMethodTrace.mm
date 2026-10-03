@@ -264,8 +264,7 @@ NSDictionary *HFAExactRuntimeMethodTraceStop(NSString *reason) {
     };
 
     NSData *json = [NSJSONSerialization dataWithJSONObject:summary options:NSJSONWritingPrettyPrinted error:nil];
-    NSString *documents = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *path = [documents stringByAppendingPathComponent:HFAOutputFileName(@"ExactRuntimeMethods.json")];
+    NSString *path = [HFAOutputDirectoryPath() stringByAppendingPathComponent:HFAOutputFileName(@"ExactRuntimeMethods.json")];
     [json writeToFile:path atomically:YES];
 
     pthread_mutex_lock(&gHFATraceLock);
