@@ -97,6 +97,7 @@ BOOL HFAMapSelectMenuCandidate(NSDictionary *candidate) {
         gHFALastSelectedCandidate = [candidate copy];
     }
     HFASetOutputTargetFileName(image.length ? image : path.lastPathComponent);
+    HFAAdoptRootOutputsIntoCurrentDirectory();
     HFADiagnosticsLog(@"menu-discovery", @"manually-selected-after-ambiguity", @{
         @"image": image ?: @"",
         @"path": path ?: @"",
@@ -113,12 +114,16 @@ void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
     dispatch_async(HFAWorker(), ^{
         NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
         NSTimeInterval started = NSDate.date.timeIntervalSince1970;
+        HFASetOutputTargetFileName(nil);
         NSArray *candidates = HFAMapFastDiscoverMenuImages(events);
         NSString *reject = nil;
         NSDictionary *selected = HFASelectCandidate(candidates, &reject);
         NSString *selectedImage = [selected[@"image"] isKindOfClass:NSString.class] ? selected[@"image"] : @"";
         NSString *selectedPath = [selected[@"path"] isKindOfClass:NSString.class] ? selected[@"path"] : @"";
-        if (selected) HFASetOutputTargetFileName(selectedImage.length ? selectedImage : selectedPath.lastPathComponent);
+        if (selected) {
+            HFASetOutputTargetFileName(selectedImage.length ? selectedImage : selectedPath.lastPathComponent);
+            HFAAdoptRootOutputsIntoCurrentDirectory();
+        }
         NSString *session = HFADiagnosticsBeginSession();
         HFADiagnosticsLog(@"menu-discovery", @"start", @{
             @"mode": @"full-list-lightweight-only",
