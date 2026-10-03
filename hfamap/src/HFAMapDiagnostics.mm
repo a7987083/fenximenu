@@ -70,9 +70,9 @@ void HFADiagnosticsLog(NSString *stage, NSString *status, NSDictionary *details)
     NSString *json = [HFAJSONString(record) stringByAppendingString:@"\n"];
     NSString *plain = [NSString stringWithFormat:@"[%@] [+%.1fms] [%@/%@] %@\n",
                        session, elapsed, stage ?: @"?", status ?: @"?", HFAJSONString(details ?: @{})];
-    NSString *documents = HFADocumentsPath();
-    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.jsonl")], [json dataUsingEncoding:NSUTF8StringEncoding]);
-    HFAAppend([documents stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")], [plain dataUsingEncoding:NSUTF8StringEncoding]);
+    NSString *directory = HFAOutputDirectoryPath();
+    HFAAppend([directory stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.jsonl")], [json dataUsingEncoding:NSUTF8StringEncoding]);
+    HFAAppend([directory stringByAppendingPathComponent:HFAOutputFileName(@"Diagnostics.log")], [plain dataUsingEncoding:NSUTF8StringEncoding]);
     pthread_mutex_unlock(&gHFADiagnosticsLock);
 }
 
