@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.24-dev";
+    return @"2.5.25-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.24-dev-two-button-unified-ui";
+    return @"2.5.25-dev-two-button-unified-ui";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"AUTO-HOST-AUTO-UNITY-TWO-BUTTON-UNIFIED-RESOLUTION";
+    return @"AUTO-HOST-AUTO-UNITY-STATIC-CONSUMER-DIRECT-NATIVE-RESOLUTION";
 }
 
 NSString *HFAMapDisplayVersion(void) {
