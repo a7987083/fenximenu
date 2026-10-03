@@ -1,4 +1,8 @@
 #import "HFAMapOutputName.h"
+#include <pthread.h>
+
+static pthread_mutex_t gHFAOutputLock = PTHREAD_MUTEX_INITIALIZER;
+static NSString *gHFAOutputTargetFileName;
 
 static NSString *HFAUsableName(id candidate) {
     if (![candidate isKindOfClass:NSString.class]) return nil;
@@ -29,4 +33,32 @@ NSString *HFAHostAppName(void) {
 
 NSString *HFAOutputFileName(NSString *suffix) {
     return [NSString stringWithFormat:@"%@_HFAMap_%@", HFAHostAppName(), suffix];
+}
+
+
+void HFASetOutputTargetFileName(NSString *fileName) {
+    NSString *safe = HFAUsableName(fileName.lastPathComponent ?: fileName);
+    pthread_mutex_lock(&gHFAOutputLock);
+    [gHFAOutputTargetFileName release];
+    gHFAOutputTargetFileName = [safe copy];
+    pthread_mutex_unlock(&gHFAOutputLock);
+}
+
+NSString *HFAOutputDirectoryPath(void) {
+    NSString *documents = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+                                                                NSUserDomainMask, YES) firstObject];
+    pthread_mutex_lock(&gHFAOutputLock);
+    NSString *target = [gHFAOutputTargetFileName copy];
+    pthread_mutex_unlock(&gHFAOutputLock);
+    if (!target.length) {
+        [target release];
+        return documents;
+    }
+    NSString *directory = [documents stringByAppendingPathComponent:target];
+    [NSFileManager.defaultManager createDirectoryAtPath:directory
+                            withIntermediateDirectories:YES
+                                             attributes:nil
+                                                  error:nil];
+    [target release];
+    return directory;
 }
