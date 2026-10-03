@@ -9,7 +9,8 @@
 #import "HFAMapFeatureHandlerResolver.h"
 #import "HFAMapStaticCatalog.h"
 #import "HFAMapStaticCatalogBridge.h"
-#import "HFAMapStaticConsumerTargetResolver.h"\n#import "HFAMapNativeConsumerTargetBridge.h"
+#import "HFAMapStaticConsumerTargetResolver.h"
+#import "HFAMapNativeConsumerTargetBridge.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
