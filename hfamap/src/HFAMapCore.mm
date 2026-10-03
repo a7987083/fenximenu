@@ -9,7 +9,7 @@
 #import "HFAMapFeatureHandlerResolver.h"
 #import "HFAMapStaticCatalog.h"
 #import "HFAMapStaticCatalogBridge.h"
-#import "HFAMapStaticConsumerTargetResolver.h"
+#import "HFAMapStaticConsumerTargetResolver.h"\n#import "HFAMapNativeConsumerTargetBridge.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
@@ -220,6 +220,17 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"featureLinkCount": staticConsumers[@"featureLinkCount"] ?: @0,
                 @"policy": staticConsumers[@"policy"] ?: @""
             });
+            NSDictionary *consumerTargets = HFAMapResolveNativeConsumerTargets(
+                selected, staticConsumers, NSDate.date.timeIntervalSince1970 + 1.5);
+            HFADiagnosticsLog(@"native-consumer-target-bridge",
+                              consumerTargets[@"status"] ?: @"complete", @{
+                @"groupCount": consumerTargets[@"groupCount"] ?: @0,
+                @"slotsInspected": consumerTargets[@"slotsInspected"] ?: @0,
+                @"livePointers": consumerTargets[@"livePointers"] ?: @0,
+                @"externalPointers": consumerTargets[@"externalPointers"] ?: @0,
+                @"il2cppResolved": consumerTargets[@"il2cppResolved"] ?: @0,
+                @"policy": consumerTargets[@"policy"] ?: @""
+            });
             NSDictionary *analysis = @{
                 @"schema": @"com.hfa.analysis/v3",
                 @"status": resolved[@"status"] ?: @"complete",
@@ -290,7 +301,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"unresolved": @([resolved[@"unresolved"] count]),
                 @"runtimeMethodCandidates": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
                 @"staticCatalogMatchedBlockCount": handlerGraph[@"staticCatalogMatchedBlockCount"] ?: @0,
-                @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,
+                @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,\n                @"nativeConsumerTargetGroups": consumerTargets[@"groupCount"] ?: @0,\n                @"nativeConsumerIL2CPPResolved": consumerTargets[@"il2cppResolved"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
