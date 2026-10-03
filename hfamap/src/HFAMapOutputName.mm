@@ -62,3 +62,44 @@ NSString *HFAOutputDirectoryPath(void) {
     [target release];
     return directory;
 }
+
+
+static void HFAAppendFileContents(NSString *source, NSString *destination) {
+    NSData *data = [NSData dataWithContentsOfFile:source];
+    if (!data.length) return;
+    NSFileManager *fm = NSFileManager.defaultManager;
+    if (![fm fileExistsAtPath:destination]) {
+        [data writeToFile:destination options:NSDataWritingAtomic error:nil];
+        return;
+    }
+    NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:destination];
+    if (!handle) return;
+    @try {
+        [handle seekToEndOfFile];
+        [handle writeData:data];
+        [handle closeFile];
+    } @catch (__unused NSException *exception) {}
+}
+
+void HFAAdoptRootOutputsIntoCurrentDirectory(void) {
+    NSString *documents = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+                                                                NSUserDomainMask, YES) firstObject];
+    NSString *directory = HFAOutputDirectoryPath();
+    if (!documents.length || !directory.length || [documents isEqualToString:directory]) return;
+
+    NSArray<NSString *> *suffixes = @[
+        @"Diagnostics.jsonl",
+        @"Diagnostics.log",
+        @"RuntimeProbe.json",
+        @"ExactRuntimeMethods.json"
+    ];
+    NSFileManager *fm = NSFileManager.defaultManager;
+    for (NSString *suffix in suffixes) {
+        NSString *name = HFAOutputFileName(suffix);
+        NSString *source = [documents stringByAppendingPathComponent:name];
+        if (![fm fileExistsAtPath:source]) continue;
+        NSString *destination = [directory stringByAppendingPathComponent:name];
+        HFAAppendFileContents(source, destination);
+        [fm removeItemAtPath:source error:nil];
+    }
+}
