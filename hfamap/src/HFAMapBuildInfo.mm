@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.25-dev";
+    return @"2.5.27-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.25-dev-static-consumer-target-resolver";
+    return @"2.5.27-dev-native-consumer-target-bridge";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"AUTO-HOST-AUTO-UNITY-STATIC-CONSUMER-DIRECT-NATIVE-RESOLUTION";
+    return @"AUTO-HOST-AUTO-UNITY-STATIC-CONSUMER-LIVE-SLOT-IL2CPP-BRIDGE";
 }
 
 NSString *HFAMapDisplayVersion(void) {
