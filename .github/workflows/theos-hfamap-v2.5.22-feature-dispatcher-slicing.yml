@@ -1,4 +1,4 @@
-name: HFAMap v2.5.24 Two Button Unified UI
+name: HFAMap v2.5.25 Static Consumer Target Resolver
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - feature/hfamap-v2.5.22-feature-dispatcher-slicing
       - feature/hfamap-v2.5.23-exact-runtime-method-trace
       - feature/hfamap-v2.5.24-two-button-unified-ui
+      - feature/hfamap-v2.5.25-static-consumer-target-resolver
     paths:
       - 'hfamap/**'
       - 'tests/**'
@@ -23,7 +24,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_*.py' -v
           python3 -m py_compile tests/*.py
-      - name: Check v2.5.24 invariants
+      - name: Check v2.5.25 invariants
         run: |
           set -euo pipefail
           grep -q 'FeatureDispatcherSlices.json' hfamap/src/HFAMapFeatureDispatcherSliceResolver.mm
@@ -42,7 +43,12 @@ jobs:
           ! grep -q '3. Runtime Probe' hfamap/src/HFAMapEntry.mm
           ! grep -q '4. Static Analyze Dylib' hfamap/src/HFAMapEntry.mm
           ! grep -q 'HFAMapVersion259.mm' hfamap/Makefile
-          grep -q '2.5.24-dev' hfamap/src/HFAMapBuildInfo.mm
+          grep -q '2.5.25-dev' hfamap/src/HFAMapBuildInfo.mm
+          grep -q 'direct-native-call' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'instanceRequiredByCallPath' hfamap/src/HFAMapFeatureHandlerResolver.mm
+          grep -q 'shared-native-consumer' hfamap/src/HFAMapStaticConsumerTargetResolver.mm
+          grep -q 'staticNativeConsumerEvidence' hfamap/src/HFAMapCore.mm
+          grep -q 'src/HFAMapStaticConsumerTargetResolver.mm' hfamap/Makefile
       - name: Install Theos
         run: |
           set -euo pipefail
@@ -55,22 +61,22 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.24-dev
-          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.24-dev/HFAMapUniversal-v2.5.24-dev.dylib
-          out=hfamap/dist/v2.5.24-dev/HFAMapUniversal-v2.5.24-dev.dylib
-          strings "$out" > "$RUNNER_TEMP/hfamap2524.strings"
+          mkdir -p hfamap/dist/v2.5.25-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.25-dev/HFAMapUniversal-v2.5.25-dev.dylib
+          out=hfamap/dist/v2.5.25-dev/HFAMapUniversal-v2.5.25-dev.dylib
+          strings "$out" > "$RUNNER_TEMP/hfamap2525.strings"
           file "$out" | grep -q arm64
-          grep -q '2.5.24-dev-two-button-unified-ui' "$RUNNER_TEMP/hfamap2524.strings"
-          ! grep -q 'HFAMap v2.5.9-dev' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q 'eventTime>=interactionTime&&delta<=500ms' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q 'real-CFBundleExecutable-never-@main' "$RUNNER_TEMP/hfamap2524.strings"
-          grep -q 'READ-ONLY-ENTRY-SENDER-FEATURE-SLICING-NO-REEXECUTION' "$RUNNER_TEMP/hfamap2524.strings"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.24-dev/SHA256SUMS.txt
+          grep -q '2.5.25-dev-static-consumer-target-resolver' "$RUNNER_TEMP/hfamap2525.strings"
+          ! grep -q 'HFAMap v2.5.9-dev' "$RUNNER_TEMP/hfamap2525.strings"
+          grep -q 'eventTime>=interactionTime&&delta<=500ms' "$RUNNER_TEMP/hfamap2525.strings"
+          grep -q 'real-CFBundleExecutable-never-@main' "$RUNNER_TEMP/hfamap2525.strings"
+          grep -q 'READ-ONLY-ENTRY-SENDER-FEATURE-SLICING-NO-REEXECUTION' "$RUNNER_TEMP/hfamap2525.strings"
+          shasum -a 256 "$out" | tee hfamap/dist/v2.5.25-dev/SHA256SUMS.txt
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: HFAMapUniversal-v2.5.24-TwoButtonUnifiedUI
+          name: HFAMapUniversal-v2.5.25-StaticConsumerTargetResolver
           path: |
-            hfamap/dist/v2.5.24-dev/HFAMapUniversal-v2.5.24-dev.dylib
-            hfamap/dist/v2.5.24-dev/SHA256SUMS.txt
+            hfamap/dist/v2.5.25-dev/HFAMapUniversal-v2.5.25-dev.dylib
+            hfamap/dist/v2.5.25-dev/SHA256SUMS.txt
           if-no-files-found: error
