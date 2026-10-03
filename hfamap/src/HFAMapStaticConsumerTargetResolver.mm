@@ -246,7 +246,6 @@ static NSDictionary *HFASemantics(const HFAImage &image, uint64_t start, uint64_
     if (rets > 1 && conditionals) [ops addObject:@"conditional-early-return"];
     return @{ @"floatMultiplyCount": @(fmul), @"floatDivideCount": @(fdiv),
               @"returnCount": @(rets), @"conditionalBranchCount": @(conditionals),
-              @"signedIntToFloatCount": @(scvtf), @"floatToSignedIntCount": @(fcvtzs),
               @"operationCandidates": ops };
 }
 
