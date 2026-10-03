@@ -5,7 +5,7 @@ NSString *HFAMapBuildVersion(void) {
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.25-dev-two-button-unified-ui";
+    return @"2.5.25-dev-static-consumer-target-resolver";
 }
 
 NSString *HFAMapBuildPolicy(void) {
