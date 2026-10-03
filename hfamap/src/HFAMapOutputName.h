@@ -8,3 +8,5 @@ FOUNDATION_EXPORT NSString *HFAOutputFileName(NSString *suffix);
 // exact sanitized filename, including its extension (for example foo.dylib).
 FOUNDATION_EXPORT void HFASetOutputTargetFileName(NSString *fileName);
 FOUNDATION_EXPORT NSString *HFAOutputDirectoryPath(void);
+
+FOUNDATION_EXPORT void HFAAdoptRootOutputsIntoCurrentDirectory(void);
