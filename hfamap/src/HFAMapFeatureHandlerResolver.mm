@@ -195,7 +195,7 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
     const void *basePtr = NULL;
     NSString *image = HFAHandlerImageForAddress(invoke, &basePtr);
     if (!image.length || ![image isEqualToString:menuImage] || !basePtr)
-        return @{ @"schema": @"com.hfa.runtime-method-descriptor/v3",
+        return @{ @"schema": @"com.hfa.runtime-method-descriptor/v2",
                   @"status": @"invoke-outside-selected-menu", @"analysisOnly": @YES };
 
     uint64_t base = (uint64_t)(uintptr_t)basePtr;
@@ -403,7 +403,7 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
         (descriptor ? @"runtime-method-descriptor-candidate" : @"insufficient-method-descriptor-evidence");
     NSString *classification = directNative ? @"direct-native-action" :
         (descriptor ? @"runtime-method" : @"unknown");
-    return @{ @"schema": @"com.hfa.runtime-method-descriptor/v3",
+    return @{ @"schema": @"com.hfa.runtime-method-descriptor/v2",
               @"status": status,
               @"invokeRVA": @(invoke - base),
               @"invokeRVAHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)(invoke - base)],
