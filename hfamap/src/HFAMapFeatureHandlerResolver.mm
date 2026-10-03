@@ -3,6 +3,7 @@
 
 #import <objc/runtime.h>
 #import <mach/mach.h>
+#import <mach-o/dyld.h>
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -114,18 +115,73 @@ static void HFAHandlerAppendString(NSMutableArray *strings, NSMutableSet *seen,
                           @"register": [NSString stringWithFormat:@"x%u", reg] }];
 }
 
+
+static NSString *HFAHandlerSymbolForTarget(uint64_t target) {
+    if (!target) return nil;
+    Dl_info info = {};
+    if (dladdr((const void *)(uintptr_t)target, &info) && info.dli_sname)
+        return [NSString stringWithUTF8String:info.dli_sname];
+    return nil;
+}
+
+static NSDictionary *HFAHandlerMethodForPreferredRVA(uint64_t preferredRVA,
+                                                      NSString **imageOut,
+                                                      uint64_t *runtimeOut) {
+    NSDictionary *unique = nil;
+    NSString *uniqueImage = nil;
+    uint64_t uniqueRuntime = 0;
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; ++i) {
+        intptr_t slide = _dyld_get_image_vmaddr_slide(i);
+        uint64_t runtime = (uint64_t)((int64_t)slide + (int64_t)preferredRVA);
+        NSDictionary *method = HFAIL2CPPMethodForRuntimeAddress((const void *)(uintptr_t)runtime);
+        if (!method) continue;
+        if (unique) return nil; // ambiguous preferred RVA across images: fail closed.
+        unique = method;
+        const char *name = _dyld_get_image_name(i);
+        uniqueImage = name ? [NSString stringWithUTF8String:name].lastPathComponent : @"";
+        uniqueRuntime = runtime;
+    }
+    if (imageOut) *imageOut = uniqueImage;
+    if (runtimeOut) *runtimeOut = uniqueRuntime;
+    return unique;
+}
+
+static BOOL HFADecodeMoveWideConstant(uint32_t insn, HFAKnownReg regs[31],
+                                      unsigned *writtenReg) {
+    uint32_t op = insn & 0x7F800000U;
+    if (op != 0x52800000U && op != 0x72800000U) return NO;
+    unsigned rd = insn & 31U;
+    if (rd >= 31) return NO;
+    unsigned shift = ((insn >> 21U) & 3U) * 16U;
+    uint64_t immediate = ((uint64_t)((insn >> 5U) & 0xFFFFU)) << shift;
+    if (op == 0x52800000U) {
+        regs[rd] = { YES, immediate };
+    } else {
+        if (!regs[rd].known) return NO;
+        uint64_t mask = 0xFFFFULL << shift;
+        regs[rd].value = (regs[rd].value & ~mask) | immediate;
+    }
+    if (writtenReg) *writtenReg = rd;
+    return YES;
+}
+
 static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage) {
     const void *basePtr = NULL;
     NSString *image = HFAHandlerImageForAddress(invoke, &basePtr);
     if (!image.length || ![image isEqualToString:menuImage] || !basePtr)
-        return @{ @"schema": @"com.hfa.runtime-method-descriptor/v2",
+        return @{ @"schema": @"com.hfa.runtime-method-descriptor/v3",
                   @"status": @"invoke-outside-selected-menu", @"analysisOnly": @YES };
 
     uint64_t base = (uint64_t)(uintptr_t)basePtr;
     HFAKnownReg regs[31] = {};
+    BOOL slideRegs[31] = {};
+    BOOL preferredRVARegs[31] = {};
+    uint64_t preferredRVAValues[31] = {};
     NSMutableArray *strings = [NSMutableArray array];
     NSMutableSet *seenStrings = [NSMutableSet set];
     NSMutableArray *methodLinks = [NSMutableArray array];
+    NSMutableArray *directNativeTargets = [NSMutableArray array];
     NSUInteger directCalls = 0, indirectCalls = 0;
     BOOL sawReturn = NO;
 
@@ -137,11 +193,22 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
 
         if (insn == 0xD65F03C0U) { sawReturn = YES; break; }
 
+        unsigned wideReg = 0;
+        if (HFADecodeMoveWideConstant(insn, regs, &wideReg)) {
+            slideRegs[wideReg] = NO;
+            preferredRVARegs[wideReg] = NO;
+            continue;
+        }
+
         if ((insn & 0x9F000000U) == 0x90000000U) {
             unsigned rd = insn & 31U;
             int64_t imm = HFASignExtendHandler((((uint64_t)(insn >> 5) & 0x7ffffULL) << 2) |
                                                 ((insn >> 29) & 3U), 21) << 12;
-            if (rd < 31) regs[rd] = { YES, (pc & ~0xfffULL) + imm };
+            if (rd < 31) {
+                regs[rd] = { YES, (pc & ~0xfffULL) + imm };
+                slideRegs[rd] = NO;
+                preferredRVARegs[rd] = NO;
+            }
             continue;
         }
         if ((insn & 0x9F000000U) == 0x10000000U) {
@@ -150,6 +217,8 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
                                                 ((insn >> 29) & 3U), 21);
             if (rd < 31) {
                 regs[rd] = { YES, pc + imm };
+                slideRegs[rd] = NO;
+                preferredRVARegs[rd] = NO;
                 NSString *text = HFAHandlerCString(regs[rd].value);
                 if (text.length) HFAHandlerAppendString(strings, seenStrings, text, rva, rd);
             }
@@ -159,10 +228,42 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
             unsigned rd = insn & 31U, rn = (insn >> 5) & 31U;
             uint64_t imm = (insn >> 10) & 0xfffU;
             if (insn & (1U << 22)) imm <<= 12;
-            if (rd < 31 && rn < 31 && regs[rn].known) {
-                regs[rd] = { YES, regs[rn].value + imm };
-                NSString *text = HFAHandlerCString(regs[rd].value);
-                if (text.length) HFAHandlerAppendString(strings, seenStrings, text, rva, rd);
+            if (rd < 31 && rn < 31) {
+                if (regs[rn].known) {
+                    regs[rd] = { YES, regs[rn].value + imm };
+                    NSString *text = HFAHandlerCString(regs[rd].value);
+                    if (text.length) HFAHandlerAppendString(strings, seenStrings, text, rva, rd);
+                } else {
+                    regs[rd] = { NO, 0 };
+                }
+                slideRegs[rd] = slideRegs[rn];
+                if (preferredRVARegs[rn]) {
+                    preferredRVARegs[rd] = YES;
+                    preferredRVAValues[rd] = preferredRVAValues[rn] + imm;
+                } else {
+                    preferredRVARegs[rd] = NO;
+                }
+            }
+            continue;
+        }
+        if ((insn & 0xFF200000U) == 0x8B000000U) {
+            unsigned rd = insn & 31U, rn = (insn >> 5) & 31U, rm = (insn >> 16) & 31U;
+            unsigned shiftType = (insn >> 22) & 3U;
+            unsigned shiftAmount = (insn >> 10) & 0x3FU;
+            if (rd < 31 && rn < 31 && rm < 31 && shiftType == 0U && shiftAmount == 0U) {
+                BOOL rnSlide = slideRegs[rn], rmSlide = slideRegs[rm];
+                BOOL rnConst = regs[rn].known, rmConst = regs[rm].known;
+                if (rnSlide && rmConst) {
+                    preferredRVARegs[rd] = YES;
+                    preferredRVAValues[rd] = regs[rm].value;
+                    slideRegs[rd] = NO;
+                    regs[rd] = { NO, 0 };
+                } else if (rmSlide && rnConst) {
+                    preferredRVARegs[rd] = YES;
+                    preferredRVAValues[rd] = regs[rn].value;
+                    slideRegs[rd] = NO;
+                    regs[rd] = { NO, 0 };
+                }
             }
             continue;
         }
@@ -172,6 +273,8 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
             uint64_t slot = (uint64_t)((int64_t)pc + off), loaded = 0;
             if (rt < 31 && HFAHandlerRead(slot, &loaded, sizeof(loaded))) {
                 regs[rt] = { YES, loaded };
+                slideRegs[rt] = NO;
+                preferredRVARegs[rt] = NO;
                 NSString *text = HFAHandlerCString(loaded);
                 if (text.length) HFAHandlerAppendString(strings, seenStrings, text, rva, rt);
             }
@@ -184,6 +287,8 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
             if (rt < 31 && rn < 31 && regs[rn].known &&
                 HFAHandlerRead(regs[rn].value + off, &loaded, sizeof(loaded))) {
                 regs[rt] = { YES, loaded };
+                slideRegs[rt] = NO;
+                preferredRVARegs[rt] = NO;
                 NSString *text = HFAHandlerCString(loaded);
                 if (text.length) HFAHandlerAppendString(strings, seenStrings, text, rva, rt);
             }
@@ -191,22 +296,66 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
         }
         if ((insn & 0xFFE0FFE0U) == 0xAA0003E0U) {
             unsigned rd = insn & 31U, rm = (insn >> 16) & 31U;
-            if (rd < 31 && rm < 31) regs[rd] = regs[rm];
+            if (rd < 31 && rm < 31) {
+                regs[rd] = regs[rm];
+                slideRegs[rd] = slideRegs[rm];
+                preferredRVARegs[rd] = preferredRVARegs[rm];
+                preferredRVAValues[rd] = preferredRVAValues[rm];
+            }
             continue;
         }
         if ((insn & 0xFC000000U) == 0x94000000U) {
             ++directCalls;
             int64_t off = HFASignExtendHandler(insn & 0x03ffffffU, 26) << 2;
             uint64_t target = (uint64_t)((int64_t)pc + off);
+            NSString *symbol = HFAHandlerSymbolForTarget(target);
+            if ([symbol containsString:@"dyld_get_image_vmaddr_slide"]) {
+                memset(slideRegs, 0, sizeof(slideRegs));
+                memset(preferredRVARegs, 0, sizeof(preferredRVARegs));
+                slideRegs[0] = YES;
+                regs[0] = { NO, 0 };
+                continue;
+            }
             NSDictionary *method = HFAIL2CPPMethodContainingRuntimeAddress((const void *)(uintptr_t)target);
             if (method && methodLinks.count < 16)
                 [methodLinks addObject:@{ @"kind": @"direct-call", @"callsiteRVA": @(rva), @"method": method }];
+            memset(slideRegs, 0, sizeof(slideRegs));
+            memset(preferredRVARegs, 0, sizeof(preferredRVARegs));
+            regs[0] = { NO, 0 };
             continue;
         }
         if ((insn & 0xFFFFFC1FU) == 0xD63F0000U || (insn & 0xFFFFFC1FU) == 0xD61F0000U) {
             ++indirectCalls;
             unsigned rn = (insn >> 5) & 31U;
-            if (rn < 31 && regs[rn].known) {
+            if (rn < 31 && preferredRVARegs[rn] && directNativeTargets.count < 8) {
+                uint64_t targetRVA = preferredRVAValues[rn];
+                NSString *targetImage = nil;
+                uint64_t runtime = 0;
+                NSDictionary *method = HFAHandlerMethodForPreferredRVA(targetRVA, &targetImage, &runtime);
+                NSMutableDictionary *targetRecord = [@{
+                    @"kind": @"direct-native-call",
+                    @"callsiteRVA": @(rva),
+                    @"callsiteRVAHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)rva],
+                    @"preferredTargetRVA": @(targetRVA),
+                    @"preferredTargetRVAHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)targetRVA],
+                    @"targetAddressSemantics": @"dyld-slide-plus-preferred-vm-rva",
+                    @"instanceRequiredByCallPath": @NO,
+                    @"executionMode": @"direct-native-call",
+                    @"evidence": @[@"dyld-image-slide-return", @"move-wide-rva", @"add-slide-and-rva",
+                                    @"indirect-branch-to-computed-target"]
+                } mutableCopy];
+                if (method) {
+                    targetRecord[@"il2cppMethod"] = method;
+                    targetRecord[@"targetImage"] = targetImage ?: @"";
+                    targetRecord[@"runtimeTarget"] = [NSString stringWithFormat:@"0x%llX",
+                        (unsigned long long)runtime];
+                    [methodLinks addObject:@{ @"kind": @"direct-native-call",
+                                              @"callsiteRVA": @(rva), @"method": method,
+                                              @"preferredTargetRVA": @(targetRVA) }];
+                }
+                [directNativeTargets addObject:targetRecord];
+                [targetRecord release];
+            } else if (rn < 31 && regs[rn].known) {
                 NSDictionary *method = HFAIL2CPPMethodContainingRuntimeAddress((const void *)(uintptr_t)regs[rn].value);
                 if (method && methodLinks.count < 16)
                     [methodLinks addObject:@{ @"kind": @"indirect-call", @"callsiteRVA": @(rva),
@@ -223,9 +372,14 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
         else if ([role isEqualToString:@"identifier-like"]) ++identifierLike;
         else if ([role isEqualToString:@"qualified-type-like"]) ++qualifiedLike;
     }
+    BOOL directNative = directNativeTargets.count > 0;
     BOOL descriptor = assemblyLike > 0 && identifierLike >= 2 && indirectCalls > 0;
-    return @{ @"schema": @"com.hfa.runtime-method-descriptor/v2",
-              @"status": descriptor ? @"runtime-method-descriptor-candidate" : @"insufficient-method-descriptor-evidence",
+    NSString *status = directNative ? @"direct-native-target-resolved" :
+        (descriptor ? @"runtime-method-descriptor-candidate" : @"insufficient-method-descriptor-evidence");
+    NSString *classification = directNative ? @"direct-native-action" :
+        (descriptor ? @"runtime-method" : @"unknown");
+    return @{ @"schema": @"com.hfa.runtime-method-descriptor/v3",
+              @"status": status,
               @"invokeRVA": @(invoke - base),
               @"invokeRVAHex": [NSString stringWithFormat:@"0x%llX", (unsigned long long)(invoke - base)],
               @"implementationImage": image,
@@ -235,11 +389,13 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
               @"qualifiedTypeLikeCount": @(qualifiedLike),
               @"directCallCount": @(directCalls),
               @"indirectCallCount": @(indirectCalls),
+              @"directNativeTargets": directNativeTargets,
+              @"directNativeTargetCount": @(directNativeTargets.count),
               @"il2cppMethodLinks": methodLinks,
               @"il2cppCorrelationCount": @(methodLinks.count),
               @"sawReturn": @(sawReturn),
-              @"classification": descriptor ? @"runtime-method" : @"unknown",
-              @"selectionPolicy": @"feature-owned-descriptor-to-block-invoke-structural-evidence",
+              @"classification": classification,
+              @"selectionPolicy": @"feature-owned-block-structural-evidence-no-invocation",
               @"analysisOnly": @YES, @"canonicalEligible": @NO,
               @"blockInvokedByAnalyzer": @NO, @"selectorInvokedByAnalyzer": @NO,
               @"hookInstalled": @NO, @"memoryWritten": @NO };
