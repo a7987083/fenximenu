@@ -27,7 +27,7 @@ static NSString *HFADocuments(void) {
 }
 
 static NSString *HFAOutputPath(NSString *name) {
-    return [HFADocuments() stringByAppendingPathComponent:name];
+    return [HFAOutputDirectoryPath() stringByAppendingPathComponent:name];
 }
 
 static BOOL HFAWriteJSON(id object, NSString *name) {
@@ -50,7 +50,7 @@ static void HFAWriteEvents(NSArray<NSDictionary *> *events) {
         [data appendData:line];
         [data appendBytes:"\n" length:1];
     }
-    [data writeToFile:[HFADocuments() stringByAppendingPathComponent:HFAOutputFileName(@"Process.jsonl")]
+    [data writeToFile:[HFAOutputDirectoryPath() stringByAppendingPathComponent:HFAOutputFileName(@"Process.jsonl")]
               options:NSDataWritingAtomic error:nil];
 }
 
@@ -100,6 +100,7 @@ BOOL HFAMapSelectMenuCandidate(NSDictionary *candidate) {
         [gHFALastSelectedCandidate release];
         gHFALastSelectedCandidate = [candidate copy];
     }
+    HFASetOutputTargetFileName(image.length ? image : path.lastPathComponent);
     HFADiagnosticsLog(@"menu-discovery", @"manually-selected-after-ambiguity", @{
         @"image": image ?: @"",
         @"path": path ?: @"",
@@ -116,15 +117,18 @@ void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
     dispatch_async(HFAWorker(), ^{
         NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
         NSTimeInterval started = NSDate.date.timeIntervalSince1970;
-        NSString *session = HFADiagnosticsBeginSession();
-        HFADiagnosticsLog(@"menu-discovery", @"start", @{
-            @"mode": @"full-list-lightweight-only",
-            @"deepAnalysisPerformed": @NO
-        });
-
         NSArray *candidates = HFAMapFastDiscoverMenuImages(events);
         NSString *reject = nil;
         NSDictionary *selected = HFASelectCandidate(candidates, &reject);
+        NSString *selectedImage = [selected[@"image"] isKindOfClass:NSString.class] ? selected[@"image"] : @"";
+        NSString *selectedPath = [selected[@"path"] isKindOfClass:NSString.class] ? selected[@"path"] : @"";
+        if (selected) HFASetOutputTargetFileName(selectedImage.length ? selectedImage : selectedPath.lastPathComponent);
+        NSString *session = HFADiagnosticsBeginSession();
+        HFADiagnosticsLog(@"menu-discovery", @"start", @{
+            @"mode": @"full-list-lightweight-only",
+            @"deepAnalysisPerformed": @NO,
+            @"outputDirectory": HFAOutputDirectoryPath() ?: @""
+        });
         if (selected) {
             @synchronized(NSObject.class) {
                 [gHFALastSelectedCandidate release];
@@ -181,6 +185,9 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
         return;
     }
 
+    NSString *selectedImage = [selected[@"image"] isKindOfClass:NSString.class] ? selected[@"image"] : @"";
+    NSString *selectedPath = [selected[@"path"] isKindOfClass:NSString.class] ? selected[@"path"] : @"";
+    HFASetOutputTargetFileName(selectedImage.length ? selectedImage : selectedPath.lastPathComponent);
     NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
     NSTimeInterval started = NSDate.date.timeIntervalSince1970;
     NSString *session = HFADiagnosticsBeginSession();
@@ -189,7 +196,8 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
         @"selectedPath": selected[@"path"] ?: @"?",
         @"discoveryReused": @YES,
         @"globalRediscoveryPerformed": @NO,
-        @"staticCatalogLoaded": @(HFAMapStaticCatalogCurrent() != nil)
+        @"staticCatalogLoaded": @(HFAMapStaticCatalogCurrent() != nil),
+        @"outputDirectory": HFAOutputDirectoryPath() ?: @""
     });
 
     dispatch_async(dispatch_get_main_queue(), ^{
