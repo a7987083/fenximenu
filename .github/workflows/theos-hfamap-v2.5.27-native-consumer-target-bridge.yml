@@ -50,20 +50,20 @@ jobs:
           set -euo pipefail
           make -C hfamap clean
           make -C hfamap FINALPACKAGE=1
-          mkdir -p hfamap/dist/v2.5.27-dev
-          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
-          out=hfamap/dist/v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
+          mkdir -p hfamap/dist/HFAMapUniversal-v2.5.27-dev
+          cp hfamap/.theos/obj/HFAMapUniversal.dylib hfamap/dist/HFAMapUniversal-v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
+          out=hfamap/dist/HFAMapUniversal-v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
           strings "$out" > "$RUNNER_TEMP/hfamap2527.strings"
           file "$out" | grep -q arm64
           grep -q '2.5.27-dev-native-consumer-target-bridge' "$RUNNER_TEMP/hfamap2527.strings"
           grep -q 'static-indirect-slot-discovery+read-only-live-pointee+fail-closed-unique-unity-target' "$RUNNER_TEMP/hfamap2527.strings"
-          shasum -a 256 "$out" | tee hfamap/dist/v2.5.27-dev/SHA256SUMS.txt
+          shasum -a 256 "$out" | tee hfamap/dist/HFAMapUniversal-v2.5.27-dev/SHA256SUMS.txt
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
           name: HFAMapUniversal-v2.5.27-NativeConsumerTargetBridge
           path: |
-            hfamap/dist/v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
-            hfamap/dist/v2.5.27-dev/SHA256SUMS.txt
+            hfamap/dist/HFAMapUniversal-v2.5.27-dev/HFAMapUniversal-v2.5.27-dev.dylib
+            hfamap/dist/HFAMapUniversal-v2.5.27-dev/SHA256SUMS.txt
           if-no-files-found: error
