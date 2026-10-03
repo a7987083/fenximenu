@@ -29,8 +29,8 @@ class FeatureDispatcherSlicing2522Tests(unittest.TestCase):
         self.assertIn('com.hfa.feature-dispatcher-slices/v1', SRC)
         self.assertIn('src/HFAMapFeatureDispatcherSliceResolver.mm', MAKE)
         self.assertIn('src/HFAMapVersion2522.mm', MAKE)
-        self.assertIn('2.5.24-dev', BUILD)
-        self.assertIn('2.5.24-dev-two-button-unified-ui', BUILD)
+        self.assertIn('2.5.25-dev', BUILD)
+        self.assertIn('2.5.25-dev-static-consumer-target-resolver', BUILD)
 
     def test_read_only_generic_boundary(self):
         corpus = SRC
