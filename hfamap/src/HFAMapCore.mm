@@ -9,6 +9,7 @@
 #import "HFAMapFeatureHandlerResolver.h"
 #import "HFAMapStaticCatalog.h"
 #import "HFAMapStaticCatalogBridge.h"
+#import "HFAMapStaticConsumerTargetResolver.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
@@ -210,6 +211,15 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
             NSDictionary *resolved = HFAMapResolveFeatureSeeds(selected, snapshot, started + 9.0, events);
             NSArray *features = resolved[@"features"] ?: @[];
             NSArray *runtimeRecords = resolved[@"runtimeRecords"] ?: @[];
+            NSDictionary *staticConsumers = HFAMapResolveStaticNativeConsumers(
+                selected, resolved[@"registry"] ?: @[],
+                NSDate.date.timeIntervalSince1970 + 2.0);
+            HFADiagnosticsLog(@"static-native-consumer",
+                              staticConsumers[@"status"] ?: @"complete", @{
+                @"groupCount": staticConsumers[@"groupCount"] ?: @0,
+                @"featureLinkCount": staticConsumers[@"featureLinkCount"] ?: @0,
+                @"policy": staticConsumers[@"policy"] ?: @""
+            });
             NSDictionary *analysis = @{
                 @"schema": @"com.hfa.analysis/v3",
                 @"status": resolved[@"status"] ?: @"complete",
@@ -225,6 +235,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
+                @"staticNativeConsumerEvidence": staticConsumers ?: @{},
                 @"unresolved": resolved[@"unresolved"] ?: @[],
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"metrics": resolved[@"metrics"] ?: @{}
@@ -260,6 +271,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"hookSemanticEvidence": resolved[@"hookSemanticEvidence"] ?: @{},
                 @"blockProvenanceEvidence": resolved[@"blockProvenanceEvidence"] ?: @[],
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
+                @"staticNativeConsumerEvidence": staticConsumers ?: @{},
                 @"status": resolved[@"status"] ?: @"complete"
             }, HFAOutputFileName(@"FeatureRegistry.json"));
             HFAWriteJSON(@{
@@ -278,6 +290,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"unresolved": @([resolved[@"unresolved"] count]),
                 @"runtimeMethodCandidates": handlerGraph[@"runtimeMethodCandidateCount"] ?: @0,
                 @"staticCatalogMatchedBlockCount": handlerGraph[@"staticCatalogMatchedBlockCount"] ?: @0,
+                @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
