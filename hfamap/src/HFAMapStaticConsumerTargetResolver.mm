@@ -227,7 +227,7 @@ static NSDictionary *HFASemantics(const HFAImage &image, uint64_t start, uint64_
     uint64_t off = 0; const HFASection *sec = NULL;
     if (!HFAOffset(image, start, &off, &sec)) return @{};
     uint64_t limit = std::min(end, start + 0x2000ULL);
-    NSUInteger fmul = 0, fdiv = 0, rets = 0, conditionals = 0, scvtf = 0, fcvtzs = 0;
+    NSUInteger fmul = 0, fdiv = 0, rets = 0, conditionals = 0;
     for (uint64_t pc = start; pc + 4 <= limit; pc += 4) {
         uint64_t p = sec->off + (pc - sec->addr);
         if (!HFAInside(p, 4, image.length)) break;
@@ -239,8 +239,6 @@ static NSDictionary *HFASemantics(const HFAImage &image, uint64_t start, uint64_
         if ((w & 0x7E000000U) == 0x34000000U ||
             (w & 0xFF000010U) == 0x54000000U ||
             (w & 0x7E000000U) == 0x36000000U) ++conditionals;
-        if ((w & 0xFF20FC00U) == 0x9E620000U || (w & 0xFF20FC00U) == 0x1E220000U) ++scvtf;
-        if ((w & 0xFF20FC00U) == 0x9E780000U || (w & 0xFF20FC00U) == 0x1E380000U) ++fcvtzs;
     }
     NSMutableArray *ops = [NSMutableArray array];
     if (fmul) [ops addObject:@"multiply"];
