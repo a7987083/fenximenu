@@ -420,7 +420,8 @@ static NSDictionary *HFAAnalyzeBlockInvoke(uint64_t invoke, NSString *menuImage)
               @"il2cppCorrelationCount": @(methodLinks.count),
               @"sawReturn": @(sawReturn),
               @"classification": classification,
-              @"selectionPolicy": @"feature-owned-block-structural-evidence-no-invocation",
+              @"selectionPolicy": @"feature-owned-descriptor-to-block-invoke-structural-evidence",
+              @"directNativePolicy": @"dyld-slide-plus-rva-read-only-no-invocation",
               @"analysisOnly": @YES, @"canonicalEligible": @NO,
               @"blockInvokedByAnalyzer": @NO, @"selectorInvokedByAnalyzer": @NO,
               @"hookInstalled": @NO, @"memoryWritten": @NO };
