@@ -303,9 +303,7 @@ static BOOL HFAProbeControlHasSidecarAction(UIControl *control, id target) {
 static void HFAProbeWriteSummary(NSDictionary *summary) {
     NSData *data = [NSJSONSerialization dataWithJSONObject:summary
                                                    options:NSJSONWritingPrettyPrinted error:nil];
-    NSString *documents = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-                                                                NSUserDomainMask, YES) firstObject];
-    NSString *path = [documents stringByAppendingPathComponent:HFAOutputFileName(@"RuntimeProbe.json")];
+    NSString *path = [HFAOutputDirectoryPath() stringByAppendingPathComponent:HFAOutputFileName(@"RuntimeProbe.json")];
     [data writeToFile:path options:NSDataWritingAtomic error:nil];
 }
 
