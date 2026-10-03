@@ -116,11 +116,36 @@ static void HFAHandlerAppendString(NSMutableArray *strings, NSMutableSet *seen,
 }
 
 
+static uint64_t HFAHandlerResolveARM64Stub(uint64_t target) {
+    uint32_t words[3] = {};
+    if (!HFAHandlerRead(target, words, sizeof(words))) return 0;
+    if ((words[0] & 0x9F000000U) != 0x90000000U) return 0; // ADRP
+    unsigned rd = words[0] & 31U;
+    uint64_t immediate = (((uint64_t)words[0] >> 5U) & 0x7ffffULL) << 2U;
+    immediate |= ((uint64_t)words[0] >> 29U) & 3U;
+    uint64_t page = (uint64_t)((int64_t)(target & ~0xfffULL) +
+        (HFASignExtendHandler(immediate, 21) << 12));
+    if ((words[1] & 0xFFC00000U) != 0xF9400000U) return 0; // LDR Xt,[Xn,#imm]
+    unsigned rt = words[1] & 31U, rn = (words[1] >> 5U) & 31U;
+    if (rt != rd || rn != rd) return 0;
+    uint64_t offset = ((words[1] >> 10U) & 0xfffU) << 3;
+    if ((words[2] & 0xFFFFFC1FU) != 0xD61F0000U ||
+        ((words[2] >> 5U) & 31U) != rd) return 0; // BR Xd
+    uint64_t resolved = 0;
+    return HFAHandlerRead(page + offset, &resolved, sizeof(resolved)) ? resolved : 0;
+}
+
 static NSString *HFAHandlerSymbolForTarget(uint64_t target) {
     if (!target) return nil;
+    uint64_t resolved = HFAHandlerResolveARM64Stub(target);
+    uint64_t symbolAddress = resolved ?: target;
     Dl_info info = {};
-    if (dladdr((const void *)(uintptr_t)target, &info) && info.dli_sname)
+    if (dladdr((const void *)(uintptr_t)symbolAddress, &info) && info.dli_sname)
         return [NSString stringWithUTF8String:info.dli_sname];
+    void *dyldSlide = dlsym(RTLD_DEFAULT, "_dyld_get_image_vmaddr_slide");
+    if (!dyldSlide) dyldSlide = dlsym(RTLD_DEFAULT, "dyld_get_image_vmaddr_slide");
+    if (dyldSlide && symbolAddress == (uint64_t)(uintptr_t)dyldSlide)
+        return @"_dyld_get_image_vmaddr_slide";
     return nil;
 }
 
