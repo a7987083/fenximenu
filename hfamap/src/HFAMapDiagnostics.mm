@@ -7,11 +7,6 @@ static pthread_mutex_t gHFADiagnosticsLock = PTHREAD_MUTEX_INITIALIZER;
 static NSString *gHFASessionID;
 static NSTimeInterval gHFAStartedAt;
 
-static NSString *HFADocumentsPath(void) {
-    return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-                                                NSUserDomainMask, YES) firstObject];
-}
-
 static NSString *HFAJSONString(id value) {
     if (!value || ![NSJSONSerialization isValidJSONObject:value]) return @"{}";
     NSData *data = [NSJSONSerialization dataWithJSONObject:value options:0 error:nil];
