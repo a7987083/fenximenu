@@ -1,5 +1,6 @@
 #import "HFAMapNativeConsumerTargetBridge.h"
 #import "HFAIL2CPPMethodIndex.h"
+#import "HFAMapRecursiveNativeTargetResolver.h"
 
 #import <Foundation/Foundation.h>
 #import <mach-o/dyld.h>
@@ -247,7 +248,7 @@ NSDictionary *HFAMapResolveNativeConsumerTargets(NSDictionary *candidate,
     NSString *menuImage = [candidate[@"image"] isKindOfClass:NSString.class] ? candidate[@"image"] : path.lastPathComponent;
     NSArray *groups = [staticConsumers[@"groups"] isKindOfClass:NSArray.class] ? staticConsumers[@"groups"] : @[];
     if (!path.length || !groups.count)
-        return @{@"schema": @"com.hfa.native-consumer-target-bridge/v1", @"status": @"not-applicable",
+        return @{@"schema": @"com.hfa.native-consumer-target-bridge/v2", @"status": @"not-applicable",
                  @"groups": @[], @"analysisOnly": @YES, @"memoryWritten": @NO};
 
     HFAImage image = {}; NSString *reason = nil;
@@ -287,15 +288,40 @@ NSDictionary *HFAMapResolveNativeConsumerTargets(NSDictionary *candidate,
                 [slotRecords addObject:record]; continue;
             }
             record[@"liveStatus"] = @"resolved-live-pointee"; [record addEntriesFromDictionary:target];
-            if ([target[@"externalToMenu"] boolValue]) ++externalPointers;
-            if ([target[@"il2cppMethod"] isKindOfClass:NSDictionary.class]) ++il2cppResolved;
+            if ([target[@"externalToMenu"] boolValue]) {
+                ++externalPointers;
+                if ([target[@"il2cppMethod"] isKindOfClass:NSDictionary.class]) ++il2cppResolved;
+            } else {
+                NSDictionary *recursive = HFAMapResolveRecursiveNativeTarget(
+                    pointee, menuImage, deadline);
+                record[@"recursiveTargetEvidence"] = recursive ?: @{};
+                NSDictionary *finalTarget =
+                    [recursive[@"finalTarget"] isKindOfClass:NSDictionary.class] ?
+                        recursive[@"finalTarget"] : nil;
+                if ([finalTarget[@"externalToMenu"] boolValue]) {
+                    record[@"recursiveResolvedTarget"] = finalTarget;
+                    ++externalPointers;
+                    if ([finalTarget[@"il2cppMethod"] isKindOfClass:NSDictionary.class])
+                        ++il2cppResolved;
+                }
+            }
             [slotRecords addObject:record];
         }
 
         NSMutableArray *externalUnity = [NSMutableArray array];
-        for (NSDictionary *record in slotRecords)
-            if ([record[@"externalToMenu"] boolValue] && [record[@"targetImage"] isEqualToString:@"UnityFramework"])
+        for (NSDictionary *record in slotRecords) {
+            if ([record[@"externalToMenu"] boolValue] &&
+                [record[@"targetImage"] isEqualToString:@"UnityFramework"]) {
                 [externalUnity addObject:record];
+                continue;
+            }
+            NSDictionary *recursiveTarget =
+                [record[@"recursiveResolvedTarget"] isKindOfClass:NSDictionary.class] ?
+                    record[@"recursiveResolvedTarget"] : nil;
+            if ([recursiveTarget[@"externalToMenu"] boolValue] &&
+                [recursiveTarget[@"image"] isEqualToString:@"UnityFramework"])
+                [externalUnity addObject:recursiveTarget];
+        }
 
         NSMutableDictionary *result = [NSMutableDictionary dictionaryWithDictionary:group];
         result[@"slotCandidates"] = slotRecords;
@@ -319,7 +345,7 @@ NSDictionary *HFAMapResolveNativeConsumerTargets(NSDictionary *candidate,
         @"externalPointers": @(externalPointers), @"il2cppResolved": @(il2cppResolved),
         @"analysisOnly": @YES, @"memoryWritten": @NO, @"selectorInvoked": @NO,
         @"blockInvoked": @NO, @"consumerInvoked": @NO, @"hookInstalled": @NO,
-        @"policy": @"static-indirect-slot-discovery+read-only-live-pointee+fail-closed-unique-unity-target",
+        @"policy": @"static-slot+recursive-executable-trampoline+unique-edge+cycle-detection+fail-closed",
         @"metrics": @{@"elapsedMs": @((NSDate.date.timeIntervalSince1970 - started) * 1000.0)}
     };
 }
