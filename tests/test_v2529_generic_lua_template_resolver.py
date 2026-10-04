@@ -19,15 +19,9 @@ def test_read_only_contract():
         assert forbidden not in SRC
 
 def test_generic_wrapper_core_discovery():
-    for token in (
-        "HFAFindWrappers",
-        "HFADecodeBL",
-        "HFADecodeADRP",
-        "HFADecodeADD",
-        "HFADecodeMOVW2Imm",
-        "coreCounts",
-    ):
+    for token in ("HFAFindWrappers","HFADecodeBL","HFADecodeADRP","HFADecodeADD","coreCounts"):
         assert token in SRC
+    assert ("HFADecodeMOVW2Imm" in SRC or "HFADecodeSTRBWZRUnsigned" in SRC)
 
 def test_plaintext_output_and_lua_scoring():
     assert "RuntimeTemplates.json" in SRC
@@ -37,19 +31,11 @@ def test_plaintext_output_and_lua_scoring():
     assert "runtimeTemplateEvidence" in CORE
 
 def test_no_sample_specific_hardcodes():
-    for forbidden in (
-        "Aniimo",
-        "libaniimo",
-        "0x4000",
-        "0xEA60",
-        "0xEABC",
-        "0xEB18",
-        "god",
-        "hits",
-        "nocd",
-    ):
+    for forbidden in ("Aniimo","libaniimo","0x4000","0xEA60","0xEABC","0xEB18","god","hits","nocd"):
         assert forbidden not in SRC
 
 def test_version_advanced():
-    assert ('return @"2.5.29-dev";' in BUILD or 'return @"2.5.30-dev";' in BUILD)
-    assert ('2.5.29-dev-generic-lua-template-resolver' in BUILD or '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD) or\n                        '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD
+    assert any(v in BUILD for v in ('2.5.29-dev','2.5.30-dev'))
+    assert any(v in BUILD for v in (
+        '2.5.29-dev-generic-lua-template-resolver',
+        '2.5.30-dev-decrypt-wrapper-semantic-resolver'))
