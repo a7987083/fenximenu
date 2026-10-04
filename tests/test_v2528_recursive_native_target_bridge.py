@@ -46,4 +46,4 @@ def test_bridge_accepts_recursive_unity_target():
 
 def test_version_advanced():
     assert ('return @"2.5.28-dev";' in BUILD or 'return @"2.5.29-dev";' in BUILD)
-    assert ('2.5.28-dev-recursive-native-target-bridge' in BUILD or '2.5.29-dev-generic-lua-template-resolver' in BUILD)
+    assert ('2.5.28-dev-recursive-native-target-bridge' in BUILD or '2.5.29-dev-generic-lua-template-resolver' in BUILD or\n                        '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD)
