@@ -34,7 +34,17 @@ jobs:
           for k,v in p.items():
               if k in ("core","sigma"): continue
               pathlib.Path("blob_"+k+".bin").write_bytes(base64.b64decode(v))
+          # Reassemble the large encrypted script from split analysis objects.
+          parts=[]
+          for i in (0,1):
+              parts.append(base64.b64decode(pathlib.Path(f"big_blob_{i}.b64").read_text().strip()))
+          for i in (2,3,4):
+              parts.append(pathlib.Path(f"big_blob_{i}.bin").read_bytes())
+          big=b"".join(parts)
+          pathlib.Path("blob_big_script.bin").write_bytes(big)
           print("core",pathlib.Path("core.bin").stat().st_size)
+          print("big_blob",len(big))
+          assert len(big)==0x32d8
           PY
 
       - name: Build offline harness
@@ -50,9 +60,19 @@ jobs:
           cd analysis
           ./aniimo_offline_decrypt | tee aniimo_offline_result.txt
 
+      - name: Inspect recovered Lua
+        run: |
+          set -euo pipefail
+          cd analysis
+          wc -c aniimo_big.lua
+          shasum -a 256 aniimo_big.lua
+          grep -n -E '_AGM|tick|god|hits|nocd|energy|stamina|nofall|speed|qte|sneak|skip|cam|fps' aniimo_big.lua | head -n 200 || true
+
       - name: Upload result
         uses: actions/upload-artifact@v4
         with:
           name: aniimo-offline-decrypt-result
-          path: analysis/aniimo_offline_result.txt
+          path: |
+            analysis/aniimo_offline_result.txt
+            analysis/aniimo_big.lua
           if-no-files-found: error
