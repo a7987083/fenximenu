@@ -23,4 +23,4 @@ def test_bridge_correlates_unity_target_to_il2cpp():
     assert "ambiguous-multiple-unity-live-pointees" in SRC
 
 def test_version_advanced():
-    assert 'return @"2.5.27-dev";' in BUILD
+    assert ('return @"2.5.27-dev";' in BUILD or 'return @"2.5.28-dev";' in BUILD)
