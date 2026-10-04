@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.28-dev";
+    return @"2.5.29-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.28-dev-recursive-native-target-bridge";
+    return @"2.5.29-dev-generic-lua-template-resolver";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"AUTO-HOST-AUTO-UNITY-RECURSIVE-NATIVE-TARGET-IL2CPP-BRIDGE";
+    return @"AUTO-GENERIC-RUNTIME-TEMPLATE-RECOVERY-READ-ONLY";
 }
 
 NSString *HFAMapDisplayVersion(void) {
