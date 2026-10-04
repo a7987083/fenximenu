@@ -68,6 +68,22 @@ int main(void) {
 
     core_fn_t core=(core_fn_t)(void *)(base+0x4000);
 
+    // Diagnostic-only clone: skip the ChaCha stage at 0x41D8 and branch to
+    // the original normal epilogue at 0x4794. This exposes the first-stage
+    // custom transform without altering the source Mach-O.
+    uint8_t *stage_base=(uint8_t*)mmap(NULL,map_size,PROT_READ|PROT_WRITE,
+                                       MAP_PRIVATE|MAP_ANON|MAP_JIT,-1,0);
+    if(stage_base==MAP_FAILED){perror("mmap-stage"); return 8;}
+    memcpy(stage_base+0x4000,core_bytes,core_size);
+    memcpy(stage_base+0x389000,sigma,16);
+    *(uintptr_t *)(stage_base+0x440000)=(uintptr_t)&fake_guard;
+    // B from 0x41D8 -> 0x4794 = 0x1400016F
+    const uint32_t skip_chacha=0x1400016F;
+    memcpy(stage_base+0x41D8,&skip_chacha,sizeof(skip_chacha));
+    __builtin___clear_cache((char *)(stage_base+0x4000),(char *)(stage_base+0x4000+core_size));
+    if(mprotect(stage_base,map_size,PROT_READ|PROT_EXEC)!=0){perror("mprotect-stage"); return 9;}
+    core_fn_t first_stage=(core_fn_t)(void *)(stage_base+0x4000);
+
     for(size_t i=0;i<sizeof(samples)/sizeof(samples[0]);++i){
         const struct sample *s=&samples[i];
         size_t blob_size=0;
@@ -95,6 +111,13 @@ int main(void) {
         };
 
         uint8_t out[256]={0};
+        if(i==0) {
+            uint8_t stage_out[256]={0};
+            uint64_t stage_ret=first_stage(ctx,stage_out,n);
+            printf("first_stage_probe|ret=%llu|hex=", (unsigned long long)stage_ret);
+            for(size_t j=0;j<n;++j) printf("%02x",stage_out[j]);
+            putchar('\n');
+        }
         uint64_t ret=core(ctx,out,n);
         out[n]=0;
 
