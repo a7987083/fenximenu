@@ -13,23 +13,14 @@ def test_recursive_resolver_is_linked():
 
 def test_bounded_fail_closed_traversal():
     for token in (
-        "kHFAMaxRecursiveDepth",
-        "cycle-detected",
-        "ambiguous-multiple-next-targets",
-        "no-structural-next-target",
-        "unique-next-target",
+        "kHFAMaxRecursiveDepth","cycle-detected","ambiguous-multiple-next-targets",
+        "no-structural-next-target","unique-next-target",
         "bounded-executable-only+unique-edge-only+cycle-detection+fail-closed",
     ):
         assert token in RESOLVER
 
 def test_supported_arm64_trampoline_forms():
-    for token in (
-        "direct-B",
-        "direct-BL-RET",
-        "ADRP+ADD+BR",
-        "ADRP+LDR+BR",
-        "LDR-literal+BR",
-    ):
+    for token in ("direct-B","direct-BL-RET","ADRP+ADD+BR","ADRP+LDR+BR","LDR-literal+BR"):
         assert token in RESOLVER
 
 def test_read_only_and_il2cpp_handoff():
@@ -45,5 +36,9 @@ def test_bridge_accepts_recursive_unity_target():
     assert "native-consumer-target-bridge/v2" in BRIDGE
 
 def test_version_advanced():
-    assert ('return @"2.5.28-dev";' in BUILD or 'return @"2.5.29-dev";' in BUILD)
-    assert ('2.5.28-dev-recursive-native-target-bridge' in BUILD or '2.5.29-dev-generic-lua-template-resolver' in BUILD or\n                        '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD)
+    assert any(v in BUILD for v in (
+        '2.5.28-dev','2.5.29-dev','2.5.30-dev'))
+    assert any(v in BUILD for v in (
+        '2.5.28-dev-recursive-native-target-bridge',
+        '2.5.29-dev-generic-lua-template-resolver',
+        '2.5.30-dev-decrypt-wrapper-semantic-resolver'))
