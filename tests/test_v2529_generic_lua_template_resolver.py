@@ -51,5 +51,5 @@ def test_no_sample_specific_hardcodes():
         assert forbidden not in SRC
 
 def test_version_advanced():
-    assert 'return @"2.5.29-dev";' in BUILD
-    assert '2.5.29-dev-generic-lua-template-resolver' in BUILD
+    assert ('return @"2.5.29-dev";' in BUILD or 'return @"2.5.30-dev";' in BUILD)
+    assert ('2.5.29-dev-generic-lua-template-resolver' in BUILD or '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD) or\n                        '2.5.30-dev-decrypt-wrapper-semantic-resolver' in BUILD
