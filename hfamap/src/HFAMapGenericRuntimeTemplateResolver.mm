@@ -31,6 +31,10 @@ struct HFAWrapper {
     uint32_t outputLength = 0;
     uint64_t outputVA = 0;
     uint64_t sourceVA = 0;
+    uint64_t coreCallsite = 0;
+    uint64_t terminatorPC = 0;
+    unsigned outputReg = 31;
+    NSString *lengthEvidence = nil;
 };
 
 static bool HFAInside(uint64_t off, uint64_t size, uint64_t length) {
@@ -176,10 +180,42 @@ static bool HFADecodeADD(uint32_t insn, unsigned rn, uint64_t base,
     return true;
 }
 
-static bool HFADecodeMOVW2Imm(uint32_t insn, uint32_t *valueOut) {
-    // MOVZ W2,#imm16
-    if ((insn & 0xFFE0001FU) != 0x52800002U) return false;
-    if (valueOut) *valueOut = (insn >> 5U) & 0xFFFFU;
+static bool HFADecodeADR(uint32_t insn, uint64_t pc, uint64_t *addressOut, unsigned *regOut) {
+    if ((insn & 0x9F000000U) != 0x10000000U) return false;
+    uint64_t immlo = (insn >> 29U) & 3U;
+    uint64_t immhi = (insn >> 5U) & 0x7FFFFU;
+    int64_t imm = HFASign((immhi << 2U) | immlo, 21);
+    if (addressOut) *addressOut = (uint64_t)((int64_t)pc + imm);
+    if (regOut) *regOut = insn & 31U;
+    return true;
+}
+
+static bool HFADecodeMOVRegister(uint32_t insn, unsigned *dstOut, unsigned *srcOut) {
+    // MOV Xd, Xm alias: ORR Xd, XZR, Xm
+    if ((insn & 0xFFE0FFE0U) != 0xAA0003E0U) return false;
+    if (dstOut) *dstOut = insn & 31U;
+    if (srcOut) *srcOut = (insn >> 16U) & 31U;
+    return true;
+}
+
+static bool HFADecodeSTRBWZRUnsigned(uint32_t insn,
+                                     unsigned *baseRegOut,
+                                     uint32_t *offsetOut) {
+    // STRB WZR,[Xn,#imm12]
+    if ((insn & 0xFFC0001FU) != 0x3900001FU) return false;
+    if (baseRegOut) *baseRegOut = (insn >> 5U) & 31U;
+    if (offsetOut) *offsetOut = (insn >> 10U) & 0xFFFU;
+    return true;
+}
+
+static bool HFADecodeLDRLiteralX(uint32_t insn,
+                                 uint64_t pc,
+                                 uint64_t *addressOut,
+                                 unsigned *regOut) {
+    if ((insn & 0xFF000000U) != 0x58000000U) return false;
+    int64_t imm = HFASign((insn >> 5U) & 0x7FFFFU, 19) << 2;
+    if (addressOut) *addressOut = (uint64_t)((int64_t)pc + imm);
+    if (regOut) *regOut = insn & 31U;
     return true;
 }
 
@@ -190,45 +226,75 @@ static bool HFADataAddress(const HFAImage &image, uint64_t address) {
     return false;
 }
 
-static bool HFAResolveRegisterAddress(const HFAImage &image,
-                                      const HFASection &sec,
-                                      uint64_t windowStart,
-                                      uint64_t callsite,
-                                      unsigned wantedReg,
-                                      uint64_t *valueOut) {
+static void HFAResolveRegisterState(const HFAImage &image,
+                                    const HFASection &sec,
+                                    uint64_t windowStart,
+                                    uint64_t callsite,
+                                    uint64_t values[32],
+                                    bool valueSet[32]) {
     uint64_t pages[32] = {};
     bool pageSet[32] = {};
-    uint64_t values[32] = {};
-    bool valueSet[32] = {};
+    memset(values, 0, sizeof(uint64_t) * 32);
+    memset(valueSet, 0, sizeof(bool) * 32);
 
     for (uint64_t pc = windowStart; pc < callsite; pc += 4) {
         uint64_t off = sec.off + (pc - sec.addr);
         if (!HFAInside(off, 4, image.length)) continue;
         uint32_t w = HFAU32(image.bytes + off);
 
-        uint64_t page = 0;
+        uint64_t address = 0;
         unsigned reg = 0;
-        if (HFADecodeADRP(w, pc, &page, &reg)) {
-            pages[reg] = page;
+        if (HFADecodeADRP(w, pc, &address, &reg)) {
+            pages[reg] = address;
             pageSet[reg] = true;
             valueSet[reg] = false;
             continue;
         }
+        if (HFADecodeADR(w, pc, &address, &reg)) {
+            values[reg] = address;
+            valueSet[reg] = true;
+            pageSet[reg] = false;
+            continue;
+        }
 
+        bool handled = false;
         for (unsigned rn = 0; rn < 32; ++rn) {
-            if (!pageSet[rn]) continue;
+            uint64_t base = 0;
+            if (valueSet[rn]) base = values[rn];
+            else if (pageSet[rn]) base = pages[rn];
+            else continue;
+
             uint64_t value = 0;
             unsigned rd = 0;
-            if (!HFADecodeADD(w, rn, pages[rn], &value, &rd)) continue;
+            if (!HFADecodeADD(w, rn, base, &value, &rd)) continue;
             values[rd] = value;
             valueSet[rd] = true;
+            pageSet[rd] = false;
+            handled = true;
             break;
         }
-    }
+        if (handled) continue;
 
-    if (!valueSet[wantedReg]) return false;
-    if (valueOut) *valueOut = values[wantedReg];
-    return true;
+        unsigned dst = 0, src = 0;
+        if (HFADecodeMOVRegister(w, &dst, &src)) {
+            if (valueSet[src]) {
+                values[dst] = values[src];
+                valueSet[dst] = true;
+            } else {
+                valueSet[dst] = false;
+            }
+            pageSet[dst] = false;
+            continue;
+        }
+
+        uint64_t literal = 0;
+        if (HFADecodeLDRLiteralX(w, pc, &literal, &dst)) {
+            values[dst] = literal;
+            valueSet[dst] = true;
+            pageSet[dst] = false;
+            continue;
+        }
+    }
 }
 
 static std::vector<HFAWrapper> HFAFindWrappers(const HFAImage &image) {
@@ -237,49 +303,64 @@ static std::vector<HFAWrapper> HFAFindWrappers(const HFAImage &image) {
 
     for (uint64_t start : image.starts) {
         uint64_t end = HFAFunctionEnd(image, start);
-        if (end <= start || end - start > 0x140) continue;
+        if (end <= start || end - start > 0x180) continue;
 
         uint64_t fileOff = 0;
         const HFASection *section = nullptr;
         if (!HFAOffset(image, start, &fileOff, &section)) continue;
 
-        uint64_t core = 0;
-        uint32_t length = 0;
-        for (uint64_t pc = start; pc + 4 <= end; pc += 4) {
-            uint64_t off = section->off + (pc - section->addr);
-            if (!HFAInside(off, 4, image.length)) break;
-            uint32_t w = HFAU32(image.bytes + off);
+        for (uint64_t callsite = start; callsite + 4 <= end; callsite += 4) {
+            uint64_t callOff = section->off + (callsite - section->addr);
+            if (!HFAInside(callOff, 4, image.length)) break;
 
-            uint64_t target = 0;
-            if (HFADecodeBL(w, pc, &target)) core = target;
-
-            uint32_t imm = 0;
-            if (HFADecodeMOVW2Imm(w, &imm) && imm > 0 && imm <= 1024)
-                length = imm;
-        }
-
-        if (!core || !length) continue;
-
-        // Recover X0/X1 at the wrapper's decrypt-core callsite.
-        for (uint64_t pc = start; pc + 4 <= end; pc += 4) {
-            uint64_t off = section->off + (pc - section->addr);
-            if (!HFAInside(off, 4, image.length)) break;
-            uint64_t target = 0;
-            if (!HFADecodeBL(HFAU32(image.bytes + off), pc, &target) || target != core)
+            uint64_t core = 0;
+            if (!HFADecodeBL(HFAU32(image.bytes + callOff), callsite, &core))
                 continue;
 
-            uint64_t windowStart = pc >= 0x30 ? pc - 0x30 : start;
+            // Strong semantic: decrypt wrapper terminates plaintext after the call.
+            unsigned outputReg = 31;
+            uint32_t length = 0;
+            uint64_t terminatorPC = 0;
+            for (uint64_t pc = callsite + 4;
+                 pc + 4 <= end && pc <= callsite + 0x28;
+                 pc += 4) {
+                uint64_t off = section->off + (pc - section->addr);
+                if (!HFAInside(off, 4, image.length)) break;
+                if (HFADecodeSTRBWZRUnsigned(HFAU32(image.bytes + off),
+                                             &outputReg, &length) &&
+                    length > 0 && length <= 4096) {
+                    terminatorPC = pc;
+                    break;
+                }
+            }
+            if (!terminatorPC || outputReg == 31) continue;
+
+            uint64_t values[32] = {};
+            bool valueSet[32] = {};
+            uint64_t windowStart = callsite >= 0x60 ? callsite - 0x60 : start;
             if (windowStart < start) windowStart = start;
+            HFAResolveRegisterState(image, *section, windowStart, callsite,
+                                    values, valueSet);
 
-            uint64_t x0 = 0, x1 = 0;
-            bool ok0 = HFAResolveRegisterAddress(image, *section, windowStart, pc, 0, &x0);
-            bool ok1 = HFAResolveRegisterAddress(image, *section, windowStart, pc, 1, &x1);
-            if (!ok0 || !ok1) continue;
-            if (!HFADataAddress(image, x0) || !HFADataAddress(image, x1)) continue;
+            uint64_t outputVA = valueSet[outputReg] ? values[outputReg] : 0;
+            uint64_t sourceVA = valueSet[1] ? values[1] : 0;
 
-            raw.push_back({start, core, length, x0, x1});
+            // Output must be statically identifiable data; source is optional evidence.
+            if (!outputVA || !HFADataAddress(image, outputVA)) continue;
+            if (sourceVA && !HFADataAddress(image, sourceVA)) sourceVA = 0;
+
+            HFAWrapper wrapper;
+            wrapper.start = start;
+            wrapper.core = core;
+            wrapper.outputLength = length;
+            wrapper.outputVA = outputVA;
+            wrapper.sourceVA = sourceVA;
+            wrapper.coreCallsite = callsite;
+            wrapper.terminatorPC = terminatorPC;
+            wrapper.outputReg = outputReg;
+            wrapper.lengthEvidence = @"post-call-strb-wzr";
+            raw.push_back(wrapper);
             coreCounts[core]++;
-            break;
         }
     }
 
@@ -355,7 +436,7 @@ NSDictionary *HFAMapResolveGenericRuntimeTemplates(NSDictionary *candidate,
 
     HFAImage parsed = {};
     if (!path.length || !HFAParse(path, parsed)) {
-        return @{@"schema": @"com.hfa.generic-runtime-template/v1",
+        return @{@"schema": @"com.hfa.generic-runtime-template/v2",
                  @"status": @"parse-failed", @"records": @[],
                  @"analysisOnly": @YES, @"memoryWritten": @NO};
     }
@@ -395,6 +476,12 @@ NSDictionary *HFAMapResolveGenericRuntimeTemplates(NSDictionary *candidate,
             @"sourceRVA": [NSString stringWithFormat:@"0x%llX",
                            (unsigned long long)w.sourceVA],
             @"declaredLength": @(w.outputLength),
+            @"lengthEvidence": w.lengthEvidence ?: @"unknown",
+            @"coreCallsiteRVA": [NSString stringWithFormat:@"0x%llX",
+                                (unsigned long long)w.coreCallsite],
+            @"terminatorRVA": [NSString stringWithFormat:@"0x%llX",
+                              (unsigned long long)w.terminatorPC],
+            @"outputRegister": @(w.outputReg),
             @"runtimeOutputReadable": @(readable),
             @"unknownCodeInvoked": @NO,
             @"memoryWritten": @NO
@@ -423,7 +510,7 @@ NSDictionary *HFAMapResolveGenericRuntimeTemplates(NSDictionary *candidate,
         @"analysisOnly": @YES,
         @"unknownCodeInvoked": @NO,
         @"memoryWritten": @NO,
-        @"policy": @"generic-arm64-wrapper-core-discovery+read-only-natural-runtime-plaintext+fail-closed"
+        @"policy": @"shared-core+post-call-nul-terminator+callee-saved-dataflow+read-only-runtime-plaintext+fail-closed"
     };
 
     NSData *data = [NSJSONSerialization dataWithJSONObject:result
