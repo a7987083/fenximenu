@@ -1,0 +1,58 @@
+name: Aniimo Offline Lua Decrypt
+
+on:
+  push:
+    branches:
+      - analysis/aniimo-offline-lua-decrypt-20261004
+    paths:
+      - 'analysis/**'
+      - '.github/workflows/aniimo-offline-lua-decrypt.yml'
+  workflow_dispatch:
+
+jobs:
+  run-offline-core:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify arm64 host
+        run: |
+          set -euo pipefail
+          uname -a
+          test "$(uname -m)" = "arm64"
+
+      - name: Decode extracted payloads
+        run: |
+          set -euo pipefail
+          cd analysis
+          python3 - <<'PY'
+          import json,base64,pathlib
+          p=json.load(open("aniimo_payloads.json","r"))
+          pathlib.Path("core.bin").write_bytes(base64.b64decode(p["core"]))
+          pathlib.Path("sigma.bin").write_bytes(base64.b64decode(p["sigma"]))
+          for k,v in p.items():
+              if k in ("core","sigma"): continue
+              pathlib.Path("blob_"+k+".bin").write_bytes(base64.b64decode(v))
+          print("core",pathlib.Path("core.bin").stat().st_size)
+          PY
+
+      - name: Build offline harness
+        run: |
+          set -euo pipefail
+          cd analysis
+          clang -O2 -Wall -Wextra -arch arm64 aniimo_offline_decrypt.c -o aniimo_offline_decrypt
+          file aniimo_offline_decrypt
+
+      - name: Execute original decrypt core
+        run: |
+          set -euo pipefail
+          cd analysis
+          ./aniimo_offline_decrypt | tee aniimo_offline_result.txt
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: aniimo-offline-decrypt-result
+          path: analysis/aniimo_offline_result.txt
+          if-no-files-found: error
