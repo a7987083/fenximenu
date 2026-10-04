@@ -1,15 +1,15 @@
 #import "HFAMapBuildInfo.h"
 
 NSString *HFAMapBuildVersion(void) {
-    return @"2.5.29-dev";
+    return @"2.5.30-dev";
 }
 
 NSString *HFAMapBuildComponent(void) {
-    return @"2.5.29-dev-generic-lua-template-resolver";
+    return @"2.5.30-dev-decrypt-wrapper-semantic-resolver";
 }
 
 NSString *HFAMapBuildPolicy(void) {
-    return @"AUTO-GENERIC-RUNTIME-TEMPLATE-RECOVERY-READ-ONLY";
+    return @"AUTO-DECRYPT-WRAPPER-SEMANTIC-RUNTIME-TEMPLATE-RECOVERY";
 }
 
 NSString *HFAMapDisplayVersion(void) {
