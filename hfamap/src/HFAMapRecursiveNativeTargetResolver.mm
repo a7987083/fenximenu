@@ -36,17 +36,17 @@ static BOOL HFAReadPointer(uintptr_t address, uintptr_t *valueOut) {
 }
 
 static BOOL HFAExecutableAddress(uintptr_t address) {
-    mach_vm_address_t region = (mach_vm_address_t)address;
-    mach_vm_size_t size = 0;
+    vm_address_t region = (vm_address_t)address;
+    vm_size_t size = 0;
     vm_region_basic_info_data_64_t info = {};
     mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
     mach_port_t object = MACH_PORT_NULL;
-    kern_return_t kr = mach_vm_region(mach_task_self(), &region, &size,
-                                      VM_REGION_BASIC_INFO_64,
-                                      (vm_region_info_t)&info, &count, &object);
+    kern_return_t kr = vm_region_64(mach_task_self(), &region, &size,
+                                    VM_REGION_BASIC_INFO_64,
+                                    (vm_region_info_t)&info, &count, &object);
     if (kr != KERN_SUCCESS) return NO;
-    if ((mach_vm_address_t)address < region ||
-        (mach_vm_address_t)address - region >= size) return NO;
+    if ((vm_address_t)address < region ||
+        (vm_address_t)address - region >= size) return NO;
     return (info.protection & VM_PROT_EXECUTE) != 0;
 }
 
