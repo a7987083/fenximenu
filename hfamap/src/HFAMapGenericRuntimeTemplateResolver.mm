@@ -322,8 +322,7 @@ static NSString *HFAPlaintext(const uint8_t *bytes, size_t capacity) {
     NSUInteger printable = 0;
     while (len < capacity && bytes[len]) {
         uint8_t c = bytes[len];
-        BOOL ok = (c >= 0x20 && c <= 0x7E) || c == '
-' || c == '' || c == '	';
+        BOOL ok = (c >= 0x20 && c <= 0x7E) || c == 0x0A || c == 0x0D || c == 0x09;
         if (!ok) return nil;
         ++printable;
         ++len;
