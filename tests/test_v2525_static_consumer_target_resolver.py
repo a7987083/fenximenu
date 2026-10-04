@@ -43,11 +43,11 @@ class StaticConsumerTargetResolver2525Tests(unittest.TestCase):
     def test_build_identity_and_sources(self):
         self.assertIn("src/HFAMapStaticConsumerTargetResolver.mm", MAKE)
         self.assertIn("src/HFAMapVersion2525.mm", MAKE)
-        self.assertTrue("2.5.25-dev" in BUILD or "2.5.27-dev" in BUILD or "2.5.28-dev" in BUILD or "2.5.29-dev" in BUILD)
+        self.assertTrue("2.5.25-dev" in BUILD or "2.5.27-dev" in BUILD or "2.5.28-dev" in BUILD or "2.5.29-dev" in BUILD or "2.5.30-dev" in BUILD)
         self.assertTrue("2.5.25-dev-static-consumer-target-resolver" in BUILD or
                         "2.5.27-dev-native-consumer-target-bridge" in BUILD or
                         "2.5.28-dev-recursive-native-target-bridge" in BUILD or
-                        "2.5.29-dev-generic-lua-template-resolver" in BUILD)
+                        "2.5.29-dev-generic-lua-template-resolver" in BUILD or\n                        "2.5.30-dev-decrypt-wrapper-semantic-resolver" in BUILD)
 
 
 if __name__ == "__main__":
