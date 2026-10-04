@@ -111,7 +111,8 @@ int main(void) {
             stored_len
         };
 
-        uint8_t *out=(uint8_t*)calloc(n+1,1);\n        if(!out) return 10;
+        uint8_t *out=(uint8_t*)calloc(n+1,1);
+        if(!out) return 10;
         if(i==0) {
             uint8_t stage_out[256]={0};
             uint64_t stage_ret=first_stage(ctx,stage_out,n);
@@ -141,7 +142,8 @@ int main(void) {
             else printf("\\x%02x",c);
         }
         putchar('\n');
-        free(out);\n        free(blob);
+        free(out);
+        free(blob);
     }
     return 0;
 }
