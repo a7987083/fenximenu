@@ -61,6 +61,7 @@ static NSDictionary *HFADescribeTarget(uintptr_t target, NSString *menuImage,
     BOOL external = !menuImage.length || ![image isEqualToString:menuImage];
     NSMutableDictionary *record = [@{
         @"runtimeToken": [NSString stringWithFormat:@"0x%llX", (unsigned long long)target],
+        @"runtimeValue": @((unsigned long long)target),
         @"image": image,
         @"path": path,
         @"rva": [NSString stringWithFormat:@"0x%llX", (unsigned long long)rva],
@@ -307,12 +308,7 @@ NSDictionary *HFAMapResolveRecursiveNativeTarget(uintptr_t startTarget,
         hop[@"chosen"] = chosen;
         [hops addObject:hop];
         [hop release];
-        current = (uintptr_t)[chosen[@"runtimeToken"] longLongValue];
-        // NSString hex -> longLongValue returns 0; parse explicitly.
-        NSScanner *scanner = [NSScanner scannerWithString:chosen[@"runtimeToken"] ?: @""];
-        unsigned long long parsed = 0;
-        [scanner scanHexLongLong:&parsed];
-        current = (uintptr_t)parsed;
+        current = (uintptr_t)[chosen[@"runtimeValue"] unsignedLongLongValue];
         if (!current) {
             status = @"chosen-target-parse-failed";
             break;
