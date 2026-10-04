@@ -25,6 +25,8 @@ static const struct sample samples[] = {
     {"float_prefix","blob_float_prefix.bin",18},
     {"float_mid","blob_float_mid.bin",3},
     {"float_suffix","blob_float_suffix.bin",17},
+    {"init_name","blob_init_name.bin",11},
+    {"init_script","blob_init_script.bin",28},
 };
 
 static size_t align8(size_t x) { return (x + 7u) & ~7u; }
