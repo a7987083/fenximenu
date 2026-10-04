@@ -27,6 +27,7 @@ static const struct sample samples[] = {
     {"float_suffix","blob_float_suffix.bin",17},
     {"init_name","blob_init_name.bin",11},
     {"init_script","blob_init_script.bin",28},
+    {"big_script","blob_big_script.bin",0x328c},
 };
 
 static size_t align8(size_t x) { return (x + 7u) & ~7u; }
@@ -110,7 +111,7 @@ int main(void) {
             stored_len
         };
 
-        uint8_t out[256]={0};
+        uint8_t *out=(uint8_t*)calloc(n+1,1);\n        if(!out) return 10;
         if(i==0) {
             uint8_t stage_out[256]={0};
             uint64_t stage_ret=first_stage(ctx,stage_out,n);
@@ -120,6 +121,15 @@ int main(void) {
         }
         uint64_t ret=core(ctx,out,n);
         out[n]=0;
+        if(strcmp(s->name,"big_script")==0) {
+            FILE *bf=fopen("aniimo_big.lua","wb");
+            if(!bf) return 11;
+            fwrite(out,1,n,bf);
+            fclose(bf);
+            printf("%s|len=%zu|stored=%llu|ret=%llu|saved=aniimo_big.lua\\n",
+                   s->name,n,(unsigned long long)stored_len,(unsigned long long)ret);
+            free(out); free(blob); continue;
+        }
 
         printf("%s|len=%zu|stored=%llu|ret=%llu|hex=",s->name,n,
                (unsigned long long)stored_len,(unsigned long long)ret);
@@ -131,7 +141,7 @@ int main(void) {
             else printf("\\x%02x",c);
         }
         putchar('\n');
-        free(blob);
+        free(out);\n        free(blob);
     }
     return 0;
 }
