@@ -11,6 +11,7 @@
 #import "HFAMapStaticCatalogBridge.h"
 #import "HFAMapStaticConsumerTargetResolver.h"
 #import "HFAMapNativeConsumerTargetBridge.h"
+#import "HFAMapGenericRuntimeTemplateResolver.h"
 
 static BOOL gHFADiscovering;
 static BOOL gHFAAnalyzing;
@@ -241,6 +242,14 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"il2cppResolved": consumerTargets[@"il2cppResolved"] ?: @0,
                 @"policy": consumerTargets[@"policy"] ?: @""
             });
+            NSDictionary *runtimeTemplates = HFAMapResolveGenericRuntimeTemplates(
+                selected, NSDate.date.timeIntervalSince1970 + 1.5);
+            HFADiagnosticsLog(@"generic-runtime-template",
+                              runtimeTemplates[@"status"] ?: @"complete", @{
+                @"wrapperCount": runtimeTemplates[@"wrapperCount"] ?: @0,
+                @"plaintextResolvedCount": runtimeTemplates[@"plaintextResolvedCount"] ?: @0,
+                @"policy": runtimeTemplates[@"policy"] ?: @""
+            });
             NSDictionary *analysis = @{
                 @"schema": @"com.hfa.analysis/v3",
                 @"status": resolved[@"status"] ?: @"complete",
@@ -258,6 +267,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
                 @"staticNativeConsumerEvidence": staticConsumers ?: @{},
                 @"nativeConsumerTargetEvidence": consumerTargets ?: @{},
+                @"runtimeTemplateEvidence": runtimeTemplates ?: @{},
                 @"unresolved": resolved[@"unresolved"] ?: @[],
                 @"runtimeEvidence": resolved[@"runtimeEvidence"] ?: @{},
                 @"metrics": resolved[@"metrics"] ?: @{}
@@ -295,6 +305,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"actionProvenanceEvidence": resolved[@"actionProvenanceEvidence"] ?: @[],
                 @"staticNativeConsumerEvidence": staticConsumers ?: @{},
                 @"nativeConsumerTargetEvidence": consumerTargets ?: @{},
+                @"runtimeTemplateEvidence": runtimeTemplates ?: @{},
                 @"status": resolved[@"status"] ?: @"complete"
             }, HFAOutputFileName(@"FeatureRegistry.json"));
             HFAWriteJSON(@{
@@ -316,6 +327,7 @@ void HFAMapRunSelectedDeepAnalysis(void (^completion)(NSDictionary *summary)) {
                 @"staticNativeConsumerGroups": staticConsumers[@"groupCount"] ?: @0,
                 @"nativeConsumerTargetGroups": consumerTargets[@"groupCount"] ?: @0,
                 @"nativeConsumerIL2CPPResolved": consumerTargets[@"il2cppResolved"] ?: @0,
+                @"runtimeTemplatesResolved": runtimeTemplates[@"plaintextResolvedCount"] ?: @0,
                 @"globalRediscoveryPerformed": @NO,
                 @"metrics": resolved[@"metrics"] ?: @{}
             });
