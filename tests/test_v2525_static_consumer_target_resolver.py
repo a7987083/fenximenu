@@ -8,7 +8,6 @@ CORE = (ROOT / "hfamap/src/HFAMapCore.mm").read_text()
 MAKE = (ROOT / "hfamap/Makefile").read_text()
 BUILD = (ROOT / "hfamap/src/HFAMapBuildInfo.mm").read_text()
 
-
 class StaticConsumerTargetResolver2525Tests(unittest.TestCase):
     def test_direct_native_action_is_structurally_resolved(self):
         for token in (
@@ -43,12 +42,14 @@ class StaticConsumerTargetResolver2525Tests(unittest.TestCase):
     def test_build_identity_and_sources(self):
         self.assertIn("src/HFAMapStaticConsumerTargetResolver.mm", MAKE)
         self.assertIn("src/HFAMapVersion2525.mm", MAKE)
-        self.assertTrue("2.5.25-dev" in BUILD or "2.5.27-dev" in BUILD or "2.5.28-dev" in BUILD or "2.5.29-dev" in BUILD or "2.5.30-dev" in BUILD)
-        self.assertTrue("2.5.25-dev-static-consumer-target-resolver" in BUILD or
-                        "2.5.27-dev-native-consumer-target-bridge" in BUILD or
-                        "2.5.28-dev-recursive-native-target-bridge" in BUILD or
-                        "2.5.29-dev-generic-lua-template-resolver" in BUILD or\n                        "2.5.30-dev-decrypt-wrapper-semantic-resolver" in BUILD)
-
+        self.assertTrue(any(v in BUILD for v in (
+            "2.5.25-dev","2.5.27-dev","2.5.28-dev","2.5.29-dev","2.5.30-dev")))
+        self.assertTrue(any(v in BUILD for v in (
+            "2.5.25-dev-static-consumer-target-resolver",
+            "2.5.27-dev-native-consumer-target-bridge",
+            "2.5.28-dev-recursive-native-target-bridge",
+            "2.5.29-dev-generic-lua-template-resolver",
+            "2.5.30-dev-decrypt-wrapper-semantic-resolver")))
 
 if __name__ == "__main__":
     unittest.main()
