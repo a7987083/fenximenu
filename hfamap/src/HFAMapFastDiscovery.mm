@@ -9,16 +9,36 @@
 static const uint32_t kHFAFastMaxImages = 2048;
 static const uint64_t kHFAFastMaxBytesPerImage = 16ULL * 1024ULL * 1024ULL;
 
-static BOOL HFAFastAppOwnedPath(NSString *path) {
-    NSString *bundle = NSBundle.mainBundle.bundlePath.stringByStandardizingPath;
-    return bundle.length && [path.stringByStandardizingPath hasPrefix:[bundle stringByAppendingString:@"/"]];
+static NSString *HFAFastComparablePath(NSString *path) {
+    if (!path.length) return @"";
+    NSString *standardized = path.stringByStandardizingPath;
+    return standardized.stringByResolvingSymlinksInPath;
 }
 
-static BOOL HFAFastExcludedImage(NSString *path) {
-    NSString *base = path.lastPathComponent.lowercaseString;
-    return [base isEqualToString:NSBundle.mainBundle.executablePath.lastPathComponent.lowercaseString] ||
-           [base isEqualToString:@"unityframework"] || [base containsString:@"hfamapuniversal"] ||
-           [base containsString:@"substrate"] || [base containsString:@"ellekit"];
+// Select exactly one analysis target by bundle layout. If UnityFramework.framework
+// exists but its binary is absent or not loaded, fail closed instead of silently
+// scanning the main executable or an unrelated injected/framework image.
+static NSString *HFAFastPreferredTargetPath(NSString **targetKind,
+                                            NSString **targetReason,
+                                            BOOL *unityFrameworkBundleExists) {
+    NSString *bundlePath = NSBundle.mainBundle.bundlePath.stringByStandardizingPath;
+    NSString *frameworkBundle = [bundlePath stringByAppendingPathComponent:
+                                 @"Frameworks/UnityFramework.framework"];
+    BOOL isDirectory = NO;
+    BOOL hasUnityFramework = bundlePath.length &&
+        [[NSFileManager defaultManager] fileExistsAtPath:frameworkBundle isDirectory:&isDirectory] &&
+        isDirectory;
+
+    if (unityFrameworkBundleExists) *unityFrameworkBundleExists = hasUnityFramework;
+    if (hasUnityFramework) {
+        if (targetKind) *targetKind = @"unity-framework";
+        if (targetReason) *targetReason = @"unity-framework-present";
+        return HFAFastComparablePath([frameworkBundle stringByAppendingPathComponent:@"UnityFramework"]);
+    }
+
+    if (targetKind) *targetKind = @"main-executable";
+    if (targetReason) *targetReason = @"unity-framework-absent-main-executable-fallback";
+    return HFAFastComparablePath(NSBundle.mainBundle.executablePath ?: @"");
 }
 
 static BOOL HFAFastContains(const uint8_t *bytes, size_t length, const char *token) {
@@ -138,49 +158,125 @@ static NSDictionary *HFAFastFingerprint(const struct mach_header_64 *header, int
 }
 
 NSArray<NSDictionary *> *HFAMapFastDiscoverMenuImages(NSMutableArray<NSDictionary *> *events) {
-    NSMutableArray *appImages = [NSMutableArray array];
+    NSString *targetKind = nil;
+    NSString *targetReason = nil;
+    BOOL unityFrameworkBundleExists = NO;
+    NSString *targetPath = HFAFastPreferredTargetPath(&targetKind, &targetReason,
+                                                       &unityFrameworkBundleExists);
+    NSFileManager *manager = NSFileManager.defaultManager;
+    BOOL targetFileExists = targetPath.length && [manager fileExistsAtPath:targetPath];
+
     uint32_t total = _dyld_image_count();
     uint32_t count = MIN(total, kHFAFastMaxImages);
-    HFAFastEvent(events, @"start", @{ @"totalLoadedImages": @(total), @"inspectedImages": @(count),
-                                       @"mode": @"full-list-first-no-deep-analysis" });
+    HFAFastEvent(events, @"start", @{
+        @"totalLoadedImages": @(total),
+        @"inspectedImages": @(count),
+        @"mode": @"preferred-image-path-lightweight-only",
+        @"targetPath": targetPath ?: @"",
+        @"targetKind": targetKind ?: @"unknown",
+        @"targetSelectionReason": targetReason ?: @"",
+        @"unityFrameworkBundleExists": @(unityFrameworkBundleExists),
+        @"targetFileExists": @(targetFileExists)
+    });
 
-    // Phase A: enumerate the entire loaded-image list first. No time deadline is allowed
-    // to make a later-loaded menu dylib disappear merely because of dyld ordering.
+    if (!targetPath.length || !targetFileExists) {
+        NSString *failure = unityFrameworkBundleExists
+            ? @"unity-framework-binary-missing" : @"main-executable-missing";
+        HFAFastEvent(events, @"target-file-missing", @{
+            @"reason": failure,
+            @"targetPath": targetPath ?: @"",
+            @"targetKind": targetKind ?: @"unknown"
+        });
+        HFAFastEvent(events, @"no-candidate", @{
+            @"candidateCount": @0,
+            @"targetPath": targetPath ?: @"",
+            @"targetKind": targetKind ?: @"unknown",
+            @"deepAnalysisPerformed": @NO
+        });
+        return @[];
+    }
+
+    // Resolve the preferred on-disk path against dyld's loaded-image list.
+    // The scan never substitutes an unrelated image when this target is absent.
+    uint32_t targetIndex = UINT32_MAX;
+    NSString *loadedTargetPath = nil;
     for (uint32_t i = 0; i < count; ++i) {
         const char *raw = _dyld_get_image_name(i);
-        const struct mach_header *header = _dyld_get_image_header(i);
-        if (!raw || !header) continue;
-        NSString *path = [NSString stringWithUTF8String:raw] ?: @"";
-        if (!HFAFastAppOwnedPath(path) || HFAFastExcludedImage(path)) continue;
-        [appImages addObject:@{ @"index": @(i), @"path": path }];
+        if (!raw) continue;
+        NSString *imagePath = [NSString stringWithUTF8String:raw] ?: @"";
+        if (![HFAFastComparablePath(imagePath) isEqualToString:targetPath]) continue;
+        targetIndex = i;
+        loadedTargetPath = imagePath;
+        break;
     }
 
-    // Phase B: lightweight fingerprints only. No CFG, no ObjC method inventory,
-    // no IL2CPP MethodIndex, and no runtime action analysis in discovery.
-    NSMutableArray *found = [NSMutableArray array];
-    NSUInteger fingerprinted = 0;
-    for (NSDictionary *item in appImages) {
-        uint32_t i = [item[@"index"] unsignedIntValue];
-        const struct mach_header *rawHeader = _dyld_get_image_header(i);
-        if (!rawHeader) continue;
-        NSDictionary *record = HFAFastFingerprint((const struct mach_header_64 *)rawHeader,
-                                                   _dyld_get_image_vmaddr_slide(i), item[@"path"]);
-        if (!record) continue;
-        ++fingerprinted;
-        if ([record[@"score"] unsignedIntValue] >= 24) {
-            [found addObject:record];
-            HFADiagnosticsLog(@"fast-image-candidate", @"matched", record);
-        }
+    if (targetIndex == UINT32_MAX) {
+        HFAFastEvent(events, @"target-not-loaded", @{
+            @"reason": @"preferred-target-not-loaded",
+            @"targetPath": targetPath,
+            @"targetKind": targetKind ?: @"unknown",
+            @"unityFrameworkBundleExists": @(unityFrameworkBundleExists),
+            @"processedFullImageList": @(count),
+            @"hitImageLimit": @(total > count)
+        });
+        HFAFastEvent(events, @"no-candidate", @{
+            @"candidateCount": @0,
+            @"targetPath": targetPath,
+            @"targetKind": targetKind ?: @"unknown",
+            @"deepAnalysisPerformed": @NO
+        });
+        return @[];
     }
-    [found sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
-        NSInteger x = [a[@"score"] integerValue], y = [b[@"score"] integerValue];
-        if (x != y) return x > y ? NSOrderedAscending : NSOrderedDescending;
-        return [a[@"image"] compare:b[@"image"]];
-    }];
-    HFAFastEvent(events, found.count ? @"pass" : @"no-candidate", @{
-        @"candidateCount": @(found.count), @"topCandidate": found.firstObject[@"image"] ?: @"",
-        @"appOwnedImages": @(appImages.count), @"fingerprintedImages": @(fingerprinted),
-        @"processedFullImageList": @(count), @"hitImageLimit": @(total > count),
+
+    const struct mach_header *rawHeader = _dyld_get_image_header(targetIndex);
+    if (!rawHeader || rawHeader->magic != MH_MAGIC_64) {
+        HFAFastEvent(events, @"invalid-target-macho", @{
+            @"reason": @"target-header-missing-or-not-64-bit",
+            @"targetPath": loadedTargetPath ?: targetPath,
+            @"targetKind": targetKind ?: @"unknown",
+            @"targetIndex": @(targetIndex)
+        });
+        return @[];
+    }
+
+    NSDictionary *record = HFAFastFingerprint((const struct mach_header_64 *)rawHeader,
+                                               _dyld_get_image_vmaddr_slide(targetIndex),
+                                               loadedTargetPath ?: targetPath);
+    if (!record) {
+        HFAFastEvent(events, @"invalid-target-macho", @{
+            @"reason": @"target-fingerprint-rejected",
+            @"targetPath": loadedTargetPath ?: targetPath,
+            @"targetKind": targetKind ?: @"unknown",
+            @"targetIndex": @(targetIndex)
+        });
+        return @[];
+    }
+
+    NSMutableDictionary *targetRecord = [record mutableCopy];
+    [record release];
+    targetRecord[@"targetSelectedByPath"] = @YES;
+    targetRecord[@"targetKind"] = targetKind ?: @"unknown";
+    targetRecord[@"targetSelectionReason"] = targetReason ?: @"preferred-target-path";
+    targetRecord[@"targetSelectionPolicy"] = @"unity-framework-first-else-main-executable";
+    targetRecord[@"targetPath"] = loadedTargetPath ?: targetPath;
+    targetRecord[@"canonicalEligible"] = @NO;
+
+    // A path-resolved target is an analysis target even when its fingerprint is
+    // weak. Keep the score as evidence; do not let that score choose another image.
+    NSMutableArray *found = [NSMutableArray arrayWithObject:targetRecord];
+    HFAFastEvent(events, @"target-fingerprinted", targetRecord);
+    [targetRecord release];
+
+    HFAFastEvent(events, @"pass", @{
+        @"candidateCount": @(found.count),
+        @"topCandidate": found.firstObject[@"image"] ?: @"",
+        @"appOwnedImages": @1,
+        @"fingerprintedImages": @1,
+        @"processedFullImageList": @(count),
+        @"hitImageLimit": @(total > count),
+        @"targetPath": targetPath,
+        @"targetKind": targetKind ?: @"unknown",
+        @"targetSelectionPolicy": @"unity-framework-first-else-main-executable",
         @"deepAnalysisPerformed": @NO
     });
     return found;

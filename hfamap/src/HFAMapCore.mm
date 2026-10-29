@@ -54,6 +54,9 @@ static void HFAWriteEvents(NSArray<NSDictionary *> *events) {
 static NSDictionary *HFASelectCandidate(NSArray<NSDictionary *> *candidates, NSString **reason) {
     if (!candidates.count) { if (reason) *reason = @"no-loaded-menu-image"; return nil; }
     NSDictionary *first = candidates.firstObject;
+    // The target is chosen by explicit bundle-path priority, not by fingerprint
+    // ranking. Weak evidence remains marked as weak and never grants patch eligibility.
+    if ([first[@"targetSelectedByPath"] boolValue]) return first;
     if ([first[@"score"] unsignedIntValue] < 50) { if (reason) *reason = @"weak-fingerprint"; return nil; }
     if (candidates.count > 1) {
         NSInteger a = [first[@"score"] integerValue], b = [candidates[1][@"score"] integerValue];
@@ -127,7 +130,7 @@ void HFAMapRunMenuDiscovery(void (^completion)(NSDictionary *summary)) {
         }
         NSString *session = HFADiagnosticsBeginSession();
         HFADiagnosticsLog(@"menu-discovery", @"start", @{
-            @"mode": @"full-list-lightweight-only",
+            @"mode": @"preferred-image-path-lightweight-only",
             @"deepAnalysisPerformed": @NO,
             @"outputDirectory": HFAOutputDirectoryPath() ?: @""
         });

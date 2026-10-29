@@ -10,14 +10,28 @@ MAKEFILE = (ROOT / "hfamap/Makefile").read_text()
 
 
 class DecoupledDiscoveryAnalysisTests(unittest.TestCase):
-    def test_fast_discovery_scans_full_loaded_list_without_deep_analysis(self):
-        self.assertIn('full-list-first-no-deep-analysis', FAST)
+    def test_fast_discovery_resolves_preferred_target_from_loaded_images(self):
+        self.assertIn('preferred-image-path-lightweight-only', FAST)
+        self.assertIn('Frameworks/UnityFramework.framework', FAST)
+        self.assertIn('NSBundle.mainBundle.executablePath', FAST)
+        self.assertIn('unity-framework-absent-main-executable-fallback', FAST)
+        self.assertIn('target-not-loaded', FAST)
+        self.assertIn('targetSelectedByPath', FAST)
         self.assertIn('_dyld_image_count()', FAST)
         self.assertIn('processedFullImageList', FAST)
         self.assertIn('deepAnalysisPerformed', FAST)
+        self.assertNotIn('HFAFastAppOwnedPath(path)', FAST)
+        self.assertNotIn('HFAFastExcludedImage(path)', FAST)
         for forbidden in ('HFAMapAnalyzeMenuBinary', 'HFAMapInventoryStrippedObjCActions',
                           'HFAIL2CPPBuildMethodIndex', 'HFAMapAnalyzeStrippedActionIMP'):
             self.assertNotIn(forbidden, FAST)
+
+    def test_path_selected_target_bypasses_weak_score_rejection_without_becoming_patch_eligible(self):
+        selector = CORE[CORE.index('static NSDictionary *HFASelectCandidate'):
+                        CORE.index('void HFAMapArmLastSelectedRuntimeProbe')]
+        self.assertLess(selector.index('targetSelectedByPath'), selector.index('unsignedIntValue] < 50'))
+        self.assertIn('@"canonicalEligible": @NO', FAST)
+        self.assertIn('targetSelectionPolicy', FAST)
 
     def test_core_exposes_three_independent_phases(self):
         self.assertIn('HFAMapRunMenuDiscovery', CORE)
